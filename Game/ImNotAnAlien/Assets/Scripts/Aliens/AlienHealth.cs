@@ -2,8 +2,11 @@ using System;
 using UnityEngine;
 using UnityEngine.AI;
 
-// Vida dos alienígenas. Batidas fortes (telecinese) causam dano.
-// Ao morrer, solta orbes de DNA (DnaOrbSystem) e o corpo fica acinzentado, "drenado".
+// Vida dos alienígenas.
+// - Dano por impacto depende da VELOCIDADE e do PESO do que bateu: caixa machuca pouco,
+//   carro machuca muito, parede (objeto fixo) machuca bem.
+// - Ao morrer, solta orbes de DNA (DnaOrbSystem) e o corpo fica acinzentado, "drenado".
+// - Ferido (vida baixa): pode ser devorado (DevourAbility), rendendo o dobro de DNA.
 // Teste rápido: durante o Play, clique com o botão direito no título deste
 // componente no Inspector e escolha "Teste: derrotar este alienígena".
 [DisallowMultipleComponent]
@@ -14,14 +17,24 @@ public sealed class AlienHealth : MonoBehaviour
     [Header("Dano por impacto")]
     [Tooltip("Batidas mais lentas que isso (m/s) não causam dano.")]
     [SerializeField, Min(0f)] private float minImpactSpeed = 6f;
-    [Tooltip("Dano por cada m/s acima da velocidade mínima.")]
-    [SerializeField, Min(0f)] private float damagePerImpactSpeed = 8f;
+    [Tooltip("Dano por cada m/s acima da velocidade mínima, para um objeto de peso igual ao do alienígena.")]
+    [SerializeField, Min(0f)] private float impactDamageScale = 2f;
+    [Tooltip("Peso (kg) de referência: objetos com esse peso causam o dano 'normal'.")]
+    [SerializeField, Min(1f)] private float referenceMass = 60f;
+    [Tooltip("Multiplicador de dano ao bater em algo fixo (parede, chão, prédio).")]
+    [SerializeField, Min(0f)] private float staticImpactMultiplier = 1.5f;
+    [Tooltip("Limites do multiplicador por peso (objetos muito leves/pesados).")]
+    [SerializeField] private Vector2 massMultiplierRange = new Vector2(0.3f, 3f);
 
     [Header("DNA")]
     [Tooltip("DNA total que este alienígena rende ao ser consumido.")]
     [SerializeField, Min(0)] private int dnaValue = 10;
     [Tooltip("Em quantos orbes o DNA é dividido.")]
     [SerializeField, Min(1)] private int orbCount = 5;
+
+    [Header("Devorar")]
+    [Tooltip("Abaixo desta fração da vida (0,5 = metade) o alienígena está ferido e pode ser devorado.")]
+    [SerializeField, Range(0.05f, 1f)] private float woundedThreshold = 0.5f;
 
     [Header("Corpo drenado")]
     [SerializeField] private Color drainedTint = new Color(0.45f, 0.45f, 0.5f, 1f);
@@ -32,9 +45,11 @@ public sealed class AlienHealth : MonoBehaviour
     private AlienBrain brain;
 
     public float MaxHealth => maxHealth;
-    public int DnaValue => dnaValue;
     public float CurrentHealth { get; private set; }
+    public float HealthFraction => CurrentHealth / maxHealth;
     public bool IsDead { get; private set; }
+    public bool IsWounded => !IsDead && CurrentHealth <= maxHealth * woundedThreshold;
+    public int DnaValue => dnaValue;
 
     // Avisa outros sistemas (contador, DNA, etc.) quando este alienígena é derrotado.
     public event Action<AlienHealth> Died;
@@ -79,10 +94,17 @@ public sealed class AlienHealth : MonoBehaviour
         }
 
         float speed = collision.relativeVelocity.magnitude;
-        if (speed > minImpactSpeed)
+        if (speed <= minImpactSpeed)
         {
-            TakeDamage((speed - minImpactSpeed) * damagePerImpactSpeed);
+            return;
         }
+
+        Rigidbody other = collision.rigidbody;
+        float massMultiplier = other == null || other.isKinematic
+            ? staticImpactMultiplier
+            : Mathf.Clamp(other.mass / referenceMass, massMultiplierRange.x, massMultiplierRange.y);
+
+        TakeDamage((speed - minImpactSpeed) * impactDamageScale * massMultiplier);
     }
 
     [ContextMenu("Teste: derrotar este alienígena")]
@@ -97,11 +119,44 @@ public sealed class AlienHealth : MonoBehaviour
         TakeDamage(CurrentHealth);
     }
 
+    [ContextMenu("Teste: ferir este alienígena")]
+    private void DebugWound()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.Log("Este teste só funciona durante o Play.");
+            return;
+        }
+
+        TakeDamage(Mathf.Max(0f, CurrentHealth - maxHealth * woundedThreshold * 0.8f));
+    }
+
+    // Devorar: consome na hora, sem orbes. Retorna o DNA que o alienígena rende (sem o bônus).
+    // O DevourAbility cuida da animação e de remover o corpo.
+    public int Devour()
+    {
+        if (IsDead)
+        {
+            return 0;
+        }
+
+        IsDead = true;
+        CurrentHealth = 0f;
+        if (brain != null)
+        {
+            brain.OnDevoured();
+            brain.enabled = false;
+        }
+
+        Died?.Invoke(this);
+        return dnaValue;
+    }
+
     private void Die()
     {
         IsDead = true;
 
-        if (TryGetComponent(out AlienBrain brain))
+        if (brain != null)
         {
             brain.enabled = false;
         }

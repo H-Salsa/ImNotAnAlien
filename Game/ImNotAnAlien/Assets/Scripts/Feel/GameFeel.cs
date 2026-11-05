@@ -38,6 +38,10 @@ public sealed class GameFeel : MonoBehaviour
     [SerializeField] private AudioClip alienScreamClip;
     [SerializeField] private AudioClip dnaPickupClip;
     [SerializeField] private AudioClip sectorClearedClip;
+    [SerializeField] private AudioClip policeChargeClip;
+    [SerializeField] private AudioClip policeShotClip;
+    [SerializeField] private AudioClip playerHitClip;
+    [SerializeField] private AudioClip devourClip;
 
     private const int SampleRate = 44100;
     private const int VoiceCount = 10;
@@ -70,6 +74,10 @@ public sealed class GameFeel : MonoBehaviour
         if (alienScreamClip == null) alienScreamClip = SynthScream();
         if (dnaPickupClip == null) dnaPickupClip = SynthPickup();
         if (sectorClearedClip == null) sectorClearedClip = SynthFanfare();
+        if (policeChargeClip == null) policeChargeClip = SynthCharge();
+        if (policeShotClip == null) policeShotClip = SynthShot();
+        if (playerHitClip == null) playerHitClip = SynthPlayerHit();
+        if (devourClip == null) devourClip = SynthDevour();
     }
 
     private void OnDestroy()
@@ -167,6 +175,45 @@ public sealed class GameFeel : MonoBehaviour
         Camera cam = Camera.main;
         Vector3 position = cam != null ? cam.transform.position : Vector3.zero;
         Instance.Play(Instance.sectorClearedClip, position, 0.9f, 1f, 1f);
+    }
+
+    public static void PoliceCharge(Vector3 position)
+    {
+        if (Instance != null)
+        {
+            Instance.Play(Instance.policeChargeClip, position, 0.35f, 0.95f, 1.05f);
+        }
+    }
+
+    public static void PoliceShot(Vector3 position)
+    {
+        if (Instance != null)
+        {
+            Instance.Play(Instance.policeShotClip, position, 0.8f, 0.92f, 1.08f);
+        }
+    }
+
+    public static void PlayerHit(Vector3 position)
+    {
+        if (Instance != null)
+        {
+            Instance.Play(Instance.playerHitClip, position, 0.7f, 0.9f, 1.05f);
+        }
+    }
+
+    // "NHAC!": devorar um alienígena.
+    public static void Devour(Vector3 position, Color color)
+    {
+        if (Instance == null)
+        {
+            return;
+        }
+
+        Instance.Play(Instance.devourClip, position, 1f, 0.9f, 1.05f);
+        Instance.EmitDebris(position, 35, color, 1.3f);
+        Instance.EmitDebris(position, 20, new Color(0.3f, 1f, 0.6f), 1f); // "respingos" de DNA
+        CameraShake.AddTrauma(0.4f);
+        Instance.HitStop(Instance.hitStopDuration * 1.5f);
     }
 
     // ---------- Implementação ----------
@@ -402,6 +449,56 @@ public sealed class GameFeel : MonoBehaviour
             float wave = Mathf.Sin(2f * Mathf.PI * notes[index] * t);
             wave += 0.3f * Mathf.Sin(2f * Mathf.PI * notes[index] * 2f * t); // um pouco de brilho
             return wave * Mathf.Exp(-local * decay) * 0.4f;
+        });
+    }
+
+    // Aviso do policial: zumbido subindo (dá tempo de reagir).
+    private static AudioClip SynthCharge()
+    {
+        return Synth("Policial_Carga", 0.45f, (t, n) =>
+        {
+            float freq = Mathf.Lerp(300f, 950f, t / 0.45f);
+            float envelope = Mathf.Min(t / 0.05f, 1f) * 0.7f;
+            return Mathf.Sin(2f * Mathf.PI * freq * t) * envelope * 0.3f;
+        });
+    }
+
+    // "PAH!": estampido de tiro. Estalo seco de ruído + "soco" grave + cauda curta abafada.
+    private static AudioClip SynthShot()
+    {
+        float muffled = 0f;
+        return Synth("Policial_Tiro", 0.4f, (t, n) =>
+        {
+            float crack = n * Mathf.Exp(-t * 60f);                                  // estalo inicial
+            float thump = Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(150f, 55f, Mathf.Clamp01(t / 0.08f)) * t)
+                          * Mathf.Exp(-t * 28f);                                    // impacto grave
+            muffled += (n - muffled) * 0.08f;                                       // ruído abafado (eco)
+            float tail = muffled * Mathf.Exp(-t * 9f) * 2.2f;
+            float mix = crack * 0.9f + thump * 0.8f + tail * 0.5f;
+            return Mathf.Clamp(mix * 1.4f, -1f, 1f);                                // satura um pouco: mais "seco"
+        });
+    }
+
+    // Jogador atingido: zumbido grave e áspero.
+    private static AudioClip SynthPlayerHit()
+    {
+        return Synth("Jogador_Dano", 0.28f, (t, n) =>
+        {
+            float buzz = Mathf.Sign(Mathf.Sin(2f * Mathf.PI * 95f * t)) * 0.5f;
+            return (buzz + n * 0.6f) * Mathf.Exp(-t * 11f) * 0.6f;
+        });
+    }
+
+    // "NHAC... glup": mordida (ruído curto) + engolida (tom grave descendo com tremido).
+    private static AudioClip SynthDevour()
+    {
+        return Synth("Devorar", 0.6f, (t, n) =>
+        {
+            float bite = n * Mathf.Exp(-t * 30f) * 0.9f;
+            float gulpT = Mathf.Max(0f, t - 0.12f);
+            float freq = Mathf.Lerp(320f, 70f, gulpT / 0.48f) + Mathf.Sin(gulpT * 2f * Mathf.PI * 14f) * 25f;
+            float gulp = Mathf.Sin(2f * Mathf.PI * freq * gulpT) * Mathf.Min(gulpT / 0.03f, 1f) * Mathf.Exp(-gulpT * 4f);
+            return (bite + gulp * 0.8f) * 0.8f;
         });
     }
 

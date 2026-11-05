@@ -17,12 +17,34 @@ public sealed class SectorTracker : MonoBehaviour
 
     // Orbes que ainda faltam absorver, por alienígena (chave = ID do alienígena).
     private readonly Dictionary<int, int> pendingOrbs = new Dictionary<int, int>();
+    private readonly List<AlienHealth> aliens = new List<AlienHealth>();
 
     public string SectorName => sectorName;
     public int ClearBonusDna => clearBonusDna;
     public int TotalAliens { get; private set; }
     public int ConsumedAliens { get; private set; }
     public bool IsCleared { get; private set; }
+
+    // Alienígenas do setor (usado pelos marcadores dos últimos restantes).
+    public IReadOnlyList<AlienHealth> Aliens => aliens;
+
+    // Quantos ainda estão vivos (andando por aí).
+    public int AliveCount
+    {
+        get
+        {
+            int alive = 0;
+            foreach (AlienHealth alien in aliens)
+            {
+                if (alien != null && !alien.IsDead)
+                {
+                    alive++;
+                }
+            }
+
+            return alive;
+        }
+    }
 
     public event Action Changed;
     public event Action<SectorTracker> Cleared;
@@ -42,13 +64,31 @@ public sealed class SectorTracker : MonoBehaviour
 
     private void Start()
     {
-        TotalAliens = FindObjectsByType<AlienHealth>(FindObjectsSortMode.None).Length;
+        aliens.Clear();
+        aliens.AddRange(FindObjectsByType<AlienHealth>(FindObjectsSortMode.None));
+        TotalAliens = aliens.Count;
+
+        // Lista no Console quem foi contado, para conferir o total.
+        List<string> names = new List<string>();
+        foreach (AlienHealth alien in aliens)
+        {
+            names.Add(alien.name);
+        }
+
+        names.Sort();
+        Debug.Log($"Setor '{sectorName}': {TotalAliens} alienígenas — {string.Join(", ", names)}");
         Changed?.Invoke();
     }
 
     // Para alienígenas que surgirem depois do início (reforços, por exemplo).
-    public void RegisterAlien()
+    public void RegisterAlien(AlienHealth alien)
     {
+        if (alien == null || aliens.Contains(alien))
+        {
+            return;
+        }
+
+        aliens.Add(alien);
         TotalAliens++;
         Changed?.Invoke();
     }

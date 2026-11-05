@@ -16,7 +16,7 @@ public sealed class TelekinesisPower : MonoBehaviour
 
     [Header("Mira")]
     [Tooltip("Distância máxima, a partir da câmera, para alcançar um alvo.")]
-    [SerializeField, Min(1f)] private float maxRange = 35f;
+    [SerializeField, Min(1f)] private float targetRange = 25f;
 
     [Header("Segurar")]
     [Tooltip("Distância à frente do personagem, na linha da mira, em que o objeto flutua (objetos grandes ficam mais longe).")]
@@ -106,6 +106,14 @@ public sealed class TelekinesisPower : MonoBehaviour
     private void OnDestroy()
     {
         telekinesisAction.Dispose();
+    }
+
+    // Usado pelo Devorar (para devorar o alienígena que está sendo segurado).
+    public Rigidbody HeldBody => held;
+
+    public void ReleaseHeld()
+    {
+        Release(false, Vector3.zero);
     }
 
     private bool IsChargingThrow =>
@@ -294,7 +302,7 @@ public sealed class TelekinesisPower : MonoBehaviour
     {
         nearest = default;
         Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
-        int count = Physics.RaycastNonAlloc(ray, hits, maxRange, Physics.DefaultRaycastLayers,
+        int count = Physics.RaycastNonAlloc(ray, hits, targetRange, Physics.DefaultRaycastLayers,
             QueryTriggerInteraction.Ignore);
 
         float bestDistance = float.MaxValue;

@@ -109,9 +109,9 @@ O autor tem experiência em programação, mas este é o primeiro jogo. A divis�
 
 Escopo definido pelo autor em 5/11/2026 ([D10 e D11](DECISOES.md)).
 
-### Missão 7 — DNA e contador de alienígenas
+### Missão 7 — DNA e contador de alienígenas ✅
 
-**Em andamento.** Ferramenta `ImNotAnAlien > Preparar Versao 0.2`.
+**Concluída em 5/11/2026; aprovada pelo autor.** Correções após o teste: alienígena segurado não leva dano de esbarrões (só ao ser arremessado/solto ou atingido por outro objeto); objeto segurado flutua sobre a linha da mira (sobe e desce com a câmera, sem afundar no chão) e ignora colisão com o personagem. Ferramenta `ImNotAnAlien > Preparar Versao 0.2`.
 
 - Orbes de DNA ao morrer: salto, atração por proximidade e rede de segurança (`DnaOrb`, `DnaOrbSystem`).
 - DNA acumulado do jogador (`DnaInventory`).

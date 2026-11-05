@@ -1,23 +1,36 @@
 using UnityEngine;
 using UnityEngine.AI;
 
-// Comportamento dos alienígenas da Versão 0.1:
+// Comportamento dos alienígenas.
 // - Passeio: andam devagar até pontos aleatórios perto de "casa" e param um pouco.
-// - Fuga: quando o jogador chega perto, levam um susto (pulinho + "!") e correm para longe.
+// - Ao ver o jogador (susto com pulinho + "!"):
+//     Civil    -> foge para longe.
+//     Policial -> se aproxima até a distância de tiro e atira (AlienPoliceWeapon).
 // - Quando o jogador fica longe o bastante, se acalmam e voltam a passear.
 // - Telecinese: enquanto levantados ou voando, viram corpos físicos. Quando param
-//   no chão (e ainda estão vivos), se levantam tontos e fogem.
+//   no chão (e ainda estão vivos), se levantam e voltam a reagir ao jogador.
 // Precisa de um NavMesh "assado" (Bake) na cena para conseguir andar.
 [DisallowMultipleComponent]
 [RequireComponent(typeof(NavMeshAgent))]
 public sealed class AlienBrain : MonoBehaviour
 {
+    public enum Role
+    {
+        Civil,
+        Policial,
+    }
+
     private enum State
     {
         Wandering,
         Fleeing,
+        Attacking,
         Tumbling,
+        Devoured,
     }
+
+    [Header("Papel")]
+    [SerializeField] private Role role = Role.Civil;
 
     [Header("Passeio")]
     [Tooltip("Distância máxima, a partir do ponto inicial, dos pontos aleatórios de passeio.")]
@@ -26,20 +39,29 @@ public sealed class AlienBrain : MonoBehaviour
     [Tooltip("Tempo parado (mínimo e máximo, em segundos) entre um passeio e outro.")]
     [SerializeField] private Vector2 idleTimeRange = new Vector2(1.5f, 4f);
 
-    [Header("Fuga")]
-    [Tooltip("Se o jogador chegar mais perto que isso, o alienígena foge.")]
+    [Header("Percepção")]
+    [Tooltip("Se o jogador chegar mais perto que isso, o alienígena reage (foge ou ataca).")]
     [SerializeField, Min(0.5f)] private float detectionRadius = 9f;
     [Tooltip("Quando o jogador estiver mais longe que isso, o alienígena se acalma.")]
     [SerializeField, Min(1f)] private float calmDownDistance = 20f;
+
+    [Header("Fuga (civil)")]
     [SerializeField, Min(0.1f)] private float fleeSpeed = 6.5f;
     [Tooltip("Até onde ele tenta correr a cada nova escolha de rota.")]
     [SerializeField, Min(1f)] private float fleeDistance = 10f;
     [SerializeField, Min(0.1f)] private float fleeRepathInterval = 0.4f;
 
+    [Header("Ataque (policial)")]
+    [SerializeField, Min(0.1f)] private float attackMoveSpeed = 4.5f;
+    [Tooltip("Distância mínima e máxima que o policial tenta manter do jogador.")]
+    [SerializeField] private Vector2 attackDistanceRange = new Vector2(7f, 13f);
+    [SerializeField, Min(0.1f)] private float attackRepathInterval = 0.5f;
+    [SerializeField, Min(1f)] private float turnSpeed = 8f;
+
     [Header("Reação (visual)")]
     [Tooltip("Parte visual que dá o pulinho de susto.")]
     [SerializeField] private Transform body;
-    [Tooltip("Objeto '!' mostrado enquanto foge.")]
+    [Tooltip("Objeto '!' mostrado enquanto foge ou ataca.")]
     [SerializeField] private GameObject alertIcon;
     [SerializeField, Min(0f)] private float scareHopHeight = 0.9f;
     [SerializeField, Min(0.05f)] private float scareHopDuration = 0.35f;
@@ -54,6 +76,7 @@ public sealed class AlienBrain : MonoBehaviour
 
     private NavMeshAgent agent;
     private Rigidbody physicsBody;
+    private AlienPoliceWeapon weapon;
     private bool isHeld;
     private float settleTimer;
     private Transform player;
@@ -65,9 +88,16 @@ public sealed class AlienBrain : MonoBehaviour
     private Vector3 bodyRestPosition;
     private bool warnedNoNavMesh;
 
+    public Role AlienRole => role;
+    public Transform Body => body;
+
+    // Verdadeiro enquanto a telecinese está segurando este alienígena.
+    public bool IsHeld => isHeld && enabled;
+
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
+        weapon = GetComponent<AlienPoliceWeapon>();
         home = transform.position;
 
         // Corpo físico usado pela telecinese. Fica "cinemático" (sem física) enquanto anda.
@@ -138,6 +168,11 @@ public sealed class AlienBrain : MonoBehaviour
     {
         UpdateScareHop();
 
+        if (state == State.Devoured)
+        {
+            return;
+        }
+
         if (state == State.Tumbling)
         {
             UpdateTumble();
@@ -157,7 +192,7 @@ public sealed class AlienBrain : MonoBehaviour
             return;
         }
 
-        float distanceToPlayer = player != null
+        float distanceToPlayer = PlayerIsAvailable()
             ? Vector3.Distance(transform.position, player.position)
             : float.MaxValue;
 
@@ -166,7 +201,7 @@ public sealed class AlienBrain : MonoBehaviour
             case State.Wandering:
                 if (distanceToPlayer < detectionRadius)
                 {
-                    EnterFlee();
+                    EnterAlert();
                 }
                 else
                 {
@@ -186,6 +221,53 @@ public sealed class AlienBrain : MonoBehaviour
                 }
 
                 break;
+
+            case State.Attacking:
+                if (distanceToPlayer > calmDownDistance)
+                {
+                    EnterWander();
+                }
+                else
+                {
+                    UpdateAttack(distanceToPlayer);
+                }
+
+                break;
+        }
+    }
+
+    // O jogador existe e está vivo? (policiais param de atirar num jogador derrotado)
+    private bool PlayerIsAvailable()
+    {
+        if (player == null)
+        {
+            return false;
+        }
+
+        PlayerHealth health = PlayerHealth.Instance;
+        return health == null || !health.IsDead;
+    }
+
+    // Reação ao ver o jogador, conforme o papel.
+    private void EnterAlert()
+    {
+        if (role == Role.Policial)
+        {
+            EnterAttack();
+        }
+        else
+        {
+            EnterFlee();
+        }
+    }
+
+    private void StartScare()
+    {
+        GameFeel.AlienScream(transform.position + Vector3.up * 1.8f);
+        hopTime = 0f; // começa o pulinho de susto
+        if (alertIcon != null)
+        {
+            alertIcon.SetActive(true);
         }
     }
 
@@ -195,10 +277,16 @@ public sealed class AlienBrain : MonoBehaviour
     {
         state = State.Wandering;
         agent.speed = wanderSpeed;
+        agent.updateRotation = true;
         idleTimer = Random.Range(idleTimeRange.x, idleTimeRange.y);
         if (alertIcon != null)
         {
             alertIcon.SetActive(false);
+        }
+
+        if (weapon != null)
+        {
+            weapon.CancelCharge();
         }
     }
 
@@ -226,19 +314,15 @@ public sealed class AlienBrain : MonoBehaviour
         idleTimer = Random.Range(idleTimeRange.x, idleTimeRange.y);
     }
 
-    // ---------- Fuga ----------
+    // ---------- Fuga (civil) ----------
 
     private void EnterFlee()
     {
         state = State.Fleeing;
-        GameFeel.AlienScream(transform.position + Vector3.up * 1.8f);
         agent.speed = fleeSpeed;
+        agent.updateRotation = true;
         repathTimer = 0f;
-        hopTime = 0f; // começa o pulinho de susto
-        if (alertIcon != null)
-        {
-            alertIcon.SetActive(true);
-        }
+        StartScare();
     }
 
     private void UpdateFlee()
@@ -273,10 +357,60 @@ public sealed class AlienBrain : MonoBehaviour
         }
     }
 
-    // ---------- Telecinese ----------
+    // ---------- Ataque (policial) ----------
 
-    // Verdadeiro enquanto a telecinese está segurando este alienígena.
-    public bool IsHeld => isHeld && enabled;
+    private void EnterAttack()
+    {
+        state = State.Attacking;
+        agent.speed = attackMoveSpeed;
+        agent.updateRotation = false; // ele mesmo gira para encarar o jogador
+        repathTimer = 0f;
+        StartScare();
+
+        if (weapon != null)
+        {
+            weapon.ResetCooldown();
+        }
+    }
+
+    private void UpdateAttack(float distanceToPlayer)
+    {
+        // Sempre de frente para o jogador.
+        Vector3 toPlayer = player.position - transform.position;
+        toPlayer.y = 0f;
+        if (toPlayer.sqrMagnitude > 0.01f)
+        {
+            Quaternion look = Quaternion.LookRotation(toPlayer, Vector3.up);
+            transform.rotation = Quaternion.Slerp(transform.rotation, look, turnSpeed * Time.deltaTime);
+        }
+
+        // Mantém a distância de tiro: aproxima se longe, recua se perto demais.
+        repathTimer -= Time.deltaTime;
+        if (repathTimer <= 0f)
+        {
+            repathTimer = attackRepathInterval;
+            float wanted = Mathf.Clamp(distanceToPlayer, attackDistanceRange.x, attackDistanceRange.y);
+            if (!Mathf.Approximately(wanted, distanceToPlayer))
+            {
+                Vector3 target = player.position - toPlayer.normalized * wanted;
+                if (NavMesh.SamplePosition(target, out NavMeshHit hit, 3f, NavMesh.AllAreas))
+                {
+                    agent.SetDestination(hit.position);
+                }
+            }
+            else if (agent.hasPath)
+            {
+                agent.ResetPath();
+            }
+        }
+
+        if (weapon != null)
+        {
+            weapon.Tick(player);
+        }
+    }
+
+    // ---------- Telecinese ----------
 
     public void OnTelekinesisGrab()
     {
@@ -296,6 +430,11 @@ public sealed class AlienBrain : MonoBehaviour
         {
             alertIcon.SetActive(true);
         }
+
+        if (weapon != null)
+        {
+            weapon.CancelCharge();
+        }
     }
 
     public void OnTelekinesisRelease()
@@ -305,6 +444,23 @@ public sealed class AlienBrain : MonoBehaviour
         if (body != null)
         {
             body.localRotation = Quaternion.identity;
+        }
+    }
+
+    // Chamado pelo Devorar: para tudo; o DevourAbility cuida da animação.
+    public void OnDevoured()
+    {
+        state = State.Devoured;
+        isHeld = false;
+        if (agent.enabled)
+        {
+            agent.enabled = false;
+        }
+
+        physicsBody.isKinematic = true;
+        if (weapon != null)
+        {
+            weapon.CancelCharge();
         }
     }
 
@@ -355,7 +511,7 @@ public sealed class AlienBrain : MonoBehaviour
         transform.SetPositionAndRotation(hit.position, Quaternion.Euler(0f, transform.eulerAngles.y, 0f));
         agent.enabled = true;
         agent.Warp(hit.position);
-        EnterFlee(); // levanta assustado e sai correndo
+        EnterAlert(); // levanta e reage: civil foge, policial volta a atacar
     }
 
     // ---------- Visual ----------

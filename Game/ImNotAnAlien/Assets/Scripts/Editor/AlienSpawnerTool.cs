@@ -100,7 +100,8 @@ public static class AlienSpawnerTool
 
     // ---------- Prefab ----------
 
-    private static GameObject GetOrCreatePrefab()
+    // Também usado pela ferramenta da Versão 0.3.
+    internal static GameObject GetOrCreatePrefab()
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
         if (prefab != null)
