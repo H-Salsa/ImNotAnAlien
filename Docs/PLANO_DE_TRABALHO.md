@@ -127,6 +127,32 @@ Escopo definido pelo autor em 5/11/2026 ([D10 e D11](DECISOES.md)).
 - **Minimapa** no canto superior direito.
 - Gastar DNA em evoluções (ex.: aumentar o raio de atração dos orbes).
 
+## Versão 0.3 — O ciclo completo
+
+Rumo aprovado pelo autor em 5/11/2026: mais alienígenas, evoluções com DNA e risco. Ajustes do autor: [D12, D13 e D14](DECISOES.md).
+
+### Missão 8 — Policiais, Devorar e vida do jogador
+
+**Em andamento.** Ferramenta `ImNotAnAlien > Preparar Versao 0.3`.
+
+- Bairro com 8 civis e 3 policiais (prefab `Alienigena_Policial`, com quepe, distintivo e arma).
+- Policiais: se aproximam até a distância de tiro (7 a 13 m), avisam (ponta da arma acende) e atiram projéteis visíveis; objetos no caminho bloqueiam. Tiros também ferem outros alienígenas.
+- Dano por impacto proporcional ao peso (D14).
+- Devorar com a tecla 1 e barra de vida sobre o alienígena mirado (D12).
+- Vida do jogador: barra no canto superior esquerdo, flash vermelho, regeneração após 4 s, derrota e renascimento no início sem perder progresso.
+
+### Missão 9 — Evoluções (próxima)
+
+Menu para gastar DNA: raio de atração dos orbes, peso máximo, força do arremesso, onda de impacto da telecinese e o próprio Devorar (D12).
+
+### Ideia anotada — Estruturas destrutíveis (A07)
+
+Definida pelo autor em 5/11/2026 ([D15](DECISOES.md)), ainda sem versão: estruturas desmoronam; os pedaços caem por 1–2 s, atravessam o chão e são apagados; fica um pequeno escombro no lugar. Casa pequena cai com alguns arremessos de carro, com uma arma futura ou com a Superforça; caixas e lixeiras não derrubam casas. Sem recompensa (só visual) e sem alienígenas dentro das casas. Exige atualizar o NavMesh quando uma estrutura cai.
+
+### Estado em 5/11/2026 (fim do dia)
+
+Missão 8 testada pelo autor: dano por peso, Devorar (alcance 20 m), policiais com rajada rápida desviável (mira travada no aviso), vida do jogador e marcadores dos últimos 3 alienígenas. Autor adicionou uma casa no lado leste e moveu o `Civil_05`. Lembretes: salvar a cena (Ctrl+S) e refazer o Bake do NavMesh ao mudar o cenário. **Próximo passo: Missão 9.**
+
 ## Depois da 0.1 (sem ordem aprovada)
 
 - Trocar cápsulas por personagens estilizados (pacotes de assets prontos e animações do Mixamo, com ajustes no Blender).
