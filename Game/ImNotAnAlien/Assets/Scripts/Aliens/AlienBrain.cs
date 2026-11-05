@@ -310,6 +310,12 @@ public sealed class AlienBrain : MonoBehaviour
         if (transform.position.y < fallOutHeight)
         {
             Debug.Log($"{name} caiu para fora do mapa.", this);
+            // Conta como derrotado: o DNA é liberado e a rede de segurança traz os orbes de volta.
+            if (TryGetComponent(out AlienHealth health) && !health.IsDead)
+            {
+                health.TakeDamage(health.CurrentHealth);
+            }
+
             Destroy(gameObject);
             return;
         }

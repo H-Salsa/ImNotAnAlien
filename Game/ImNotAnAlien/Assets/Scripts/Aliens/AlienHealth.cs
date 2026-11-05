@@ -2,8 +2,9 @@ using System;
 using UnityEngine;
 using UnityEngine.AI;
 
-// Vida dos alienígenas. Na Missão 4, a telecinese vai causar dano chamando TakeDamage.
-// Para testar agora: durante o Play, clique com o botão direito no título deste
+// Vida dos alienígenas. Batidas fortes (telecinese) causam dano.
+// Ao morrer, solta orbes de DNA (DnaOrbSystem) e o corpo fica acinzentado, "drenado".
+// Teste rápido: durante o Play, clique com o botão direito no título deste
 // componente no Inspector e escolha "Teste: derrotar este alienígena".
 [DisallowMultipleComponent]
 public sealed class AlienHealth : MonoBehaviour
@@ -16,7 +17,20 @@ public sealed class AlienHealth : MonoBehaviour
     [Tooltip("Dano por cada m/s acima da velocidade mínima.")]
     [SerializeField, Min(0f)] private float damagePerImpactSpeed = 8f;
 
+    [Header("DNA")]
+    [Tooltip("DNA total que este alienígena rende ao ser consumido.")]
+    [SerializeField, Min(0)] private int dnaValue = 10;
+    [Tooltip("Em quantos orbes o DNA é dividido.")]
+    [SerializeField, Min(1)] private int orbCount = 5;
+
+    [Header("Corpo drenado")]
+    [SerializeField] private Color drainedTint = new Color(0.45f, 0.45f, 0.5f, 1f);
+    [SerializeField, Range(0f, 1f)] private float drainedAmount = 0.65f;
+
+    private const float CorpseFallOutHeight = -50f;
+
     public float MaxHealth => maxHealth;
+    public int DnaValue => dnaValue;
     public float CurrentHealth { get; private set; }
     public bool IsDead { get; private set; }
 
@@ -26,6 +40,15 @@ public sealed class AlienHealth : MonoBehaviour
     private void Awake()
     {
         CurrentHealth = maxHealth;
+    }
+
+    private void Update()
+    {
+        // Corpo que caiu para fora do mapa: remove (o DNA já foi liberado).
+        if (IsDead && transform.position.y < CorpseFallOutHeight)
+        {
+            Destroy(gameObject);
+        }
     }
 
     public void TakeDamage(float amount)
@@ -92,7 +115,20 @@ public sealed class AlienHealth : MonoBehaviour
         Renderer skin = GetComponentInChildren<Renderer>();
         GameFeel.AlienDefeated(transform.position, skin != null && skin.sharedMaterial != null ? skin.sharedMaterial.color : Color.white);
 
+        DnaOrbSystem.SpawnFrom(this, transform.position + Vector3.up * 1.2f, dnaValue, orbCount);
+        TintAsDrained();
+
         Debug.Log($"{name} foi derrotado.", this);
         Died?.Invoke(this);
+    }
+
+    // Deixa o corpo acinzentado: o DNA saiu dele.
+    private void TintAsDrained()
+    {
+        foreach (Renderer part in GetComponentsInChildren<Renderer>(true))
+        {
+            Material material = part.material; // cria uma cópia só para este corpo
+            material.color = Color.Lerp(material.color, drainedTint, drainedAmount);
+        }
     }
 }

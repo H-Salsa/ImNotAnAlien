@@ -71,9 +71,9 @@ O autor tem experiência em programação, mas este é o primeiro jogo. A divis�
 
 **Pronto quando:** os três se movem pela esquina e reagem à presença do jogador.
 
-### Missão 4 — Telecinese básica
+### Missão 4 — Telecinese básica ✅
 
-**Em andamento.** Ferramenta `ImNotAnAlien > Preparar Telecinese` adiciona o poder ao jogador e cria caixas, lixeiras e um carro. Controles definidos pelo autor (D09): mira no centro da tela; botão direito — toque levanta ou solta, segurar e soltar arremessa. Massa máxima 1500 kg; objetos pesados seguem a mira mais devagar. Alienígenas levam dano por impacto acima de 6 m/s e, se sobreviverem, levantam e fogem.
+**Concluída em 5/11/2026; sensação aprovada pelo autor.** Ferramenta `ImNotAnAlien > Preparar Telecinese` adiciona o poder ao jogador e cria caixas, lixeiras e um carro. Controles definidos pelo autor (D09): mira no centro da tela; botão direito — toque levanta ou solta, segurar e soltar arremessa. Massa máxima 1500 kg; objetos pesados seguem a mira mais devagar. Alienígenas levam dano por impacto acima de 6 m/s e, se sobreviverem, levantam e fogem.
 
 **Objetivo:** o coração da 0.1 — levantar e arremessar.
 
@@ -83,7 +83,9 @@ O autor tem experiência em programação, mas este é o primeiro jogo. A divis�
 
 **Pronto quando:** é possível levantar e arremessar objetos e alienígenas de forma controlável.
 
-### Missão 5 — Deixar gostoso (game feel)
+### Missão 5 — Deixar gostoso (game feel) ✅
+
+**Concluída em 5/11/2026; efeitos aprovados pelo autor.** Ferramenta `ImNotAnAlien > Preparar Efeitos` cria o objeto `GameFeel` e adiciona `CameraShake` à câmera. Implementado: estilhaços em cubinhos da cor do objeto, tremida de câmera por trauma, pausa de impacto acima de 18 m/s, brilho no objeto segurado (pulsa ao carregar o arremesso), alienígenas se debatendo no ar e sons provisórios sintetizados por código (impacto, levantar, arremesso, grito alienígena). Os sons devem ser substituídos por sons de verdade antes de um lançamento.
 
 **Objetivo:** fazer o poder parecer poderoso e engraçado.
 
@@ -94,12 +96,36 @@ O autor tem experiência em programação, mas este é o primeiro jogo. A divis�
 
 ### Missão 6 — Avaliar a 0.1
 
+**Pendente.** O autor preferiu definir a coleta de DNA e iniciar a 0.2 antes da avaliação formal. Fazer a avaliação junto com a da 0.2.
+
 **Objetivo:** decidir o próximo passo com base no que foi jogado.
 
 - Jogar por 10 minutos, gravar um vídeo curto, mostrar para 2 ou 3 pessoas.
 - Registrar o que funcionou e o que não funcionou em [Decisões](DECISOES.md).
 
 **Pronto quando:** existe uma lista do que entra na Versão 0.2.
+
+## Versão 0.2 — Consumir e contar
+
+Escopo definido pelo autor em 5/11/2026 ([D10 e D11](DECISOES.md)).
+
+### Missão 7 — DNA e contador de alienígenas
+
+**Em andamento.** Ferramenta `ImNotAnAlien > Preparar Versao 0.2`.
+
+- Orbes de DNA ao morrer: salto, atração por proximidade e rede de segurança (`DnaOrb`, `DnaOrbSystem`).
+- DNA acumulado do jogador (`DnaInventory`).
+- Objetivo do setor: alienígenas consumidos / total, setor limpo com bônus (`SectorTracker`).
+- Interface no canto superior direito com os dois contadores e o aviso "SETOR LIMPO!" (`GameHud`). O espaço do minimapa já está previsto (opção `Reserve Minimap Space`).
+- Corpo do alienígena fica acinzentado ("drenado") depois de soltar o DNA.
+
+**Pronto quando:** derrotar os três alienígenas, coletar o DNA e ver o setor limpo funciona sem confusão entre os dois números.
+
+### Próximas candidatas (sem ordem aprovada)
+
+- **Devorar:** consumir um alienígena enfraquecido ainda vivo, com animação exagerada, rendendo o dobro de DNA.
+- **Minimapa** no canto superior direito.
+- Gastar DNA em evoluções (ex.: aumentar o raio de atração dos orbes).
 
 ## Depois da 0.1 (sem ordem aprovada)
 

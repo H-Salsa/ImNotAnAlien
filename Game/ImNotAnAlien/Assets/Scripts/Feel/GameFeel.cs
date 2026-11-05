@@ -36,6 +36,8 @@ public sealed class GameFeel : MonoBehaviour
     [SerializeField] private AudioClip liftClip;
     [SerializeField] private AudioClip throwClip;
     [SerializeField] private AudioClip alienScreamClip;
+    [SerializeField] private AudioClip dnaPickupClip;
+    [SerializeField] private AudioClip sectorClearedClip;
 
     private const int SampleRate = 44100;
     private const int VoiceCount = 10;
@@ -45,6 +47,8 @@ public sealed class GameFeel : MonoBehaviour
     private int nextVoice;
     private float hitStopCooldownUntil;
     private bool inHitStop;
+    private int pickupCombo;
+    private float lastPickupTime = -10f;
 
     private void Awake()
     {
@@ -64,6 +68,8 @@ public sealed class GameFeel : MonoBehaviour
         if (liftClip == null) liftClip = SynthLift();
         if (throwClip == null) throwClip = SynthThrow();
         if (alienScreamClip == null) alienScreamClip = SynthScream();
+        if (dnaPickupClip == null) dnaPickupClip = SynthPickup();
+        if (sectorClearedClip == null) sectorClearedClip = SynthFanfare();
     }
 
     private void OnDestroy()
@@ -132,6 +138,35 @@ public sealed class GameFeel : MonoBehaviour
         Instance.Play(Instance.alienScreamClip, position, 0.7f, 0.55f, 0.65f); // grito mais grave
         Instance.ShakeFrom(position, 0.5f);
         Instance.HitStop(Instance.hitStopDuration * 2f);
+    }
+
+    // Orbe de DNA absorvido. Coletas em sequência sobem o tom (fica viciante).
+    public static void DnaAbsorbed(Vector3 position, Color color)
+    {
+        if (Instance == null)
+        {
+            return;
+        }
+
+        GameFeel feel = Instance;
+        feel.pickupCombo = Time.unscaledTime - feel.lastPickupTime < 0.4f ? feel.pickupCombo + 1 : 0;
+        feel.lastPickupTime = Time.unscaledTime;
+
+        float pitch = Mathf.Min(1f + feel.pickupCombo * 0.06f, 2f);
+        feel.Play(feel.dnaPickupClip, position, 0.5f, pitch, pitch);
+        feel.EmitDebris(position, 5, color, 0.4f);
+    }
+
+    public static void SectorCleared()
+    {
+        if (Instance == null)
+        {
+            return;
+        }
+
+        Camera cam = Camera.main;
+        Vector3 position = cam != null ? cam.transform.position : Vector3.zero;
+        Instance.Play(Instance.sectorClearedClip, position, 0.9f, 1f, 1f);
     }
 
     // ---------- Implementação ----------
@@ -340,6 +375,33 @@ public sealed class GameFeel : MonoBehaviour
             float wave = Mathf.Sin(2f * Mathf.PI * freq * t);
             wave = Mathf.Sign(wave) * Mathf.Pow(Mathf.Abs(wave), 0.6f); // um pouco "rasgado"
             return wave * envelope * 0.45f;
+        });
+    }
+
+    // "Plim": duas notas rápidas subindo.
+    private static AudioClip SynthPickup()
+    {
+        return Synth("DNA", 0.16f, (t, n) =>
+        {
+            float freq = t < 0.06f ? 988f : 1319f;
+            float envelope = Mathf.Exp(-(t < 0.06f ? t : t - 0.06f) * 30f);
+            return Mathf.Sin(2f * Mathf.PI * freq * t) * envelope * 0.5f;
+        });
+    }
+
+    // Fanfarra curtinha de "setor limpo": arpejo Dó-Mi-Sol-Dó.
+    private static AudioClip SynthFanfare()
+    {
+        float[] notes = { 523.25f, 659.25f, 783.99f, 1046.5f };
+        const float noteLength = 0.13f;
+        return Synth("Setor_Limpo", noteLength * 3f + 0.6f, (t, n) =>
+        {
+            int index = Mathf.Min((int)(t / noteLength), notes.Length - 1);
+            float local = t - index * noteLength;
+            float decay = index == notes.Length - 1 ? 3f : 18f; // a última nota sustenta
+            float wave = Mathf.Sin(2f * Mathf.PI * notes[index] * t);
+            wave += 0.3f * Mathf.Sin(2f * Mathf.PI * notes[index] * 2f * t); // um pouco de brilho
+            return wave * Mathf.Exp(-local * decay) * 0.4f;
         });
     }
 
