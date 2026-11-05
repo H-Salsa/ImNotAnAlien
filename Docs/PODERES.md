@@ -26,4 +26,6 @@ A proposta anterior dizia que o jogador escolheria um dos cinco poderes, consumi
 
 ## Definições pendentes para implementação
 
-Para a telecinese, ainda é preciso escolher comandos, alcance, limites de peso, duração da levitação, força e direção do arremesso, feedback visual/sonoro e quais objetos concretos serão interativos na cena. Os critérios para adicionar outros poderes e evoluções também seguem em aberto.
+**Comandos da telecinese — confirmado (D09).** Um único botão (botão direito do mouse): toque rápido levanta o alvo mirado ou solta o objeto segurado; segurar e soltar arremessa na direção da mira. Consulte [Decisões](DECISOES.md).
+
+Para a telecinese, ainda é preciso escolher alcance, limites de peso, duração da levitação, força e direção do arremesso, feedback visual/sonoro e quais objetos concretos serão interativos na cena. Os critérios para adicionar outros poderes e evoluções também seguem em aberto.

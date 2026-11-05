@@ -25,6 +25,7 @@
 | D06 | Incluir uma opção de multijogador que permita até cinco jogadores no mesmo mundo quando um jogador abrir essa opção. | Direção confirmada em [F08](FONTES.md#f08). Esta documentação assume cinco participantes no total, incluindo quem abre a opção; confirmar esse detalhe antes da implementação. |
 | D07 | Fazer a Versão 0.1 como um ambiente pequeno de esquina ou cruzamento, com algumas casas, talvez um prédio, um pequeno parque com árvores, um humano, três alienígenas e um poder. | Escopo confirmado pelo autor em [F09](FONTES.md#f09). A participação do multijogador nesta versão não foi especificada. |
 | D08 | Usar telecinese como único poder jogável na Versão 0.1 e manter cinco poderes no catálogo do projeto: telecinese, bioeletricidade, supervelocidade, superforça e metamorfose. | Lista e efeitos descritos pelo autor em [F09](FONTES.md#f09). As evoluções listadas e os outros quatro poderes ficam para versões futuras. |
+| D09 | Controlar a telecinese com um único botão (botão direito do mouse): toque rápido levanta o alvo ou solta o objeto segurado; segurar e soltar arremessa na direção da mira. | Escolha do autor em 5 de novembro de 2026, na implementação da Missão 4 ([Plano de trabalho](PLANO_DE_TRABALHO.md)). O toque que levanta mantém o objeto flutuando e o limite de 0,25 s entre toque e segurar são detalhes do assistente, ajustáveis no componente `TelekinesisPower`. Alcance, pesos, dano e feedback seguem como valores de protótipo. |
 
 ## Propostas do autor
 

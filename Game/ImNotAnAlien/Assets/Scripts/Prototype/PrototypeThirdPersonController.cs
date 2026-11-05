@@ -187,6 +187,11 @@ public sealed class PrototypeThirdPersonController : MonoBehaviour
                 continue; // ignora o próprio personagem
             }
 
+            if (hit.collider.attachedRigidbody != null)
+            {
+                continue; // ignora objetos que se movem (caixas, alienígenas), senão a câmera "pula"
+            }
+
             distance = Mathf.Min(distance, hit.distance);
         }
 

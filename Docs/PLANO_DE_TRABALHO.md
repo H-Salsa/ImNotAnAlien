@@ -21,7 +21,9 @@ O autor tem experiência em programação, mas este é o primeiro jogo. A divis�
 
 ## Missões da Versão 0.1
 
-### Missão 0 — Preparar a base
+### Missão 0 — Preparar a base ✅
+
+**Concluída em 4/11/2026.** Repositório Git local criado e enviado para o GitHub (`H-Salsa/ImNotAnAlien`).
 
 **Objetivo:** proteger o projeto e conhecer o editor.
 
@@ -31,7 +33,9 @@ O autor tem experiência em programação, mas este é o primeiro jogo. A divis�
 
 **Pronto quando:** o primeiro commit existe e o autor sabe selecionar um objeto e mudar valores no Inspector.
 
-### Missão 1 — Andar e olhar
+### Missão 1 — Andar e olhar ✅
+
+**Concluída em 4/11/2026.** Cursor travado durante o jogo (Esc libera, clique trava). Câmera pode olhar para cima (`Min Pitch = -35`) e se aproxima do personagem ao encostar no chão ou em paredes. Sensibilidade aprovada pelo autor; velocidade de movimento terá ajuste fino depois. Console sem erros.
 
 **Objetivo:** concluir o teste do movimento que já existe ([plano de movimento](superpowers/plans/2026-11-04-player-movement.md), passo 6 pendente).
 
@@ -41,17 +45,23 @@ O autor tem experiência em programação, mas este é o primeiro jogo. A divis�
 
 **Pronto quando:** andar pela cena é agradável por um minuto inteiro sem incômodo.
 
-### Missão 2 — Bloquear a esquina (blockout)
+### Missão 2 — Bloquear a esquina (blockout) ✅
+
+**Concluída em 5/11/2026.** Base gerada pela ferramenta e salva na cena `Prototype`.
 
 **Objetivo:** montar o espaço da 0.1 com formas simples.
 
 - Ruas e calçadas com planos/cubos; casas e o possível prédio com cubos; árvores do parque com cilindro + esfera.
-- Proposta: usar o pacote **ProBuilder** (gratuito, da Unity) para formas um pouco melhores que cubos.
+- Ferramenta de editor `ImNotAnAlien > Gerar Blockout da Esquina` (script `Assets/Scripts/Editor/BlockoutEsquinaGenerator.cs`) monta a base: mapa de 80 × 80 m, cruzamento de duas ruas de 10 m, quatro quarteirões (parque, prédio e dois com casas), postes e limites invisíveis.
+- O autor ajusta e decora a base no editor (mover, duplicar, mudar cores).
+- Opcional depois: pacote **ProBuilder** (gratuito, da Unity) para formas um pouco melhores que cubos.
 - Cores simples por material para diferenciar rua, casa, parque.
 
 **Pronto quando:** é possível reconhecer a esquina, as casas e o parque andando pela cena.
 
-### Missão 3 — Os três alienígenas
+### Missão 3 — Os três alienígenas ✅
+
+**Concluída em 5/11/2026.** Prefab `Assets/Prefabs/Alienigena`, três instâncias (parque, casas, prédio), NavMesh assado em `Esquina_Blockout`. Passeio, susto com "!", fuga e derrota de teste aprovados pelo autor. Ferramenta: `ImNotAnAlien > Criar Alienigenas`.
 
 **Objetivo:** colocar alvos vivos na cena.
 
@@ -62,6 +72,8 @@ O autor tem experiência em programação, mas este é o primeiro jogo. A divis�
 **Pronto quando:** os três se movem pela esquina e reagem à presença do jogador.
 
 ### Missão 4 — Telecinese básica
+
+**Em andamento.** Ferramenta `ImNotAnAlien > Preparar Telecinese` adiciona o poder ao jogador e cria caixas, lixeiras e um carro. Controles definidos pelo autor (D09): mira no centro da tela; botão direito — toque levanta ou solta, segurar e soltar arremessa. Massa máxima 1500 kg; objetos pesados seguem a mira mais devagar. Alienígenas levam dano por impacto acima de 6 m/s e, se sobreviverem, levantam e fogem.
 
 **Objetivo:** o coração da 0.1 — levantar e arremessar.
 
