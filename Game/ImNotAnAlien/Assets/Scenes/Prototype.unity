@@ -206,7 +206,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0.17364816, y: 0, z: 0, w: 0.9848078}
-  m_LocalPosition: {x: 0, y: 3, z: -6}
+  m_LocalPosition: {x: 1.36, y: 3.36, z: -6.07}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -561,7 +561,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrototypeThirdPersonController
   inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
-  moveSpeed: 4.5
+  moveSpeed: 5
   turnSpeed: 12
   gravity: -20
   groundedVerticalSpeed: -2
@@ -569,8 +569,11 @@ MonoBehaviour:
   lookSensitivity: 0.1
   cameraDistance: 6
   cameraFocusHeight: 1.2
-  minPitch: 5
-  maxPitch: 65
+  minPitch: -65
+  maxPitch: 80
+  cameraCollisionRadius: 0.5
+  minCameraDistance: 0.1
+  lockCursor: 1
 --- !u!143 &1280260126
 CharacterController:
   m_ObjectHideFlags: 0
