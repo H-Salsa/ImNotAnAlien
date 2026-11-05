@@ -1,0 +1,77 @@
+# Registro de decisões
+
+[Índice do projeto](../README.md) · [Fontes e evidências](FONTES.md)
+
+## Como interpretar o registro
+
+| Classificação | Evidência |
+| --- | --- |
+| **Confirmado** | O autor escolheu o item ou o declarou como direção do projeto. |
+| **Proposta do autor** | O autor apresentou uma ideia de trabalho para avaliação. |
+| **Proposta do assistente** | Uma resposta do histórico apresentou a ideia sem aceite explícito localizado. |
+| **Registro anterior** | Uma síntese anterior registrou o item sem confirmação direta localizada nas mensagens consultadas. |
+| **Em aberto** | Falta uma escolha ou a evidência disponível permite mais de uma interpretação. |
+| **Observado no ambiente** | A inspeção dos arquivos mostrou um estado local. |
+
+## Confirmado
+
+| ID | Decisão | Escopo e fonte |
+| --- | --- | --- |
+| D01 | Usar **I'm not an Alien** como nome do protótipo. | O autor escolheu essa grafia em [F03](FONTES.md#f03) e reiterou a escolha em [F02](FONTES.md#f02). |
+| D02 | Acompanhar um ser humano num planeta alienígena e misturar sobrevivência, exploração e ação. | Direção declarada em [F01](FONTES.md#f01). |
+| D03 | Adotar mundo aberto, voltado para diversão imediata, como visão geral do jogo. | Direção declarada em [F01](FONTES.md#f01). O recorte confirmado da primeira versão é menor e está em D07. |
+| D04 | Trabalhar com visual 3D estilizado. | Escolha explícita em [F01](FONTES.md#f01). |
+| D05 | Usar Unity para o projeto. | A configuração começou em [F02](FONTES.md#f02) e o pedido atual identifica o repositório como Unity. |
+| D06 | Incluir uma opção de multijogador que permita até cinco jogadores no mesmo mundo quando um jogador abrir essa opção. | Direção confirmada em [F08](FONTES.md#f08). Esta documentação assume cinco participantes no total, incluindo quem abre a opção; confirmar esse detalhe antes da implementação. |
+| D07 | Fazer a Versão 0.1 como um ambiente pequeno de esquina ou cruzamento, com algumas casas, talvez um prédio, um pequeno parque com árvores, um humano, três alienígenas e um poder. | Escopo confirmado pelo autor em [F09](FONTES.md#f09). A participação do multijogador nesta versão não foi especificada. |
+| D08 | Usar telecinese como único poder jogável na Versão 0.1 e manter cinco poderes no catálogo do projeto: telecinese, bioeletricidade, supervelocidade, superforça e metamorfose. | Lista e efeitos descritos pelo autor em [F09](FONTES.md#f09). As evoluções listadas e os outros quatro poderes ficam para versões futuras. |
+
+## Propostas do autor
+
+| ID | Ideia de trabalho | Fonte e destino |
+| --- | --- | --- |
+| A01 | Usar prédios, casas e parques familiares, com alienígenas de aparência humanoide. | [F01](FONTES.md#f01) · [Direção artística](DIRECAO_ARTISTICA.md) e [personagens](PERSONAGENS.md) |
+| A02 | Ter um único objetivo principal, a eliminação de todos os alienígenas do planeta. | [F01](FONTES.md#f01) · [Game design](GAME_DESIGN.md) |
+| A03 | Abrir a história com um humano capturado por alienígenas. Os experimentos desencadeiam os poderes. A mistura de DNA é uma hipótese para explicar o efeito. Um vídeo curto é uma opção de abertura. | [F01](FONTES.md#f01) · [História](HISTORIA.md) |
+| A04 | Proposta anterior: começar escolhendo um entre cinco poderes e usar o consumo para desbloquear ou melhorar poderes. | [F01](FONTES.md#f01) · [Poderes](PODERES.md) e [gameplay](GAMEPLAY.md). A escolha entre cinco não se aplica à 0.1, que tem apenas telecinese; progressão por consumo segue sem confirmação. |
+| A05 | Liberar o teletransporte ao consumir todos os alienígenas, com o objetivo de voltar para casa. | [F01](FONTES.md#f01) · [História](HISTORIA.md) e [gameplay](GAMEPLAY.md) |
+| A06 | Mostrar em vídeo um teletransporte que dá errado e leva a outro planeta com alienígenas diferentes. A cena deixa um gancho para uma possível continuação. | [F01](FONTES.md#f01) · [História](HISTORIA.md) |
+
+O objetivo de eliminar todos e a condição de consumir todos aparecem no mesmo desenho. Como as duas ações se relacionam em combate e como contabilizar os casos em que um alienígena é eliminado sem ser consumido seguem em aberto.
+
+## Propostas do assistente
+
+| ID | Ideia discutida | Estado |
+| --- | --- | --- |
+| P01 | Primeira sugestão do assistente para um catálogo de telecinese, bioeletricidade, supervelocidade, superforça e metamorfose. | O autor especificou o catálogo e seus efeitos em [F09](FONTES.md#f09); a direção atual está registrada em D08 e [Poderes](PODERES.md). |
+| P02 | Consumo por partículas luminosas, por transformação orgânica ou por animação cartunesca. Recursos separados de DNA e energia genética, com possibilidade de inimigos especiais. | Alternativas e regras candidatas em [F01](FONTES.md#f01). |
+| P03 | População por região, reposição por centros de reprodução, contagem no HUD, pontos de interesse, reação das autoridades, veículos e destruição. | Propostas exploratórias em [F01](FONTES.md#f01). |
+| P04 | Câmera em terceira pessoa, com enquadramento distante ou sobre o ombro. | Recomendação em [F02](FONTES.md#f02), registrada como formato na síntese [F06](FONTES.md#f06). A escolha do autor segue em aberto. |
+| P05 | Universal 3D (URP), VS Code e o nome técnico `ImNotAnAlien`. | Sugestões de configuração em [F02](FONTES.md#f02). |
+| P06 | Começar com uma área pequena e testar movimento, perseguição, ataque, consumo e um poder demonstrável. | Proposta anterior em [F06](FONTES.md#f06), substituída para a 0.1 pelo escopo confirmado em D07. |
+| P07 | Referências visuais, silhuetas, paletas, categorias de NPC, motivações alternativas e detalhes de roteiro. | Explorações de [F01](FONTES.md#f01), detalhadas nos documentos temáticos conforme a pertinência. |
+| P08 | Frases promocionais e avaliação de lembrança do nome. | Sugestões em [F03](FONTES.md#f03). O autor rejeitou a primeira lista de títulos e escolheu o nome do protótipo. |
+
+## Registro anterior e ambiente
+
+| Assunto | O que a evidência permite afirmar |
+| --- | --- |
+| Nome de trabalho | **INTRUSO** aparece nas mensagens iniciais. A escolha posterior se refere ao nome do protótipo. [F01](FONTES.md#f01), [F02](FONTES.md#f02) e [F03](FONTES.md#f03). |
+| Intenção comercial e equipe | PC/Steam e desenvolvimento solo aparecem na recapitulação do assistente. A síntese anterior registra intenção de receita, primeiro jogo, experiência em programação e a possibilidade de ajuda de outro desenvolvedor. Confirmação direta desses itens segue em aberto. [F02](FONTES.md#f02) e [F06](FONTES.md#f06). |
+| Tecnologia | Projeto Unity localizado em `Game/ImNotAnAlien`, Unity `6000.3.28f1`, URP `17.3.0` e Input System `1.20.1`. [F07](FONTES.md#f07). |
+| Estado observado no ambiente | `Prototype.unity` contém chão, cápsula provisória e controlador de movimento. A cena da Versão 0.1 ainda não foi montada; a validação sustentada de movimento está pendente. [F07](FONTES.md#f07). |
+
+## Em aberto
+
+| Área | Decisão ou evidência necessária |
+| --- | --- |
+| Identidade e narrativa | Nome comercial, identidade do protagonista e do planeta, tom, abertura, detalhes do desfecho e continuação. |
+| Controle e regras | Câmera, controles, combate, condições de sobrevivência, população, contagem de progresso e interação de eliminação com consumo. |
+| Poderes | Comandos, alcance, limites e feedback da telecinese; momento e forma de adicionar os quatro outros poderes; regras de evolução e progressão. |
+| Multijogador | Modelo de conexão, forma de entrada, sincronização, entrada durante a sessão, salvamento, comportamento ao sair, confirmação do limite de cinco e inclusão ou não na Versão 0.1. |
+| Arte e produção | Se haverá prédio, arquitetura, escala, personagens, referências aprovadas, produção dos assets e organização técnica da cena. |
+| Lançamento | Plataforma e estratégia comerciais confirmadas pelo autor, cronograma, preço e demais detalhes de publicação. |
+
+## Como registrar uma confirmação
+
+Registre a escolha com data, responsável, fonte, escopo e efeitos nos documentos temáticos. Preserve o ID quando houver evolução da mesma decisão. Se uma decisão substituir outra, indique a relação e mantenha o histórico. Em caso de divergência, consulte primeiro a declaração direta do autor e documente a interpretação em aberto até haver uma escolha.
