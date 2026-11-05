@@ -29,6 +29,8 @@ public sealed class AlienHealth : MonoBehaviour
 
     private const float CorpseFallOutHeight = -50f;
 
+    private AlienBrain brain;
+
     public float MaxHealth => maxHealth;
     public int DnaValue => dnaValue;
     public float CurrentHealth { get; private set; }
@@ -40,6 +42,7 @@ public sealed class AlienHealth : MonoBehaviour
     private void Awake()
     {
         CurrentHealth = maxHealth;
+        brain = GetComponent<AlienBrain>();
     }
 
     private void Update()
@@ -68,6 +71,13 @@ public sealed class AlienHealth : MonoBehaviour
     // Arremessado contra algo, ou atingido por um objeto arremessado.
     private void OnCollisionEnter(Collision collision)
     {
+        // Sendo segurado pela telecinese: esbarrões no caminho não machucam.
+        // O dano vale quando ele é arremessado/solto, ou quando outro objeto bate nele.
+        if (brain != null && brain.IsHeld)
+        {
+            return;
+        }
+
         float speed = collision.relativeVelocity.magnitude;
         if (speed > minImpactSpeed)
         {

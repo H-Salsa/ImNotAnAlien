@@ -275,6 +275,9 @@ public sealed class AlienBrain : MonoBehaviour
 
     // ---------- Telecinese ----------
 
+    // Verdadeiro enquanto a telecinese está segurando este alienígena.
+    public bool IsHeld => isHeld && enabled;
+
     public void OnTelekinesisGrab()
     {
         state = State.Tumbling;

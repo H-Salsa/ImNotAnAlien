@@ -19,10 +19,12 @@ public sealed class TelekinesisPower : MonoBehaviour
     [SerializeField, Min(1f)] private float maxRange = 35f;
 
     [Header("Segurar")]
-    [Tooltip("Altura, acima do jogador, em que o objeto flutua.")]
-    [SerializeField, Min(0f)] private float holdHeight = 2.5f;
-    [Tooltip("Distância à frente do jogador em que o objeto flutua (objetos grandes ficam mais longe).")]
+    [Tooltip("Distância à frente do personagem, na linha da mira, em que o objeto flutua (objetos grandes ficam mais longe).")]
     [SerializeField, Min(0.5f)] private float holdDistance = 3f;
+    [Tooltip("Quanto o objeto fica acima da linha da mira, para não tampar o ponto de mira.")]
+    [SerializeField] private float aimLineOffset = 0.7f;
+    [Tooltip("Altura do centro do personagem em relação aos pés (para o objeto não afundar no chão).")]
+    [SerializeField, Min(0f)] private float playerHalfHeight = 1f;
     [Tooltip("Quão rápido objetos leves acompanham a mira.")]
     [SerializeField, Min(0.1f)] private float followStrengthLight = 12f;
     [Tooltip("Quão rápido objetos no peso máximo acompanham a mira.")]
@@ -58,6 +60,9 @@ public sealed class TelekinesisPower : MonoBehaviour
     private Rigidbody held;
     private AlienBrain heldAlien;
     private float heldExtraDistance;
+    private float heldHalfHeight;
+    private Collider[] heldColliders;
+    private Collider[] playerColliders;
     private float heldFollowStrength;
     private Rigidbody hovered;
     private bool cursorWasLocked;
@@ -183,10 +188,16 @@ public sealed class TelekinesisPower : MonoBehaviour
             return;
         }
 
-        Vector3 forward = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
-        Vector3 holdPoint = transform.position
-                            + Vector3.up * (holdHeight + heldExtraDistance * 0.5f)
-                            + forward * (holdDistance + heldExtraDistance);
+        // O objeto flutua sobre a linha da mira: acompanha a câmera para cima e para baixo.
+        Vector3 focus = transform.position + Vector3.up * 1.2f;
+        float cameraToPlayer = Vector3.Distance(cameraTransform.position, focus);
+        Vector3 holdPoint = cameraTransform.position
+                            + cameraTransform.forward * (cameraToPlayer + holdDistance + heldExtraDistance)
+                            + cameraTransform.up * aimLineOffset;
+
+        // Nunca abaixo do chão onde o personagem pisa.
+        float minHeight = transform.position.y - playerHalfHeight + heldHalfHeight + 0.2f;
+        holdPoint.y = Mathf.Max(holdPoint.y, minHeight);
 
         Vector3 velocity = (holdPoint - held.worldCenterOfMass) * heldFollowStrength;
         held.linearVelocity = Vector3.ClampMagnitude(velocity, maxFollowSpeed);
@@ -220,6 +231,9 @@ public sealed class TelekinesisPower : MonoBehaviour
 
         Bounds bounds = GetBounds(target);
         heldExtraDistance = bounds.extents.magnitude;
+        heldHalfHeight = bounds.extents.y;
+
+        SetIgnorePlayerCollision(true);
         heldFollowStrength = Mathf.Lerp(followStrengthLight, followStrengthHeavy, held.mass / maxLiftMass);
     }
 
@@ -250,6 +264,7 @@ public sealed class TelekinesisPower : MonoBehaviour
             heldAlien.OnTelekinesisRelease();
         }
 
+        SetIgnorePlayerCollision(false);
         held = null;
         heldAlien = null;
     }
@@ -316,6 +331,42 @@ public sealed class TelekinesisPower : MonoBehaviour
         }
 
         return body.GetComponent<TelekinesisTarget>() != null || body.GetComponent<AlienHealth>() != null;
+    }
+
+    // Enquanto segurado, o objeto atravessa o próprio personagem (evita empurrões e dano falso).
+    private void SetIgnorePlayerCollision(bool ignore)
+    {
+        playerColliders ??= GetComponentsInChildren<Collider>(true);
+        if (ignore)
+        {
+            heldColliders = held.GetComponentsInChildren<Collider>();
+        }
+
+        if (heldColliders == null)
+        {
+            return;
+        }
+
+        foreach (Collider heldCollider in heldColliders)
+        {
+            if (heldCollider == null)
+            {
+                continue;
+            }
+
+            foreach (Collider playerCollider in playerColliders)
+            {
+                if (playerCollider != null)
+                {
+                    Physics.IgnoreCollision(heldCollider, playerCollider, ignore);
+                }
+            }
+        }
+
+        if (!ignore)
+        {
+            heldColliders = null;
+        }
     }
 
     private static Bounds GetBounds(Rigidbody body)
