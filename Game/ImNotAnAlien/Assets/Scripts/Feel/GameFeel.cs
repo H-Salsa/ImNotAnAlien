@@ -45,6 +45,7 @@ public sealed class GameFeel : MonoBehaviour
     [SerializeField] private AudioClip shockwaveClip;
     [SerializeField] private AudioClip evolutionClip;
     [SerializeField] private AudioClip collapseClip;
+    [SerializeField] private AudioClip splashClip;
 
     private const int SampleRate = 44100;
     private const int VoiceCount = 10;
@@ -84,6 +85,7 @@ public sealed class GameFeel : MonoBehaviour
         if (shockwaveClip == null) shockwaveClip = SynthShockwave();
         if (evolutionClip == null) evolutionClip = SynthEvolution();
         if (collapseClip == null) collapseClip = SynthCollapse();
+        if (splashClip == null) splashClip = SynthSplash();
     }
 
     private void OnDestroy()
@@ -282,6 +284,20 @@ public sealed class GameFeel : MonoBehaviour
         Instance.Play(Instance.collapseClip, center, 1f, 0.9f, 1.05f);
         Instance.ShakeFrom(center, Mathf.Clamp(size / 15f, 0.4f, 0.9f));
         Instance.HitStop(Instance.hitStopDuration);
+    }
+
+    // Algo caiu na água: respingos azuis e "tchibum".
+    public static void Splash(Vector3 position, float strength)
+    {
+        if (Instance == null)
+        {
+            return;
+        }
+
+        float amount = Mathf.Clamp01(strength);
+        Instance.EmitDebris(position, Mathf.RoundToInt(Mathf.Lerp(8f, 30f, amount)), new Color(0.55f, 0.85f, 1f),
+            Mathf.Lerp(0.6f, 1.4f, amount));
+        Instance.Play(Instance.splashClip, position, Mathf.Lerp(0.35f, 0.9f, amount), 0.85f, 1.15f);
     }
 
     public static void EvolutionBought()
@@ -636,6 +652,20 @@ public sealed class GameFeel : MonoBehaviour
             }
 
             return Mathf.Clamp(body * 0.8f + boom * 0.9f + crack, -1f, 1f);
+        });
+    }
+
+    // "Tchibum": rajada de ruído brilhante que vai abafando, com um "glub" grave.
+    private static AudioClip SynthSplash()
+    {
+        float filtered = 0f;
+        return Synth("Splash", 0.7f, (t, n) =>
+        {
+            float cutoff = Mathf.Lerp(0.6f, 0.05f, Mathf.Clamp01(t / 0.5f));
+            filtered += (n - filtered) * cutoff;
+            float spray = filtered * Mathf.Exp(-t * 6f) * 1.4f;
+            float glub = Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(180f, 90f, Mathf.Clamp01(t / 0.2f)) * t) * Mathf.Exp(-t * 14f) * 0.5f;
+            return Mathf.Clamp(spray + glub, -1f, 1f);
         });
     }
 

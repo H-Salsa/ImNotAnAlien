@@ -2,52 +2,84 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-// Contagem do OBJETIVO do setor: quantos alienígenas existem e quantos já foram consumidos.
-// Regra (decisão D10): um alienígena conta como consumido quando o ÚLTIMO orbe de DNA dele
-// é absorvido. Cada alienígena conta 1, não importa quanto DNA rendeu.
-// Quando todos são consumidos, o setor fica limpo e o jogador ganha um bônus de DNA.
+// Cotas da região e dos setores (decisão D19).
+// - A região é dividida em setores (áreas no mapa, vistas de cima: X e Z). Cada setor tem uma COTA
+//   de alienígenas a consumir e um bônus de DNA ao ser limpo. A cota da região é a soma dos setores.
+// - Um alienígena conta quando o ÚLTIMO orbe de DNA dele é absorvido (ou quando é devorado),
+//   e conta para o setor onde surgiu. Alienígenas marcados como "não conta" (ex.: policiais dos
+//   níveis de procurado 3 a 5) dão DNA mas não entram na cota.
+// - Sem setores configurados (ex.: cena Prototype), funciona como antes: um setor só, com cota
+//   igual ao número de alienígenas que existem ao dar Play.
 [DisallowMultipleComponent]
 public sealed class SectorTracker : MonoBehaviour
 {
+    [Serializable]
+    public sealed class SectorInfo
+    {
+        public string name = "Setor";
+        [Tooltip("Área do setor vista de cima: X/Y do retângulo = X/Z do mundo.")]
+        public Rect area;
+        [Min(1)] public int quota = 50;
+        [Min(0)] public int clearBonusDna = 40;
+
+        [NonSerialized] public int consumed;
+        [NonSerialized] public bool cleared;
+
+        public int Remaining => Mathf.Max(0, quota - consumed);
+    }
+
+    private struct PendingAlien
+    {
+        public int sector;
+        public bool counts;
+        public int orbsLeft;
+    }
+
     public static SectorTracker Instance { get; private set; }
 
+    [Tooltip("Nome da região (aparece no HUD).")]
     [SerializeField] private string sectorName = "Esquina";
-    [Tooltip("DNA de bônus ao limpar o setor.")]
+    [Tooltip("DNA de bônus ao limpar a REGIÃO inteira (no modo de setor único, é o bônus do setor).")]
     [SerializeField, Min(0)] private int clearBonusDna = 25;
+    [SerializeField] private List<SectorInfo> sectors = new List<SectorInfo>();
 
-    // Orbes que ainda faltam absorver, por alienígena (chave = ID do alienígena).
-    private readonly Dictionary<int, int> pendingOrbs = new Dictionary<int, int>();
-    private readonly List<AlienHealth> aliens = new List<AlienHealth>();
+    private readonly Dictionary<int, PendingAlien> pending = new Dictionary<int, PendingAlien>();
+    private readonly List<AlienHealth> tracked = new List<AlienHealth>();
+    private bool singleSectorMode;
+    private Transform player;
+    private float cleanupTimer;
 
-    public string SectorName => sectorName;
-    public int ClearBonusDna => clearBonusDna;
-    public int TotalAliens { get; private set; }
-    public int ConsumedAliens { get; private set; }
+    public string RegionName => sectorName;
+    public IReadOnlyList<SectorInfo> Sectors => sectors;
+    public IReadOnlyList<AlienHealth> Tracked => tracked;
+    public int CurrentSector { get; private set; } = -1;
     public bool IsCleared { get; private set; }
+    public bool SingleSectorMode => singleSectorMode;
 
-    // Alienígenas do setor (usado pelos marcadores dos últimos restantes).
-    public IReadOnlyList<AlienHealth> Aliens => aliens;
-
-    // Quantos ainda estão vivos (andando por aí).
-    public int AliveCount
+    public int RegionQuota
     {
         get
         {
-            int alive = 0;
-            foreach (AlienHealth alien in aliens)
-            {
-                if (alien != null && !alien.IsDead)
-                {
-                    alive++;
-                }
-            }
+            int total = 0;
+            foreach (SectorInfo sector in sectors) total += sector.quota;
+            return total;
+        }
+    }
 
-            return alive;
+    public int RegionConsumed
+    {
+        get
+        {
+            int total = 0;
+            foreach (SectorInfo sector in sectors) total += Mathf.Min(sector.consumed, sector.quota);
+            return total;
         }
     }
 
     public event Action Changed;
-    public event Action<SectorTracker> Cleared;
+    public event Action<int> SectorEntered;
+    public event Action<int> SectorCleared;
+    public event Action RegionCleared;
 
     private void Awake()
     {
@@ -64,86 +96,183 @@ public sealed class SectorTracker : MonoBehaviour
 
     private void Start()
     {
-        aliens.Clear();
-        aliens.AddRange(FindObjectsByType<AlienHealth>(FindObjectsSortMode.None));
-        TotalAliens = aliens.Count;
+        PrototypeThirdPersonController controller = FindFirstObjectByType<PrototypeThirdPersonController>();
+        player = controller != null ? controller.transform : null;
 
-        // Lista no Console quem foi contado, para conferir o total.
-        List<string> names = new List<string>();
-        foreach (AlienHealth alien in aliens)
+        if (sectors.Count == 0)
         {
-            names.Add(alien.name);
+            // Modo antigo: conta os alienígenas que já estão na cena.
+            singleSectorMode = true;
+            AlienHealth[] existing = FindObjectsByType<AlienHealth>(FindObjectsSortMode.None);
+            tracked.AddRange(existing);
+            sectors.Add(new SectorInfo
+            {
+                name = sectorName,
+                area = Rect.MinMaxRect(-100000f, -100000f, 100000f, 100000f),
+                quota = Mathf.Max(1, existing.Length),
+                clearBonusDna = clearBonusDna,
+            });
         }
 
-        names.Sort();
-        Debug.Log($"Setor '{sectorName}': {TotalAliens} alienígenas — {string.Join(", ", names)}");
+        Debug.Log($"Região '{sectorName}': cota {RegionQuota} em {sectors.Count} setor(es).");
+        UpdateCurrentSector();
         Changed?.Invoke();
     }
 
-    // Para alienígenas que surgirem depois do início (reforços, por exemplo).
-    public void RegisterAlien(AlienHealth alien)
+    private void Update()
     {
-        if (alien == null || aliens.Contains(alien))
+        UpdateCurrentSector();
+
+        cleanupTimer -= Time.deltaTime;
+        if (cleanupTimer <= 0f)
+        {
+            cleanupTimer = 1f;
+            tracked.RemoveAll(alien => alien == null);
+        }
+    }
+
+    private void UpdateCurrentSector()
+    {
+        if (player == null)
         {
             return;
         }
 
-        aliens.Add(alien);
-        TotalAliens++;
-        Changed?.Invoke();
+        int sector = SectorAt(player.position);
+        if (sector != CurrentSector)
+        {
+            CurrentSector = sector;
+            SectorEntered?.Invoke(sector);
+            Changed?.Invoke();
+        }
     }
 
-    public void OnAlienDied(int alienId, int orbCount)
+    // ---------- Consultas ----------
+
+    public int SectorAt(Vector3 position)
     {
+        Vector2 flat = new Vector2(position.x, position.z);
+        for (int i = 0; i < sectors.Count; i++)
+        {
+            if (sectors[i].area.Contains(flat))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    public bool IsSectorCleared(int sector) => sector >= 0 && sector < sectors.Count && sectors[sector].cleared;
+
+    // Quantos alienígenas que CONTAM e estão vivos pertencem a este setor (usado pelo surgimento).
+    public int AliveCountingIn(int sector)
+    {
+        int alive = 0;
+        foreach (AlienHealth alien in tracked)
+        {
+            if (alien != null && !alien.IsDead && alien.CountsForQuota && SectorOf(alien) == sector)
+            {
+                alive++;
+            }
+        }
+
+        return alive;
+    }
+
+    public int SectorOf(AlienHealth alien) => alien.QuotaSector >= 0 ? alien.QuotaSector : SectorAt(alien.transform.position);
+
+    public void Track(AlienHealth alien)
+    {
+        if (alien != null && !tracked.Contains(alien))
+        {
+            tracked.Add(alien);
+        }
+    }
+
+    // ---------- Consumo ----------
+
+    // Chamado quando um alienígena morre e solta orbes (DnaOrbSystem).
+    public void OnAlienDied(AlienHealth alien, int orbCount)
+    {
+        int sector = SectorOf(alien);
         if (orbCount <= 0)
         {
-            MarkConsumed();
+            MarkConsumed(sector, alien.CountsForQuota);
             return;
         }
 
-        pendingOrbs[alienId] = orbCount;
+        pending[alien.GetInstanceID()] = new PendingAlien { sector = sector, counts = alien.CountsForQuota, orbsLeft = orbCount };
     }
 
     public void OnOrbAbsorbed(int alienId)
     {
-        if (!pendingOrbs.TryGetValue(alienId, out int remaining))
+        if (!pending.TryGetValue(alienId, out PendingAlien info))
         {
             return;
         }
 
-        remaining--;
-        if (remaining > 0)
+        info.orbsLeft--;
+        if (info.orbsLeft > 0)
         {
-            pendingOrbs[alienId] = remaining;
+            pending[alienId] = info;
             return;
         }
 
-        pendingOrbs.Remove(alienId);
-        MarkConsumed();
+        pending.Remove(alienId);
+        MarkConsumed(info.sector, info.counts);
     }
 
-    // Para o futuro "Devorar": consome na hora, sem orbes.
-    public void ConsumeDirectly()
+    // Devorar: consome na hora, sem orbes.
+    public void ConsumeDirectly(int quotaSector, bool counts, Vector3 position)
     {
-        MarkConsumed();
+        MarkConsumed(quotaSector >= 0 ? quotaSector : SectorAt(position), counts);
     }
 
-    private void MarkConsumed()
+    private void MarkConsumed(int sector, bool counts)
     {
-        ConsumedAliens++;
+        if (!counts || sector < 0 || sector >= sectors.Count || sectors[sector].cleared)
+        {
+            Changed?.Invoke();
+            return;
+        }
+
+        SectorInfo info = sectors[sector];
+        info.consumed++;
         Changed?.Invoke();
 
-        if (!IsCleared && TotalAliens > 0 && ConsumedAliens >= TotalAliens)
+        if (info.consumed < info.quota)
         {
-            IsCleared = true;
-            if (DnaInventory.Instance != null)
-            {
-                DnaInventory.Instance.Add(clearBonusDna);
-            }
-
-            GameFeel.SectorCleared();
-            Cleared?.Invoke(this);
-            Debug.Log($"Setor '{sectorName}' limpo! +{clearBonusDna} DNA de bônus.");
+            return;
         }
+
+        // Setor limpo.
+        info.cleared = true;
+        if (DnaInventory.Instance != null)
+        {
+            DnaInventory.Instance.Add(info.clearBonusDna);
+        }
+
+        GameFeel.SectorCleared();
+        SectorCleared?.Invoke(sector);
+        Debug.Log($"Setor '{info.name}' limpo! +{info.clearBonusDna} DNA.");
+
+        foreach (SectorInfo other in sectors)
+        {
+            if (!other.cleared)
+            {
+                return;
+            }
+        }
+
+        // Região inteira limpa.
+        IsCleared = true;
+        if (!singleSectorMode && DnaInventory.Instance != null)
+        {
+            DnaInventory.Instance.Add(clearBonusDna);
+        }
+
+        RegionCleared?.Invoke();
+        Debug.Log($"Região '{sectorName}' limpa!");
     }
 }

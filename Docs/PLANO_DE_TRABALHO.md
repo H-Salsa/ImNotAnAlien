@@ -179,6 +179,37 @@ O autor escolheu começar pela destruição (caminho mais simples agora) em 5/11
 - Cada batida: tremor, poeira, lascas e a casa fica mais encardida.
 - Ao cair: blocos caem por 1,2–2,2 s, afundam no chão e são apagados; fica um monte de escombros; o NavMesh é atualizado em tempo de jogo.
 
+### Missão 11 — Região 1 "Vilarejo do Bilu" em blockout
+
+**Em andamento.** Ferramenta `ImNotAnAlien > Gerar Regiao 1 (Vilarejo do Bilu)` ([D17, D18](DECISOES.md)). Rodar com a cena Prototype aberta: cria a cena `Regiao1_VilarejoDoBilu` como cópia (a Prototype fica para testes).
+
+- Mapa de 300 × 300 m (x −60..240, z −240..60); a esquina original é o Setor 1.
+- Rio raso de 25 m (z −120..−95) com margens em rampa; dentro da água o jogador anda a 50% (`WaterZone`) e tudo que cai faz splash. Pontes em x = 0 e x = 165.
+- Setor 1: +8 casas e árvores. Setor 2: 24 casas. Setor 3: parque com lago, 32 árvores, bancos. Setor 4: 4 galpões, 4 píeres e contêineres de 2.200 kg (exigem Força Telecinética).
+- Casas novas já são destrutíveis. 9 carros, caixas e lixeiras.
+- NavMesh calculado pela ferramenta para a região inteira; 54 alienígenas novos (total 65: 50 civis, 15 policiais).
+- Próximo (Missão 12, proposta): contagem por setor, nome do setor ao entrar e recompensa por setor limpo.
+
+### Missão 12 — População dinâmica e cotas por setor
+
+**Em andamento.** Ferramenta `ImNotAnAlien > Preparar Populacao (Missao 12)`, rodada na cena da região ([D19](DECISOES.md)).
+
+- Alienígenas surgem a 40–80 m do jogador, fora da visão (atrás de prédios ou fora da tela), e somem a mais de 110 m quando calmos e fora de vista. Cerca de 18 civis e 2 policiais de patrulha por perto.
+- Cota por setor; surgem só em setores que ainda têm cota. Nome do setor aparece ao entrar; HUD mostra região e setor atual.
+- Marcadores quando faltam 3 ou menos no setor atual.
+
+### Missão 13 — Nível de procurado (próxima)
+
+Estrelas de 1 a 5, sobem com caos testemunhado e descem com o tempo fora de vista; mais policiais a cada estrela; policiais dos níveis 3–5 não contam para a cota.
+
+### Missão 14 — Trânsito (depois)
+
+Carros circulando com alienígenas dirigindo.
+
+### Missão 15 — Arte dos alienígenas e do protagonista
+
+Pedido do autor em 6/11/2026: trocar as cápsulas por personagens estilizados (protagonista com animações, alienígenas civis e policiais).
+
 ## Depois da 0.1 (sem ordem aprovada)
 
 - Trocar cápsulas por personagens estilizados (pacotes de assets prontos e animações do Mixamo, com ajustes no Blender).

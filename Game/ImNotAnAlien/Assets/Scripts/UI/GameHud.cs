@@ -31,11 +31,14 @@ public sealed class GameHud : MonoBehaviour
     [SerializeField] private Color healthColor = new Color(0.95f, 0.3f, 0.4f, 1f);
     [SerializeField] private Color healthLowColor = new Color(1f, 0.15f, 0.15f, 1f);
 
-    private const float PanelWidth = 420f;
+    private const float PanelWidth = 500f;
     private const float RowHeight = 46f;
 
     private Font font;
     private Text alienText;
+    private Text sectorText;
+    private Text sectorEnterText;
+    private float sectorEnterTimer;
     private Text dnaText;
     private Text bannerText;
     private RectTransform alienRow;
@@ -72,7 +75,9 @@ public sealed class GameHud : MonoBehaviour
         if (tracker != null)
         {
             tracker.Changed += OnSectorChanged;
-            tracker.Cleared += OnSectorCleared;
+            tracker.SectorCleared += OnSectorCleared;
+            tracker.RegionCleared += OnRegionCleared;
+            tracker.SectorEntered += OnSectorEntered;
         }
         else
         {
@@ -112,7 +117,9 @@ public sealed class GameHud : MonoBehaviour
         if (tracker != null)
         {
             tracker.Changed -= OnSectorChanged;
-            tracker.Cleared -= OnSectorCleared;
+            tracker.SectorCleared -= OnSectorCleared;
+            tracker.RegionCleared -= OnRegionCleared;
+            tracker.SectorEntered -= OnSectorEntered;
         }
 
         if (inventory != null)
@@ -139,6 +146,7 @@ public sealed class GameHud : MonoBehaviour
         dnaRow.localScale = Vector3.one * (1f + 0.25f * dnaPunch * dnaPunch);
 
         UpdateHealthBar(dt);
+        UpdateSectorEnterText(dt);
         UpdateAbilities();
 
         if (bannerTimer > 0f)
@@ -240,18 +248,84 @@ public sealed class GameHud : MonoBehaviour
         dnaPunch = 1f;
     }
 
-    private void OnSectorCleared(SectorTracker sector)
+    private void OnSectorCleared(int index)
     {
-        bannerText.text = $"SETOR LIMPO!\n<size=30>+{sector.ClearBonusDna} DNA de bônus</size>";
+        SectorTracker.SectorInfo sector = tracker.Sectors[index];
+        string where = tracker.SingleSectorMode ? "" : sector.name + ": ";
+        ShowBanner($"SETOR LIMPO!\n<size=30>{where}+{sector.clearBonusDna} DNA de bônus</size>", 3.5f);
+    }
+
+    private void OnRegionCleared()
+    {
+        if (tracker.SingleSectorMode)
+        {
+            return; // no modo antigo, o aviso de setor já basta
+        }
+
+        ShowBanner($"{tracker.RegionName.ToUpperInvariant()} LIMPO!\n<size=30>Região completa! DNA de bônus extra</size>", 5f);
+    }
+
+    private void OnSectorEntered(int index)
+    {
+        if (tracker == null || tracker.SingleSectorMode || index < 0)
+        {
+            return;
+        }
+
+        SectorTracker.SectorInfo sector = tracker.Sectors[index];
+        sectorEnterText.text = sector.cleared ? $"{sector.name}\n<size=20>setor limpo</size>" : sector.name;
+        sectorEnterText.enabled = true;
+        sectorEnterTimer = 2.5f;
+    }
+
+    private void ShowBanner(string text, float duration)
+    {
+        bannerText.text = text;
         bannerText.enabled = true;
-        bannerTimer = 3.5f;
+        bannerTimer = duration;
+    }
+
+    private void UpdateSectorEnterText(float dt)
+    {
+        if (sectorEnterTimer <= 0f)
+        {
+            return;
+        }
+
+        sectorEnterTimer -= dt;
+        Color color = Color.white;
+        color.a = Mathf.Clamp01(sectorEnterTimer / 0.6f) * Mathf.Clamp01((2.5f - sectorEnterTimer) / 0.3f);
+        sectorEnterText.color = color;
+        sectorEnterText.enabled = sectorEnterTimer > 0f;
     }
 
     private void RefreshAlienText()
     {
-        int consumed = tracker != null ? tracker.ConsumedAliens : 0;
-        int total = tracker != null ? tracker.TotalAliens : 0;
-        alienText.text = $"<size=20>ALIENÍGENAS CONSUMIDOS</size>   <b>{consumed} / {total}</b>";
+        if (tracker == null)
+        {
+            alienText.text = "<size=20>ALIENÍGENAS CONSUMIDOS</size>   <b>0 / 0</b>";
+            sectorText.text = "";
+            return;
+        }
+
+        if (tracker.SingleSectorMode)
+        {
+            alienText.text = $"<size=20>ALIENÍGENAS CONSUMIDOS</size>   <b>{tracker.RegionConsumed} / {tracker.RegionQuota}</b>";
+            sectorText.text = "";
+            return;
+        }
+
+        alienText.text = $"<size=20>{tracker.RegionName.ToUpperInvariant()}</size>   <b>{tracker.RegionConsumed} / {tracker.RegionQuota}</b>";
+        int current = tracker.CurrentSector;
+        if (current < 0)
+        {
+            sectorText.text = "";
+            return;
+        }
+
+        SectorTracker.SectorInfo sector = tracker.Sectors[current];
+        string count = sector.cleared ? "LIMPO" : $"{sector.consumed} / {sector.quota}";
+        sectorText.text = $"<size=18>SETOR {sector.name.ToUpperInvariant()}</size>   <b>{count}</b>";
     }
 
     private void RefreshDnaText()
@@ -269,8 +343,15 @@ public sealed class GameHud : MonoBehaviour
             return;
         }
 
-        int alive = tracker.AliveCount;
-        if (alive == 0 || alive > markerThreshold)
+        // Marcadores quando faltam poucos no setor onde o jogador está.
+        int current = tracker.CurrentSector;
+        if (current < 0)
+        {
+            return;
+        }
+
+        int remaining = tracker.Sectors[current].Remaining;
+        if (remaining == 0 || remaining > markerThreshold)
         {
             return;
         }
@@ -289,9 +370,9 @@ public sealed class GameHud : MonoBehaviour
         };
 
         Transform player = PlayerHealth.Instance != null ? PlayerHealth.Instance.transform : cam.transform;
-        foreach (AlienHealth alien in tracker.Aliens)
+        foreach (AlienHealth alien in tracker.Tracked)
         {
-            if (alien == null || alien.IsDead)
+            if (alien == null || alien.IsDead || !alien.CountsForQuota || tracker.SectorOf(alien) != current)
             {
                 continue;
             }
@@ -372,7 +453,7 @@ public sealed class GameHud : MonoBehaviour
         RectTransform panel = NewRect("Contadores", canvasObject.transform);
         panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(1f, 1f);
         panel.anchoredPosition = new Vector2(-margin, -top);
-        panel.sizeDelta = new Vector2(PanelWidth, RowHeight * 2f + 16f);
+        panel.sizeDelta = new Vector2(PanelWidth, RowHeight * 3f + 16f);
         Image background = panel.gameObject.AddComponent<Image>();
         background.color = new Color(0.05f, 0.04f, 0.1f, 0.45f);
 
@@ -380,9 +461,12 @@ public sealed class GameHud : MonoBehaviour
         alienRow = alienText.rectTransform;
         PlaceRow(alienRow, 0);
 
+        sectorText = NewText("Setor", panel, 28, new Color(1f, 1f, 1f, 0.9f), TextAnchor.MiddleRight);
+        PlaceRow(sectorText.rectTransform, 1);
+
         dnaText = NewText("DNA", panel, 34, dnaColor, TextAnchor.MiddleRight);
         dnaRow = dnaText.rectTransform;
-        PlaceRow(dnaRow, 1);
+        PlaceRow(dnaRow, 2);
 
         // Barra de vida no canto superior esquerdo.
         RectTransform healthPanel = NewRect("Vida", canvasObject.transform);
@@ -449,6 +533,14 @@ public sealed class GameHud : MonoBehaviour
         banner.sizeDelta = new Vector2(900f, 180f);
         bannerText.fontStyle = FontStyle.Bold;
         bannerText.enabled = false;
+
+        // Nome do setor ao entrar nele (topo da tela).
+        sectorEnterText = NewText("Aviso_Entrada_Setor", canvasObject.transform, 40, Color.white, TextAnchor.MiddleCenter);
+        RectTransform enter = sectorEnterText.rectTransform;
+        enter.anchorMin = enter.anchorMax = enter.pivot = new Vector2(0.5f, 0.86f);
+        enter.sizeDelta = new Vector2(900f, 110f);
+        sectorEnterText.fontStyle = FontStyle.Bold;
+        sectorEnterText.enabled = false;
     }
 
     private static void PlaceRow(RectTransform row, int index)

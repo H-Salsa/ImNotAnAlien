@@ -86,10 +86,15 @@ public sealed class DnaOrbSystem : MonoBehaviour
 
             if (SectorTracker.Instance != null)
             {
-                SectorTracker.Instance.OnAlienDied(alienId, 0);
+                SectorTracker.Instance.OnAlienDied(source, 0);
             }
 
             return;
+        }
+
+        if (SectorTracker.Instance != null)
+        {
+            SectorTracker.Instance.OnAlienDied(source, Mathf.Max(1, orbCount));
         }
 
         Instance.Spawn(alienId, position, totalValue, orbCount);
@@ -98,10 +103,6 @@ public sealed class DnaOrbSystem : MonoBehaviour
     private void Spawn(int alienId, Vector3 position, int totalValue, int orbCount)
     {
         int count = Mathf.Max(1, orbCount);
-        if (SectorTracker.Instance != null)
-        {
-            SectorTracker.Instance.OnAlienDied(alienId, count);
-        }
 
         for (int i = 0; i < count; i++)
         {

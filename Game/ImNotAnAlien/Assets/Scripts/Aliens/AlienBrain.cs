@@ -94,6 +94,9 @@ public sealed class AlienBrain : MonoBehaviour
     // Verdadeiro enquanto a telecinese está segurando este alienígena.
     public bool IsHeld => isHeld && enabled;
 
+    // Só passeando, sem reagir ao jogador (pode sumir com segurança quando longe).
+    public bool IsCalm => enabled && state == State.Wandering;
+
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();

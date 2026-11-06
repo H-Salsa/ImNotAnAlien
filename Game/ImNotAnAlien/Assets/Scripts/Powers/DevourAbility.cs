@@ -165,6 +165,8 @@ public sealed class DevourAbility : MonoBehaviour
         Renderer skin = alien.GetComponentInChildren<Renderer>();
         Color skinColor = skin != null && skin.sharedMaterial != null ? skin.sharedMaterial.color : Color.white;
 
+        int quotaSector = alien.QuotaSector;
+        bool countsForQuota = alien.CountsForQuota;
         int dna = alien.Devour(); // para o alienígena e marca como consumido
         foreach (Collider part in alien.GetComponentsInChildren<Collider>())
         {
@@ -209,7 +211,7 @@ public sealed class DevourAbility : MonoBehaviour
 
         if (SectorTracker.Instance != null)
         {
-            SectorTracker.Instance.ConsumeDirectly();
+            SectorTracker.Instance.ConsumeDirectly(quotaSector, countsForQuota, endPosition);
         }
 
         GameFeel.Devour(endPosition, skinColor);

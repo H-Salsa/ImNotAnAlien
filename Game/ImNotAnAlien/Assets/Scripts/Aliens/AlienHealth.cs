@@ -51,6 +51,11 @@ public sealed class AlienHealth : MonoBehaviour
     public bool IsWounded => !IsDead && CurrentHealth <= maxHealth * woundedThreshold;
     public int DnaValue => dnaValue;
 
+    // Cota (população dinâmica): setor de origem (-1 = descobrir pela posição ao morrer)
+    // e se este alienígena conta para a cota. Definidos por quem cria o alienígena.
+    public int QuotaSector { get; set; } = -1;
+    public bool CountsForQuota { get; set; } = true;
+
     // Avisa outros sistemas (contador, DNA, etc.) quando este alienígena é derrotado.
     public event Action<AlienHealth> Died;
 

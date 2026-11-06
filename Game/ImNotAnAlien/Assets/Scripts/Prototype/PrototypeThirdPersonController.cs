@@ -36,6 +36,9 @@ public sealed class PrototypeThirdPersonController : MonoBehaviour
     [Tooltip("Trava e esconde o cursor durante o jogo. Esc libera; clique na tela para travar de novo.")]
     [SerializeField] private bool lockCursor = true;
 
+    // Multiplicador de velocidade (ex.: 0,5 dentro da água). 1 = normal.
+    public float SpeedMultiplier { get; set; } = 1f;
+
     private CharacterController characterController;
     private CapsuleCollider primitiveCollider;
     private InputActionMap playerActionMap;
@@ -156,7 +159,7 @@ public sealed class PrototypeThirdPersonController : MonoBehaviour
         }
 
         verticalSpeed += gravity * Time.deltaTime;
-        Vector3 velocity = moveDirection * moveSpeed + Vector3.up * verticalSpeed;
+        Vector3 velocity = moveDirection * (moveSpeed * SpeedMultiplier) + Vector3.up * verticalSpeed;
         characterController.Move(velocity * Time.deltaTime);
     }
 

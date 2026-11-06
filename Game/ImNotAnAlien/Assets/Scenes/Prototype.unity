@@ -250,7 +250,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &27223297
 Transform:
@@ -1002,7 +1002,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &74034101
 Transform:
@@ -1736,7 +1736,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &118351908
 Transform:
@@ -2028,7 +2028,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &137242500
 Transform:
@@ -4062,6 +4062,10 @@ MonoBehaviour:
   policeShotClip: {fileID: 0}
   playerHitClip: {fileID: 0}
   devourClip: {fileID: 0}
+  shockwaveClip: {fileID: 0}
+  evolutionClip: {fileID: 0}
+  collapseClip: {fileID: 0}
+  splashClip: {fileID: 0}
 --- !u!4 &401011204
 Transform:
   m_ObjectHideFlags: 0
@@ -4459,7 +4463,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &425186993
 Transform:
@@ -4685,7 +4689,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &431460498
 Transform:
@@ -5021,7 +5025,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &455069373
 Transform:
@@ -5200,7 +5204,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &474494176
 Transform:
@@ -5492,7 +5496,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &496240678
 Transform:
@@ -5896,7 +5900,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &557903939
 Transform:
@@ -6718,7 +6722,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &718056233
 Transform:
@@ -6920,7 +6924,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &725801783
 Transform:
@@ -7924,7 +7928,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &854660998
 Transform:
@@ -8481,7 +8485,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &902222911
 Transform:
@@ -9194,7 +9198,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &987285256
 Transform:
@@ -9370,12 +9374,13 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1062445318}
+  - component: {fileID: 1062445319}
   m_Layer: 0
   m_Name: Casa_A
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &1062445318
 Transform:
@@ -9397,6 +9402,26 @@ Transform:
   - {fileID: 1535977815}
   m_Father: {fileID: 948057277}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1062445319
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1062445317}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13de87d3cb0eb4a4aa4c91e650848020, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DestructibleStructure
+  maxHealth: 500
+  minImpactMass: 300
+  minImpactSpeed: 8
+  massDivisor: 100
+  fragmentSize: 2.2
+  maxDivisionsPerAxis: 3
+  rubblePieces: 7
+  rubbleDarkness: 0.45
 --- !u!1 &1072548123
 GameObject:
   m_ObjectHideFlags: 0
@@ -9414,7 +9439,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &1072548124
 Transform:
@@ -11426,6 +11451,7 @@ GameObject:
   - component: {fileID: 1280260128}
   - component: {fileID: 1280260130}
   - component: {fileID: 1280260129}
+  - component: {fileID: 1280260131}
   m_Layer: 0
   m_Name: Capsule
   m_TagString: Untagged
@@ -11659,6 +11685,28 @@ MonoBehaviour:
   regenPerSecond: 12
   respawnDelay: 3
   respawnInvulnerability: 2
+--- !u!114 &1280260131
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1280260120}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f45b481ebb2b0654d8e6070c3fae432b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShockwaveAbility
+  levels:
+  - radius: 8
+    power: 900
+    damage: 20
+  - radius: 12
+    power: 1400
+    damage: 35
+  cooldown: 6
+  upwardsModifier: 1.2
+  waveColor: {r: 0.55, g: 0.4, b: 1, a: 1}
 --- !u!4 &1282532595 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2968883414633526039, guid: 818fffde6a0b61b41be04b7145f1998d, type: 3}
@@ -11673,12 +11721,13 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1298827278}
+  - component: {fileID: 1298827279}
   m_Layer: 0
   m_Name: Casa_B
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &1298827278
 Transform:
@@ -11702,6 +11751,26 @@ Transform:
   - {fileID: 1395068803}
   m_Father: {fileID: 948057277}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1298827279
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1298827277}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13de87d3cb0eb4a4aa4c91e650848020, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DestructibleStructure
+  maxHealth: 500
+  minImpactMass: 300
+  minImpactSpeed: 8
+  massDivisor: 100
+  fragmentSize: 2.2
+  maxDivisionsPerAxis: 3
+  rubblePieces: 7
+  rubbleDarkness: 0.45
 --- !u!1 &1306207689
 GameObject:
   m_ObjectHideFlags: 0
@@ -12212,12 +12281,13 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1392278672}
+  - component: {fileID: 1392278673}
   m_Layer: 0
   m_Name: Casa_A
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &1392278672
 Transform:
@@ -12239,6 +12309,26 @@ Transform:
   - {fileID: 74034101}
   m_Father: {fileID: 1186367647}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1392278673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1392278671}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13de87d3cb0eb4a4aa4c91e650848020, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DestructibleStructure
+  maxHealth: 500
+  minImpactMass: 300
+  minImpactSpeed: 8
+  massDivisor: 100
+  fragmentSize: 2.2
+  maxDivisionsPerAxis: 3
+  rubblePieces: 7
+  rubbleDarkness: 0.45
 --- !u!1 &1395068802
 GameObject:
   m_ObjectHideFlags: 0
@@ -12256,7 +12346,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &1395068803
 Transform:
@@ -12665,7 +12755,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &1475883328
 Transform:
@@ -12971,12 +13061,13 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1499107981}
+  - component: {fileID: 1499107982}
   m_Layer: 0
   m_Name: Casa_B
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &1499107981
 Transform:
@@ -12998,6 +13089,26 @@ Transform:
   - {fileID: 496240678}
   m_Father: {fileID: 1186367647}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1499107982
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1499107980}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13de87d3cb0eb4a4aa4c91e650848020, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DestructibleStructure
+  maxHealth: 500
+  minImpactMass: 300
+  minImpactSpeed: 8
+  massDivisor: 100
+  fragmentSize: 2.2
+  maxDivisionsPerAxis: 3
+  rubblePieces: 7
+  rubbleDarkness: 0.45
 --- !u!1 &1499254339
 GameObject:
   m_ObjectHideFlags: 0
@@ -13329,7 +13440,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &1535977815
 Transform:
@@ -13662,6 +13773,8 @@ GameObject:
   - component: {fileID: 1546027944}
   - component: {fileID: 1546027943}
   - component: {fileID: 1546027942}
+  - component: {fileID: 1546027947}
+  - component: {fileID: 1546027946}
   m_Layer: 0
   m_Name: Sistemas
   m_TagString: Untagged
@@ -13744,6 +13857,78 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1546027946
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1546027941}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e26e4f434016854fa1689e5fbc38cfe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EvolutionMenu
+  accent: {r: 0.55, g: 0.4, b: 1, a: 1}
+  dnaColor: {r: 0.35, g: 1, b: 0.65, a: 1}
+--- !u!114 &1546027947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1546027941}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d1ad26e4cd85dd4abf002fc6bbd7d3b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EvolutionSystem
+  evolutions:
+  - id: 0
+    title: "\xCDm\xE3 de DNA"
+    description: "Os orbes de DNA voam at\xE9 voc\xEA de mais longe."
+    levelCosts: 140000002800000046000000
+    levelEffects:
+    - "Atra\xE7\xE3o: 9 m"
+    - "Atra\xE7\xE3o: 12 m"
+    - "Atra\xE7\xE3o: 16 m"
+  - id: 1
+    title: "For\xE7a Telecin\xE9tica"
+    description: Levanta objetos mais pesados e arremessa mais forte.
+    levelCosts: 1e0000003c00000064000000
+    levelEffects:
+    - Peso 2.500 kg, arremesso +15%
+    - Peso 4.000 kg, arremesso +30%
+    - Peso 6.000 kg, arremesso +50%
+  - id: 2
+    title: Alcance Mental
+    description: "Alcan\xE7a alvos mais distantes com a telecinese."
+    levelCosts: 1900000032000000
+    levelEffects:
+    - 'Alcance: 30 m'
+    - 'Alcance: 35 m'
+  - id: 3
+    title: "Pele Alien\xEDgena"
+    description: "Seu corpo fica mais resistente. (Ainda \xE9 humano. Juro.)"
+    levelCosts: 1e0000003c0000005a000000
+    levelEffects:
+    - 'Vida: 130'
+    - 'Vida: 160'
+    - 'Vida: 200'
+  - id: 4
+    title: Devorar
+    description: "Tecla 1: puxa e devora um alien\xEDgena ferido pr\xF3ximo."
+    levelCosts: 3200000078000000
+    levelEffects:
+    - 'Desbloqueia: 2x DNA'
+    - 'Mordida gulosa: 3x DNA'
+  - id: 5
+    title: Onda de Impacto
+    description: "Tecla 2: explos\xE3o telecin\xE9tica que arremessa tudo em volta."
+    levelCosts: 500000008c000000
+    levelEffects:
+    - 'Desbloqueia: raio 8 m'
+    - "Raio 12 m, mais for\xE7a e dano"
 --- !u!1 &1554801376
 GameObject:
   m_ObjectHideFlags: 0
@@ -14885,7 +15070,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &1781477807
 Transform:
@@ -15124,7 +15309,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &1940256461
 Transform:
@@ -16466,7 +16651,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483643
   m_IsActive: 1
 --- !u!4 &2120664447
 Transform:
