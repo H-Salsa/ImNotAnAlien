@@ -119,6 +119,12 @@ public sealed class PrototypeThirdPersonController : MonoBehaviour
 
     private void Update()
     {
+        // Menu aberto (jogo pausado): não mexe no cursor nem na câmera.
+        if (GamePause.IsPaused)
+        {
+            return;
+        }
+
         UpdateCursorLock();
 
         // A câmera só gira com o mouse enquanto o cursor está travado no jogo.

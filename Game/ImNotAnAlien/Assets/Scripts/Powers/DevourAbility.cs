@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 // - Aparece "[1] DEVORAR" em cima dele. Tecla 1 (ou botão Y/triângulo do controle):
 //   o personagem puxa o alienígena e o devora, rendendo o DOBRO de DNA.
 // - Também mostra uma barrinha de vida sobre o alienígena mirado.
-// Por enquanto vem liberado ("Unlocked") para testes; na Missão 9 vira uma evolução comprada com DNA.
+// Começa bloqueado: é desbloqueado no menu de evoluções (Tab) com DNA (EvolutionSystem).
 [DisallowMultipleComponent]
 public sealed class DevourAbility : MonoBehaviour
 {
@@ -46,6 +46,13 @@ public sealed class DevourAbility : MonoBehaviour
     {
         get => unlocked;
         set => unlocked = value;
+    }
+
+    // Quantas vezes o DNA normal o Devorar rende (evolução "Mordida gulosa" aumenta).
+    public int DnaMultiplier
+    {
+        get => dnaMultiplier;
+        set => dnaMultiplier = Mathf.Max(1, value);
     }
 
     private void Awake()

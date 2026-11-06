@@ -60,6 +60,16 @@ public sealed class PlayerHealth : MonoBehaviour
         Changed?.Invoke();
     }
 
+    // Evolução "Pele Alienígena": aumenta a vida máxima e cura a diferença.
+    public void SetMaxHealth(float newMaxHealth)
+    {
+        newMaxHealth = Mathf.Max(1f, newMaxHealth);
+        float gained = newMaxHealth - maxHealth;
+        maxHealth = newMaxHealth;
+        CurrentHealth = Mathf.Clamp(CurrentHealth + Mathf.Max(0f, gained), 0f, maxHealth);
+        Changed?.Invoke();
+    }
+
     public void TakeDamage(float amount, Vector3 sourcePosition)
     {
         if (IsDead || amount <= 0f || Time.time < invulnerableUntil)

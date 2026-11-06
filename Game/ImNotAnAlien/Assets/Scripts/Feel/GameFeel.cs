@@ -42,6 +42,8 @@ public sealed class GameFeel : MonoBehaviour
     [SerializeField] private AudioClip policeShotClip;
     [SerializeField] private AudioClip playerHitClip;
     [SerializeField] private AudioClip devourClip;
+    [SerializeField] private AudioClip shockwaveClip;
+    [SerializeField] private AudioClip evolutionClip;
 
     private const int SampleRate = 44100;
     private const int VoiceCount = 10;
@@ -78,6 +80,8 @@ public sealed class GameFeel : MonoBehaviour
         if (policeShotClip == null) policeShotClip = SynthShot();
         if (playerHitClip == null) playerHitClip = SynthPlayerHit();
         if (devourClip == null) devourClip = SynthDevour();
+        if (shockwaveClip == null) shockwaveClip = SynthShockwave();
+        if (evolutionClip == null) evolutionClip = SynthEvolution();
     }
 
     private void OnDestroy()
@@ -216,6 +220,51 @@ public sealed class GameFeel : MonoBehaviour
         Instance.HitStop(Instance.hitStopDuration * 1.5f);
     }
 
+    // Onda de Impacto: anel de estilhaços no chão, "BUM" grave e tela tremendo.
+    public static void Shockwave(Vector3 center, float radius, Color color)
+    {
+        if (Instance == null)
+        {
+            return;
+        }
+
+        GameFeel feel = Instance;
+        if (feel.debris == null)
+        {
+            return;
+        }
+
+        int count = Mathf.RoundToInt(radius * 6f);
+        for (int i = 0; i < count; i++)
+        {
+            float angle = i / (float)count * Mathf.PI * 2f;
+            Vector3 direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+            ParticleSystem.EmitParams emit = new ParticleSystem.EmitParams
+            {
+                position = center + direction * 0.8f + Vector3.up * 0.3f,
+                applyShapeToPosition = false,
+                startColor = Color.Lerp(color, Color.white, Random.Range(0f, 0.4f)),
+                velocity = direction * radius * Random.Range(1.6f, 2.2f) + Vector3.up * Random.Range(1f, 3f),
+                startLifetime = 0.55f,
+            };
+            feel.debris.Emit(emit, 1);
+        }
+
+        feel.Play(feel.shockwaveClip, center, 1f, 0.95f, 1.05f);
+        CameraShake.AddTrauma(0.55f);
+    }
+
+    public static void EvolutionBought()
+    {
+        if (Instance == null)
+        {
+            return;
+        }
+
+        Camera cam = Camera.main;
+        Instance.Play(Instance.evolutionClip, cam != null ? cam.transform.position : Vector3.zero, 0.8f, 1f, 1f);
+    }
+
     // ---------- Implementação ----------
 
     private void DoImpact(Vector3 position, float speed, Color color)
@@ -242,7 +291,7 @@ public sealed class GameFeel : MonoBehaviour
 
     private void HitStop(float duration)
     {
-        if (inHitStop || Time.unscaledTime < hitStopCooldownUntil)
+        if (inHitStop || GamePause.IsPaused || Time.unscaledTime < hitStopCooldownUntil)
         {
             return;
         }
@@ -255,7 +304,7 @@ public sealed class GameFeel : MonoBehaviour
         inHitStop = true;
         Time.timeScale = 0.05f;
         yield return new WaitForSecondsRealtime(duration);
-        Time.timeScale = 1f;
+        Time.timeScale = GamePause.IsPaused ? 0f : 1f; // se o menu abriu no meio, continua pausado
         inHitStop = false;
         hitStopCooldownUntil = Time.unscaledTime + 0.25f; // evita várias pausas seguidas
     }
@@ -499,6 +548,35 @@ public sealed class GameFeel : MonoBehaviour
             float freq = Mathf.Lerp(320f, 70f, gulpT / 0.48f) + Mathf.Sin(gulpT * 2f * Mathf.PI * 14f) * 25f;
             float gulp = Mathf.Sin(2f * Mathf.PI * freq * gulpT) * Mathf.Min(gulpT / 0.03f, 1f) * Mathf.Exp(-gulpT * 4f);
             return (bite + gulp * 0.8f) * 0.8f;
+        });
+    }
+
+    // "BUM": grave profundo descendo + rajada de ar.
+    private static AudioClip SynthShockwave()
+    {
+        float air = 0f;
+        return Synth("Onda_Impacto", 0.9f, (t, n) =>
+        {
+            float freq = Mathf.Lerp(110f, 32f, Mathf.Clamp01(t / 0.5f));
+            float boom = Mathf.Sin(2f * Mathf.PI * freq * t) * Mathf.Exp(-t * 4.5f);
+            air += (n - air) * 0.12f;
+            float whoosh = air * Mathf.Exp(-t * 6f) * 2.2f;
+            return Mathf.Clamp((boom * 1.1f + whoosh * 0.6f) * 1.2f, -1f, 1f);
+        });
+    }
+
+    // Evolução comprada: arpejo rápido e brilhante subindo.
+    private static AudioClip SynthEvolution()
+    {
+        float[] notes = { 659.25f, 830.61f, 987.77f, 1318.5f, 1661.2f };
+        const float noteLength = 0.07f;
+        return Synth("Evolucao", noteLength * notes.Length + 0.45f, (t, n) =>
+        {
+            int index = Mathf.Min((int)(t / noteLength), notes.Length - 1);
+            float local = t - index * noteLength;
+            float decay = index == notes.Length - 1 ? 4f : 20f;
+            float wave = Mathf.Sin(2f * Mathf.PI * notes[index] * t) + 0.4f * Mathf.Sin(2f * Mathf.PI * notes[index] * 1.5f * t);
+            return wave * Mathf.Exp(-local * decay) * 0.35f;
         });
     }
 

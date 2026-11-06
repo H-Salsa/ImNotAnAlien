@@ -55,6 +55,10 @@ public sealed class GameHud : MonoBehaviour
     private Text deathText;
     private float flashAlpha;
     private float shownHealth = 1f;
+    private Text abilitiesText;
+    private Text evolutionHintText;
+    private DevourAbility devour;
+    private ShockwaveAbility shockwave;
     private GUIStyle markerStyle;
 
     private void Start()
@@ -87,6 +91,9 @@ public sealed class GameHud : MonoBehaviour
         playerHealth = PlayerHealth.Instance;
         if (playerHealth != null)
         {
+            devour = playerHealth.GetComponent<DevourAbility>();
+            shockwave = playerHealth.GetComponent<ShockwaveAbility>();
+
             playerHealth.Damaged += OnPlayerDamaged;
             playerHealth.Died += OnPlayerDied;
             playerHealth.Respawned += OnPlayerRespawned;
@@ -132,6 +139,7 @@ public sealed class GameHud : MonoBehaviour
         dnaRow.localScale = Vector3.one * (1f + 0.25f * dnaPunch * dnaPunch);
 
         UpdateHealthBar(dt);
+        UpdateAbilities();
 
         if (bannerTimer > 0f)
         {
@@ -162,6 +170,44 @@ public sealed class GameHud : MonoBehaviour
         flashAlpha = Mathf.Max(0f, flashAlpha - dt * 2.5f);
         damageFlash.color = new Color(1f, 0f, 0.05f, flashAlpha * 0.35f);
         damageFlash.enabled = flashAlpha > 0f;
+    }
+
+    // Linha de habilidades (teclas) e aviso de evolução disponível, embaixo da vida.
+    private void UpdateAbilities()
+    {
+        if (shockwave == null && playerHealth != null)
+        {
+            shockwave = playerHealth.GetComponent<ShockwaveAbility>(); // pode ser criada depois do início
+        }
+
+        string line = "";
+        if (devour != null && devour.Unlocked)
+        {
+            line += "[1] Devorar     ";
+        }
+
+        if (shockwave != null && shockwave.Unlocked)
+        {
+            float wait = shockwave.CooldownRemaining;
+            line += wait > 0f ? $"[2] Onda {Mathf.CeilToInt(wait)}s     " : "[2] Onda pronta     ";
+        }
+
+        EvolutionSystem evolutions = EvolutionSystem.Instance;
+        if (evolutions != null)
+        {
+            line += "[Tab] Evoluções";
+        }
+
+        abilitiesText.text = line;
+
+        bool canEvolve = evolutions != null && evolutions.AnyAffordable();
+        evolutionHintText.enabled = canEvolve;
+        if (canEvolve)
+        {
+            Color color = dnaColor;
+            color.a = 0.6f + 0.4f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 3f));
+            evolutionHintText.color = color;
+        }
     }
 
     private void OnPlayerDamaged(Vector3 source)
@@ -360,6 +406,22 @@ public sealed class GameHud : MonoBehaviour
         healthTextRect.offsetMin = new Vector2(12f, 0f);
         healthTextRect.offsetMax = Vector2.zero;
         healthText.fontStyle = FontStyle.Bold;
+
+        // Teclas das habilidades e aviso de evolução, embaixo da vida.
+        abilitiesText = NewText("Habilidades", canvasObject.transform, 20, new Color(1f, 1f, 1f, 0.85f), TextAnchor.UpperLeft);
+        RectTransform abilitiesRect = abilitiesText.rectTransform;
+        abilitiesRect.anchorMin = abilitiesRect.anchorMax = abilitiesRect.pivot = new Vector2(0f, 1f);
+        abilitiesRect.anchoredPosition = new Vector2(margin, -margin - 44f);
+        abilitiesRect.sizeDelta = new Vector2(700f, 28f);
+
+        evolutionHintText = NewText("Aviso_Evolucao", canvasObject.transform, 22, dnaColor, TextAnchor.UpperLeft);
+        RectTransform hintRect = evolutionHintText.rectTransform;
+        hintRect.anchorMin = hintRect.anchorMax = hintRect.pivot = new Vector2(0f, 1f);
+        hintRect.anchoredPosition = new Vector2(margin, -margin - 74f);
+        hintRect.sizeDelta = new Vector2(700f, 30f);
+        evolutionHintText.fontStyle = FontStyle.Bold;
+        evolutionHintText.text = "EVOLUÇÃO DISPONÍVEL!  Aperte Tab";
+        evolutionHintText.enabled = false;
 
         // Flash vermelho na tela inteira ao levar dano.
         RectTransform flash = NewRect("Flash_Dano", canvasObject.transform);

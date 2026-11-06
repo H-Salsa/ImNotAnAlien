@@ -108,6 +108,25 @@ public sealed class TelekinesisPower : MonoBehaviour
         telekinesisAction.Dispose();
     }
 
+    // Usados pelas evoluções (EvolutionSystem).
+    public float MaxLiftMass
+    {
+        get => maxLiftMass;
+        set => maxLiftMass = Mathf.Max(1f, value);
+    }
+
+    public float ThrowSpeed
+    {
+        get => throwSpeed;
+        set => throwSpeed = Mathf.Max(1f, value);
+    }
+
+    public float TargetRange
+    {
+        get => targetRange;
+        set => targetRange = Mathf.Max(1f, value);
+    }
+
     // Usado pelo Devorar (para devorar o alienígena que está sendo segurado).
     public Rigidbody HeldBody => held;
 

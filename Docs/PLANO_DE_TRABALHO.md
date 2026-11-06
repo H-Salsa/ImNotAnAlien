@@ -131,9 +131,9 @@ Escopo definido pelo autor em 5/11/2026 ([D10 e D11](DECISOES.md)).
 
 Rumo aprovado pelo autor em 5/11/2026: mais alienígenas, evoluções com DNA e risco. Ajustes do autor: [D12, D13 e D14](DECISOES.md).
 
-### Missão 8 — Policiais, Devorar e vida do jogador
+### Missão 8 — Policiais, Devorar e vida do jogador ✅
 
-**Em andamento.** Ferramenta `ImNotAnAlien > Preparar Versao 0.3`.
+**Concluída em 5/11/2026; testada pelo autor.** Ajustes pedidos no teste: Devorar com alcance de 20 m e sem aviso "chegue mais perto"; telecinese com alcance de 25 m; tiros a 38 m/s em rajada de 2, mira travada durante o aviso (dá para desviar se mover); marcadores dos últimos 3 alienígenas. Ferramenta `ImNotAnAlien > Preparar Versao 0.3`.
 
 - Bairro com 8 civis e 3 policiais (prefab `Alienigena_Policial`, com quepe, distintivo e arma).
 - Policiais: se aproximam até a distância de tiro (7 a 13 m), avisam (ponta da arma acende) e atiram projéteis visíveis; objetos no caminho bloqueiam. Tiros também ferem outros alienígenas.
@@ -141,9 +141,20 @@ Rumo aprovado pelo autor em 5/11/2026: mais alienígenas, evoluções com DNA e 
 - Devorar com a tecla 1 e barra de vida sobre o alienígena mirado (D12).
 - Vida do jogador: barra no canto superior esquerdo, flash vermelho, regeneração após 4 s, derrota e renascimento no início sem perder progresso.
 
-### Missão 9 — Evoluções (próxima)
+### Missão 9 — Evoluções
 
-Menu para gastar DNA: raio de atração dos orbes, peso máximo, força do arremesso, onda de impacto da telecinese e o próprio Devorar (D12).
+**Em andamento (6/11/2026).** Ferramenta `ImNotAnAlien > Preparar Evolucoes` ([D16](DECISOES.md)).
+
+| Evolução | Níveis e efeito | Custos (DNA) |
+| --- | --- | --- |
+| Ímã de DNA | atração 9 / 12 / 16 m | 20 / 40 / 70 |
+| Força Telecinética | peso 2.500 / 4.000 / 6.000 kg; arremesso +15 / +30 / +50% | 30 / 60 / 100 |
+| Alcance Mental | 30 / 35 m | 25 / 50 |
+| Pele Alienígena | vida 130 / 160 / 200 | 30 / 60 / 90 |
+| Devorar | desbloqueia (2x DNA) / 3x DNA | 50 / 120 |
+| Onda de Impacto (tecla 2) | raio 8 m / 12 m com mais força e dano; recarga 6 s | 80 / 140 |
+
+- Menu com Tab (pausa o jogo); HUD mostra as teclas das habilidades e "EVOLUÇÃO DISPONÍVEL!" quando dá para comprar algo.
 
 ### Ideia anotada — Estruturas destrutíveis (A07)
 
