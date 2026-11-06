@@ -104,6 +104,11 @@ public sealed class AlienBrain : MonoBehaviour
     // Só passeando, sem reagir ao jogador (pode sumir com segurança quando longe).
     public bool IsCalm => enabled && state == State.Wandering;
 
+    // Usados pelas animações do modelo 3D (AlienAnimator).
+    public bool IsTumbling => state == State.Tumbling;
+    public bool IsAttacking => enabled && state == State.Attacking;
+    public bool IsFleeing => enabled && state == State.Fleeing;
+
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
@@ -625,11 +630,11 @@ public sealed class AlienBrain : MonoBehaviour
 
         if (isHeld)
         {
-            // Se debate no ar, desesperado.
+            // Flutuando: balança devagar, como quem perdeu o chão (braços e pernas vêm da animação).
             if (body != null)
             {
                 float t = Time.time;
-                body.localRotation = Quaternion.Euler(Mathf.Sin(t * 23f) * 18f, Mathf.Sin(t * 11f) * 25f, Mathf.Cos(t * 19f) * 18f);
+                body.localRotation = Quaternion.Euler(Mathf.Sin(t * 1.7f) * 7f, Mathf.Sin(t * 1.1f) * 12f, Mathf.Cos(t * 1.4f) * 6f);
             }
 
             return;

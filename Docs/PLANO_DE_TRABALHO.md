@@ -226,6 +226,13 @@ O autor escolheu começar pela destruição (caminho mais simples agora) em 5/11
 
 Pedido do autor em 6/11/2026: trocar as cápsulas por personagens estilizados (protagonista com animações, alienígenas civis e policiais).
 
+**Feito em 6/11/2026 (aprovado pelo autor):**
+- Protagonista: corpo base Quaternius (CC0) com as animações UAL (`ImNotAnAlien > Montar Protagonista (Missao 15)`, `PlayerAnimator`). Andar/correr, queda, nado, derrota; braço levantado aponta para o objeto da telecinese, tronco gira junto e o braço não atravessa o corpo; tranco no tronco ao levar tiro.
+- Blender conectado ao Claude (conector oficial da Blender Lab). Alien gerado por `Art/Blender/alien_builder.py` (arquivo `Art/Blender/Alien_Base.blend`): cabeça em bulbo inclinada para trás e costurada no pescoço, olhos grandes laranja com pálpebra, nariz de fendas, boca, mãos de 3 dedos costuradas nos braços, corpo magro (decisão D20).
+- Alien no jogo (`ImNotAnAlien > Montar Aliens 3D (Missao 15)`, `AlienAnimator`, `AlienRagdoll`): anda/corre/mira com pistola; segurado pela telecinese fica de pé, de frente para o jogador, balançando braços e pernas; arremessado ou morto vira boneco de pano com juntas naturais (cotovelo/joelho, cintura, pescoço) e "músculo" que afrouxa na morte. Policiais sempre verde-azulados.
+
+**Falta:** listras na cabeça e cor por código (material único com máscara), expressões (apavorado/bravo), roupa do civil, roupa do policial com boné (níveis baixos) e capacete (níveis altos), versão feminina e variação de corpo, motoristas do trânsito com o modelo novo, roupa/visual definitivo do protagonista.
+
 ## Depois da 0.1 (sem ordem aprovada)
 
 - Trocar cápsulas por personagens estilizados (pacotes de assets prontos e animações do Mixamo, com ajustes no Blender).

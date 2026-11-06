@@ -541,6 +541,7 @@ Transform:
   - {fileID: 5669269036469151833}
   - {fileID: 6304315733627896696}
   - {fileID: 8514886625964996218}
+  - {fileID: 5359604095683368693}
   m_Father: {fileID: 2968883414633526039}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6464833427013288492
@@ -645,6 +646,7 @@ GameObject:
   - component: {fileID: 4464496125325546455}
   - component: {fileID: 5087066983827421367}
   - component: {fileID: 3664336158500603509}
+  - component: {fileID: 776801919746725012}
   m_Layer: 0
   m_Name: Alienigena
   m_TagString: Untagged
@@ -702,6 +704,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d4302f989512b5418e265de1d4e6861, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AlienBrain
+  role: 0
   wanderRadius: 12
   wanderSpeed: 1.8
   idleTimeRange: {x: 1.5, y: 4}
@@ -710,10 +713,16 @@ MonoBehaviour:
   fleeSpeed: 6.5
   fleeDistance: 10
   fleeRepathInterval: 0.4
+  attackMoveSpeed: 4.5
+  attackDistanceRange: {x: 7, y: 13}
+  attackRepathInterval: 0.5
+  turnSpeed: 8
   body: {fileID: 3084716589699549607}
   alertIcon: {fileID: 3568380052383607678}
   scareHopHeight: 0.9
   scareHopDuration: 0.35
+  recoverDelay: 1.2
+  fallOutHeight: -30
 --- !u!114 &3664336158500603509
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -727,6 +736,31 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AlienHealth
   maxHealth: 100
+  minImpactSpeed: 6
+  impactDamageScale: 2
+  referenceMass: 60
+  staticImpactMultiplier: 1.5
+  massMultiplierRange: {x: 0.3, y: 3}
+  dnaValue: 10
+  orbCount: 5
+  woundedThreshold: 0.5
+  drainedTint: {r: 0.45, g: 0.45, b: 0.5, a: 1}
+  drainedAmount: 0.65
+--- !u!114 &776801919746725012
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7156308206697295860}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5896822a7a98e140b5a521d9306c965, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AlienAnimator
+  animator: {fileID: 2053939757814271119}
+  policeSkin: {r: 0.247, g: 0.647, b: 0.608, a: 1}
+  weaponOffset: {x: 0.08, y: 0.02}
 --- !u!1 &7361419176535555866
 GameObject:
   m_ObjectHideFlags: 0
@@ -931,3 +965,86 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1001 &5614751759740367134
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 3084716589699549607}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 393772978152459482, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.00000042111301
+      objectReference: {fileID: 0}
+    - target: {fileID: 393772978152459482, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.0033871962
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_Name
+      value: Visual_Alien
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 2e009fdad7a149a49b49605b9eca7d94, type: 2}
+    - target: {fileID: 5866666021909216657, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+--- !u!95 &2053939757814271119 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+  m_PrefabInstance: {fileID: 5614751759740367134}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5359604095683368693 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 815fbfb528010e94396f179945f870f8, type: 3}
+  m_PrefabInstance: {fileID: 5614751759740367134}
+  m_PrefabAsset: {fileID: 0}

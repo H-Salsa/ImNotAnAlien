@@ -228,8 +228,11 @@ public sealed class TelekinesisPower : MonoBehaviour
 
         Vector3 velocity = (holdPoint - held.worldCenterOfMass) * heldFollowStrength;
         held.linearVelocity = Vector3.ClampMagnitude(velocity, maxFollowSpeed);
-        // Um giro lento enquanto flutua.
-        held.angularVelocity = Vector3.Lerp(held.angularVelocity, new Vector3(0.4f, 1.2f, 0f), 0.1f);
+        // Um giro lento enquanto flutua (alienígenas não: eles ficam de pé, olhando para o jogador).
+        if (heldAlien == null)
+        {
+            held.angularVelocity = Vector3.Lerp(held.angularVelocity, new Vector3(0.4f, 1.2f, 0f), 0.1f);
+        }
     }
 
     // ---------- Ações ----------
