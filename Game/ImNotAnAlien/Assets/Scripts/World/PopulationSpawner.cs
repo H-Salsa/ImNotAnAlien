@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -31,6 +32,8 @@ public sealed class PopulationSpawner : MonoBehaviour
     [SerializeField, Min(20f)] private float despawnDistance = 110f;
     [Tooltip("Ao começar o jogo, enche o bairro mais perto que isso (para não começar vazio).")]
     [SerializeField, Min(5f)] private float initialMinDistance = 15f;
+    [Tooltip("Com estrelas de procurado, policiais novos surgem pelo menos a esta distância.")]
+    [SerializeField, Min(10f)] private float wantedPoliceMinDistance = 55f;
 
     [Header("Ritmo")]
     [SerializeField, Min(0.1f)] private float checkInterval = 0.5f;
@@ -116,9 +119,24 @@ public sealed class PopulationSpawner : MonoBehaviour
 
         CountNearby(out int civilians, out int police);
 
+        // Procurado: polícia nova só enquanto a polícia está te vendo, e sempre longe.
+        // Enquanto procuram sem te ver (estrelas piscando), não surge policial: dá para se esconder.
+        WantedSystem wanted = WantedSystem.Instance;
+        bool wantedNow = wanted != null && wanted.Stars > 0;
+        bool policeAllowed = !wantedNow || !wanted.IsSearching;
+
         bool spawnPolice;
         bool counts;
-        if (police < patrolPolice)
+        if (!policeAllowed)
+        {
+            spawnPolice = false;
+            counts = true;
+            if (civilians >= targetCivilians)
+            {
+                return false;
+            }
+        }
+        else if (police < patrolPolice)
         {
             spawnPolice = true;
             counts = true;
@@ -138,7 +156,13 @@ public sealed class PopulationSpawner : MonoBehaviour
             return false; // já tem gente suficiente por perto
         }
 
-        if (!TryFindSpot(initial, counts, out Vector3 spot, out int sector))
+        float minDistance = initial ? initialMinDistance : spawnMinDistance;
+        if (spawnPolice && wantedNow)
+        {
+            minDistance = Mathf.Max(minDistance, wantedPoliceMinDistance);
+        }
+
+        if (!TryFindSpot(initial, minDistance, counts, out Vector3 spot, out int sector))
         {
             return false;
         }
@@ -170,13 +194,13 @@ public sealed class PopulationSpawner : MonoBehaviour
         }
     }
 
-    private bool TryFindSpot(bool initial, bool counts, out Vector3 spot, out int sector)
+    private bool TryFindSpot(bool initial, float minDistance, bool counts, out Vector3 spot, out int sector)
     {
-        float minDistance = initial ? initialMinDistance : spawnMinDistance;
+        float maxDistance = Mathf.Max(spawnMaxDistance, minDistance + 15f);
         for (int attempt = 0; attempt < 12; attempt++)
         {
             Vector2 direction = Random.insideUnitCircle.normalized;
-            float distance = Random.Range(minDistance, spawnMaxDistance);
+            float distance = Random.Range(minDistance, maxDistance);
             Vector3 guess = player.position + new Vector3(direction.x, 0f, direction.y) * distance;
 
             if (!NavMesh.SamplePosition(guess, out NavMeshHit hit, 5f, NavMesh.AllAreas))
@@ -241,6 +265,47 @@ public sealed class PopulationSpawner : MonoBehaviour
         if (part != null && part.TryGetComponent(out Renderer renderer))
         {
             renderer.sharedMaterial = skin;
+        }
+    }
+
+    // ---------- Motorista ejetado (trânsito) ----------
+
+    // Um carro do trânsito foi levantado/atingido: o motorista sai voando e vira um civil de verdade.
+    public void SpawnEjectedDriver(Vector3 position, Vector3 carVelocity)
+    {
+        if (!enabled || tracker == null || civilPrefab == null)
+        {
+            return;
+        }
+
+        StartCoroutine(EjectRoutine(position, carVelocity));
+    }
+
+    private IEnumerator EjectRoutine(Vector3 position, Vector3 carVelocity)
+    {
+        int sector = tracker.SectorAt(position);
+        bool counts = sector >= 0 && !tracker.IsSectorCleared(sector) &&
+                      tracker.AliveCountingIn(sector) < tracker.Sectors[sector].Remaining;
+        Spawn(false, counts, position, sector);
+        AlienHealth driver = active[active.Count - 1];
+
+        yield return null; // espera o alienígena "acordar" (Start) antes de jogá-lo para o alto
+
+        if (driver == null)
+        {
+            yield break;
+        }
+
+        if (driver.TryGetComponent(out AlienBrain brain))
+        {
+            brain.OnTelekinesisGrab();    // vira corpo físico...
+            brain.OnTelekinesisRelease(); // ...e se levanta sozinho ao parar
+        }
+
+        if (driver.TryGetComponent(out Rigidbody body))
+        {
+            body.linearVelocity = carVelocity * 0.6f + Vector3.up * 6f + Random.insideUnitSphere * 2f;
+            body.angularVelocity = Random.insideUnitSphere * 8f;
         }
     }
 

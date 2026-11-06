@@ -95,7 +95,7 @@ public sealed class AlienPoliceWeapon : MonoBehaviour
                 burstTimer = burstInterval;
                 if (shotsRemaining == 0)
                 {
-                    cooldown = Random.Range(fireIntervalRange.x, fireIntervalRange.y);
+                    cooldown = NextInterval();
                 }
             }
 
@@ -149,6 +149,13 @@ public sealed class AlienPoliceWeapon : MonoBehaviour
         }
 
         GameFeel.PoliceCharge(muzzle.position);
+    }
+
+    // Quanto mais estrelas de procurado, mais rápido atiram (até 40% mais rápido no nível 5).
+    private float NextInterval()
+    {
+        int stars = WantedSystem.Instance != null ? WantedSystem.Instance.Stars : 0;
+        return Random.Range(fireIntervalRange.x, fireIntervalRange.y) * (1f - 0.08f * stars);
     }
 
     private bool HasLineOfSight(Vector3 target, Transform player)

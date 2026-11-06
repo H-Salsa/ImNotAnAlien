@@ -25,6 +25,7 @@ public sealed class AlienBrain : MonoBehaviour
         Wandering,
         Fleeing,
         Attacking,
+        Hunting,
         Tumbling,
         Devoured,
     }
@@ -87,6 +88,12 @@ public sealed class AlienBrain : MonoBehaviour
     private float hopTime = -1f;
     private Vector3 bodyRestPosition;
     private bool warnedNoNavMesh;
+
+    // Visão do policial (com linha de visão), atualizada algumas vezes por segundo.
+    private bool seesPlayer;
+    private float sightTimer;
+    private float lostSightTime;
+    private float searchTimer;
 
     public Role AlienRole => role;
     public Transform Body => body;
@@ -206,9 +213,30 @@ public sealed class AlienBrain : MonoBehaviour
                 {
                     EnterAlert();
                 }
+                else if (PoliceShouldHunt())
+                {
+                    EnterHunt();
+                }
                 else
                 {
                     UpdateWander();
+                }
+
+                break;
+
+            case State.Hunting:
+                UpdateSight(distanceToPlayer);
+                if (!PoliceShouldHunt())
+                {
+                    EnterWander();
+                }
+                else if (seesPlayer && distanceToPlayer < detectionRadius)
+                {
+                    EnterAttack();
+                }
+                else
+                {
+                    UpdateHunt();
                 }
 
                 break;
@@ -226,9 +254,24 @@ public sealed class AlienBrain : MonoBehaviour
                 break;
 
             case State.Attacking:
-                if (distanceToPlayer > calmDownDistance)
+                UpdateSight(distanceToPlayer);
+                lostSightTime = seesPlayer ? 0f : lostSightTime + Time.deltaTime;
+
+                // Procurado e te perdeu de vista por 4 s: volta a procurar pelo último ponto conhecido.
+                if (PoliceShouldHunt() && lostSightTime > 4f)
                 {
-                    EnterWander();
+                    EnterHunt();
+                }
+                else if (distanceToPlayer > calmDownDistance)
+                {
+                    if (PoliceShouldHunt())
+                    {
+                        EnterHunt(); // procurado: não desiste, vai atrás
+                    }
+                    else
+                    {
+                        EnterWander();
+                    }
                 }
                 else
                 {
@@ -411,6 +454,104 @@ public sealed class AlienBrain : MonoBehaviour
         {
             weapon.Tick(player);
         }
+    }
+
+    // ---------- Caçada (policial com o jogador procurado) ----------
+
+    private bool PoliceShouldHunt()
+    {
+        return role == Role.Policial && PlayerIsAvailable() && WantedSystem.Instance != null && WantedSystem.Instance.Stars > 0;
+    }
+
+    private void EnterHunt()
+    {
+        state = State.Hunting;
+        searchTimer = 0f;
+        lostSightTime = 0f;
+        agent.speed = attackMoveSpeed * 1.2f;
+        agent.updateRotation = true;
+        repathTimer = 0f;
+        if (alertIcon != null)
+        {
+            alertIcon.SetActive(true);
+        }
+    }
+
+    // Vai até onde o jogador foi visto por último; chegando lá, procura em volta.
+    // Só segue o jogador "de verdade" se estiver vendo ele.
+    private void UpdateHunt()
+    {
+        repathTimer -= Time.deltaTime;
+        if (repathTimer > 0f)
+        {
+            return;
+        }
+
+        repathTimer = 1f;
+        Vector3 lastKnown = WantedSystem.Instance.LastKnownPosition;
+        Vector3 target = seesPlayer ? player.position : lastKnown;
+
+        bool arrived = !seesPlayer && (transform.position - lastKnown).sqrMagnitude < 4f * 4f;
+        if (arrived)
+        {
+            // Procurando: anda para pontos aleatórios perto do último lugar conhecido.
+            searchTimer -= 1f;
+            if (searchTimer > 0f && agent.hasPath)
+            {
+                return;
+            }
+
+            searchTimer = Random.Range(3f, 5f);
+            Vector2 offset = Random.insideUnitCircle * 14f;
+            target = lastKnown + new Vector3(offset.x, 0f, offset.y);
+        }
+
+        if (NavMesh.SamplePosition(target, out NavMeshHit hit, 4f, NavMesh.AllAreas))
+        {
+            agent.SetDestination(hit.position);
+        }
+    }
+
+    // O policial vê o jogador? (perto o bastante e sem paredes no caminho)
+    private void UpdateSight(float distanceToPlayer)
+    {
+        sightTimer -= Time.deltaTime;
+        if (sightTimer > 0f)
+        {
+            return;
+        }
+
+        sightTimer = 0.25f;
+        seesPlayer = false;
+        if (player == null || distanceToPlayer > calmDownDistance)
+        {
+            return;
+        }
+
+        if (distanceToPlayer < 4f)
+        {
+            seesPlayer = true; // colado: percebe mesmo sem ver
+            return;
+        }
+
+        Vector3 eyes = transform.position + Vector3.up * 1.8f;
+        Vector3 target = player.position + Vector3.up * 0.5f;
+        Vector3 direction = target - eyes;
+        float distance = direction.magnitude;
+        RaycastHit[] hits = Physics.RaycastAll(eyes, direction / distance, distance, Physics.DefaultRaycastLayers,
+            QueryTriggerInteraction.Ignore);
+        foreach (RaycastHit hit in hits)
+        {
+            Transform hitTransform = hit.collider.transform;
+            if (hitTransform.IsChildOf(transform) || hitTransform.IsChildOf(player) || hit.collider.attachedRigidbody != null)
+            {
+                continue; // ele mesmo, o jogador e objetos soltos não bloqueiam
+            }
+
+            return; // parede, casa, árvore...
+        }
+
+        seesPlayer = true;
     }
 
     // ---------- Telecinese ----------

@@ -129,6 +129,12 @@ public sealed class ShockwaveAbility : MonoBehaviour
             alien.TakeDamage(stats.damage * Mathf.Lerp(0.4f, 1f, falloff));
         }
 
+        // Carro do trânsito dirigindo: vira carro comum (o motorista é ejetado) e voa também.
+        if (body.isKinematic && body.TryGetComponent(out TrafficCar trafficCar))
+        {
+            trafficCar.Abandon();
+        }
+
         if (body.isKinematic)
         {
             return; // algo fixo que não deve voar

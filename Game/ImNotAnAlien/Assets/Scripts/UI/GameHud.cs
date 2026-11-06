@@ -40,6 +40,10 @@ public sealed class GameHud : MonoBehaviour
     private Text sectorEnterText;
     private float sectorEnterTimer;
     private Text dnaText;
+    private GameObject wantedRoot;
+    private Image[] wantedStars;
+    private float wantedPunch;
+    private int lastStars;
     private Text bannerText;
     private RectTransform alienRow;
     private RectTransform dnaRow;
@@ -147,6 +151,7 @@ public sealed class GameHud : MonoBehaviour
 
         UpdateHealthBar(dt);
         UpdateSectorEnterText(dt);
+        UpdateWanted(dt);
         UpdateAbilities();
 
         if (bannerTimer > 0f)
@@ -181,6 +186,37 @@ public sealed class GameHud : MonoBehaviour
     }
 
     // Linha de habilidades (teclas) e aviso de evolução disponível, embaixo da vida.
+    // Linha "PROCURADO" com os losangos das estrelas (só aparece com 1 estrela ou mais).
+    private void UpdateWanted(float dt)
+    {
+        WantedSystem wanted = WantedSystem.Instance;
+        int stars = wanted != null ? wanted.Stars : 0;
+        wantedRoot.SetActive(stars > 0);
+        if (stars == 0)
+        {
+            lastStars = 0;
+            return;
+        }
+
+        if (stars > lastStars)
+        {
+            wantedPunch = 1f;
+        }
+
+        lastStars = stars;
+        wantedPunch = Mathf.Max(0f, wantedPunch - dt * 3f);
+        wantedRoot.transform.localScale = Vector3.one * (1f + 0.3f * wantedPunch * wantedPunch);
+
+        // Procurando sem te ver: as estrelas piscam.
+        float blink = wanted.IsSearching ? 0.35f + 0.65f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 4f)) : 1f;
+        Color lit = Color.Lerp(new Color(1f, 0.85f, 0.25f), new Color(1f, 0.3f, 0.25f), (stars - 1) / 4f);
+        lit.a = blink;
+        for (int i = 0; i < wantedStars.Length; i++)
+        {
+            wantedStars[i].color = i < stars ? lit : new Color(1f, 1f, 1f, 0.15f);
+        }
+    }
+
     private void UpdateAbilities()
     {
         if (shockwave == null && playerHealth != null)
@@ -467,6 +503,36 @@ public sealed class GameHud : MonoBehaviour
         dnaText = NewText("DNA", panel, 34, dnaColor, TextAnchor.MiddleRight);
         dnaRow = dnaText.rectTransform;
         PlaceRow(dnaRow, 2);
+
+        // Nível de procurado, logo abaixo do contador.
+        RectTransform wanted = NewRect("Procurado", canvasObject.transform);
+        wanted.anchorMin = wanted.anchorMax = wanted.pivot = new Vector2(1f, 1f);
+        wanted.anchoredPosition = new Vector2(-margin, -(top + RowHeight * 3f + 16f + 8f));
+        wanted.sizeDelta = new Vector2(PanelWidth, 44f);
+        wanted.gameObject.AddComponent<Image>().color = new Color(0.12f, 0.02f, 0.05f, 0.55f);
+        Text wantedLabel = NewText("Procurado_Texto", wanted, 22, new Color(1f, 0.45f, 0.4f, 1f), TextAnchor.MiddleLeft);
+        RectTransform labelRect = wantedLabel.rectTransform;
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = new Vector2(16f, 0f);
+        labelRect.offsetMax = Vector2.zero;
+        wantedLabel.fontStyle = FontStyle.Bold;
+        wantedLabel.text = "PROCURADO";
+
+        wantedStars = new Image[5];
+        for (int i = 0; i < wantedStars.Length; i++)
+        {
+            RectTransform star = NewRect("Estrela_" + (i + 1), wanted);
+            star.anchorMin = star.anchorMax = new Vector2(1f, 0.5f);
+            star.pivot = new Vector2(0.5f, 0.5f);
+            star.sizeDelta = new Vector2(18f, 18f);
+            star.anchoredPosition = new Vector2(-24f - (wantedStars.Length - 1 - i) * 32f, 0f);
+            star.localRotation = Quaternion.Euler(0f, 0f, 45f); // losango
+            wantedStars[i] = star.gameObject.AddComponent<Image>();
+        }
+
+        wantedRoot = wanted.gameObject;
+        wantedRoot.SetActive(false);
 
         // Barra de vida no canto superior esquerdo.
         RectTransform healthPanel = NewRect("Vida", canvasObject.transform);

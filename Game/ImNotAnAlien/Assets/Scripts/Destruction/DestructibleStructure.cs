@@ -214,6 +214,7 @@ public sealed class DestructibleStructure : MonoBehaviour
 
         BuildRubble(bounds, wallMaterial, secondMaterial != null ? secondMaterial : wallMaterial);
         GameFeel.StructureCollapse(bounds.center, wallMaterial != null ? wallMaterial.color : Color.gray, bounds.size.magnitude);
+        WantedSystem.ReportDestruction(bounds.center);
         StartCoroutine(UpdateNavMeshNextFrame());
     }
 

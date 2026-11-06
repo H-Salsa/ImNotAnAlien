@@ -18503,6 +18503,7 @@ MonoBehaviour:
   evolutionClip: {fileID: 0}
   collapseClip: {fileID: 0}
   splashClip: {fileID: 0}
+  sirenClip: {fileID: 0}
 --- !u!4 &401011204
 Transform:
   m_ObjectHideFlags: 0
@@ -73425,6 +73426,7 @@ GameObject:
   - component: {fileID: 1546027947}
   - component: {fileID: 1546027946}
   - component: {fileID: 1546027948}
+  - component: {fileID: 1546027949}
   m_Layer: 0
   m_Name: Sistemas
   m_TagString: Untagged
@@ -73644,6 +73646,36 @@ MonoBehaviour:
   initialMinDistance: 15
   checkInterval: 0.5
   maxSpawnsPerCheck: 2
+--- !u!114 &1546027949
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1546027941}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 936309485e3194446918ee039691d11c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WantedSystem
+  starThresholds:
+  - 10
+  - 40
+  - 90
+  - 160
+  - 250
+  maxHeat: 300
+  civilKillHeat: 10
+  policeKillHeat: 15
+  devourHeat: 15
+  destructionHeat: 20
+  civilWitnessRadius: 25
+  policeWitnessRadius: 40
+  coolDownDelay: 10
+  heatDecayPerSecond: 6
+  policeSightRadius: 30
+  extraPolicePerStar: 00000000010000000300000005000000070000000a000000
+  maxCountingLevel: 2
 --- !u!1 &1547514251
 GameObject:
   m_ObjectHideFlags: 0

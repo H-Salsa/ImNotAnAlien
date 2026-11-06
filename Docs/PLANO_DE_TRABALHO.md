@@ -190,21 +190,35 @@ O autor escolheu começar pela destruição (caminho mais simples agora) em 5/11
 - NavMesh calculado pela ferramenta para a região inteira; 54 alienígenas novos (total 65: 50 civis, 15 policiais).
 - Próximo (Missão 12, proposta): contagem por setor, nome do setor ao entrar e recompensa por setor limpo.
 
-### Missão 12 — População dinâmica e cotas por setor
+### Missão 12 — População dinâmica e cotas por setor ✅
 
-**Em andamento.** Ferramenta `ImNotAnAlien > Preparar Populacao (Missao 12)`, rodada na cena da região ([D19](DECISOES.md)).
+**Concluída em 6/11/2026; aprovada pelo autor ("ficou muito melhor").** Ferramenta `ImNotAnAlien > Preparar Populacao (Missao 12)`, rodada na cena da região ([D19](DECISOES.md)).
 
 - Alienígenas surgem a 40–80 m do jogador, fora da visão (atrás de prédios ou fora da tela), e somem a mais de 110 m quando calmos e fora de vista. Cerca de 18 civis e 2 policiais de patrulha por perto.
 - Cota por setor; surgem só em setores que ainda têm cota. Nome do setor aparece ao entrar; HUD mostra região e setor atual.
 - Marcadores quando faltam 3 ou menos no setor atual.
 
-### Missão 13 — Nível de procurado (próxima)
+### Missão 13 — Nível de procurado ✅
 
-Estrelas de 1 a 5, sobem com caos testemunhado e descem com o tempo fora de vista; mais policiais a cada estrela; policiais dos níveis 3–5 não contam para a cota.
+**Concluída em 6/11/2026; aprovada pelo autor.** Ajuste após o teste: a polícia usa o último ponto onde viu o jogador (procura em volta), precisa de linha de visão para atacar, e não surge policial novo enquanto procuram sem ver; com estrelas, policiais novos surgem a 55 m ou mais. Ferramenta `ImNotAnAlien > Preparar Procurado (Missao 13)` ([D19](DECISOES.md)).
 
-### Missão 14 — Trânsito (depois)
+- Calor por crime testemunhado (civil a até 25 m ou policial a até 40 m, com linha de visão): matar civil +10, matar policial +15, devorar +15, derrubar casa +20.
+- Estrelas com 10 / 40 / 90 / 160 / 250 de calor; policiais extras por perto: +1 / +3 / +5 / +7 / +10. Os que surgem até ★★ contam para a cota.
+- Com estrelas, policiais caçam o jogador e atiram mais rápido (até 40% no ★★★★★).
+- Despistar: 10 s sem crimes e fora da vista da polícia → calor cai 6/s; estrelas piscam enquanto procuram. Morrer ou limpar a região zera.
+- HUD: linha PROCURADO com 5 losangos abaixo do contador; sirene ao subir uma estrela.
+- Ideia futura: reforços especiais no ★★★★★.
 
-Carros circulando com alienígenas dirigindo.
+### Missão 14 — Trânsito
+
+**Em andamento.** Ferramenta `ImNotAnAlien > Preparar Transito (Missao 14)`.
+
+- Rede montada a partir das 4 ruas (cruzamentos e pontas automáticos); cerca de 6 carros por perto, surgindo e sumindo fora da vista.
+- Conversíveis com motorista alienígena visível; mão direita, curvas nos cruzamentos, retorno no fim da rua; 9 m/s na reta, 4,5 m/s nas curvas.
+- Freiam diante de jogador, alienígenas, carros e objetos; buzinam se o jogador ficar na frente; destravam sozinhos após alguns segundos.
+- Telecinese ou Onda de Impacto num carro em movimento: vira carro comum e o motorista é ejetado (vira civil e conta para a cota, se houver vaga).
+- Carros estacionados foram tirados das faixas.
+- Ideia futura: carros de polícia com o nível de procurado.
 
 ### Missão 15 — Arte dos alienígenas e do protagonista
 

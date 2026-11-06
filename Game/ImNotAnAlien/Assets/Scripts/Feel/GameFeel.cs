@@ -46,6 +46,8 @@ public sealed class GameFeel : MonoBehaviour
     [SerializeField] private AudioClip evolutionClip;
     [SerializeField] private AudioClip collapseClip;
     [SerializeField] private AudioClip splashClip;
+    [SerializeField] private AudioClip sirenClip;
+    [SerializeField] private AudioClip hornClip;
 
     private const int SampleRate = 44100;
     private const int VoiceCount = 10;
@@ -86,6 +88,8 @@ public sealed class GameFeel : MonoBehaviour
         if (evolutionClip == null) evolutionClip = SynthEvolution();
         if (collapseClip == null) collapseClip = SynthCollapse();
         if (splashClip == null) splashClip = SynthSplash();
+        if (sirenClip == null) sirenClip = SynthSiren();
+        if (hornClip == null) hornClip = SynthHorn();
     }
 
     private void OnDestroy()
@@ -298,6 +302,27 @@ public sealed class GameFeel : MonoBehaviour
         Instance.EmitDebris(position, Mathf.RoundToInt(Mathf.Lerp(8f, 30f, amount)), new Color(0.55f, 0.85f, 1f),
             Mathf.Lerp(0.6f, 1.4f, amount));
         Instance.Play(Instance.splashClip, position, Mathf.Lerp(0.35f, 0.9f, amount), 0.85f, 1.15f);
+    }
+
+    // Subiu uma estrela de procurado: sirene curta.
+    public static void WantedUp()
+    {
+        if (Instance == null)
+        {
+            return;
+        }
+
+        Camera cam = Camera.main;
+        Instance.Play(Instance.sirenClip, cam != null ? cam.transform.position : Vector3.zero, 0.55f, 1f, 1f);
+    }
+
+    // Buzina de carro do trânsito.
+    public static void Horn(Vector3 position)
+    {
+        if (Instance != null)
+        {
+            Instance.Play(Instance.hornClip, position, 0.6f, 0.9f, 1.15f);
+        }
     }
 
     public static void EvolutionBought()
@@ -666,6 +691,38 @@ public sealed class GameFeel : MonoBehaviour
             float spray = filtered * Mathf.Exp(-t * 6f) * 1.4f;
             float glub = Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(180f, 90f, Mathf.Clamp01(t / 0.2f)) * t) * Mathf.Exp(-t * 14f) * 0.5f;
             return Mathf.Clamp(spray + glub, -1f, 1f);
+        });
+    }
+
+    // Sirene "uí-ó uí-ó": dois tons alternando, com subida suave entre eles.
+    private static AudioClip SynthSiren()
+    {
+        return Synth("Sirene", 0.9f, (t, n) =>
+        {
+            float phase = Mathf.Repeat(t / 0.45f, 1f);
+            float freq = phase < 0.5f ? Mathf.Lerp(720f, 960f, phase * 2f) : Mathf.Lerp(960f, 720f, (phase - 0.5f) * 2f);
+            float wave = Mathf.Sin(2f * Mathf.PI * freq * t);
+            wave = Mathf.Sign(wave) * Mathf.Pow(Mathf.Abs(wave), 0.5f); // um pouco "metálico"
+            float envelope = Mathf.Min(t / 0.03f, 1f) * Mathf.Clamp01((0.9f - t) / 0.15f);
+            return wave * envelope * 0.3f;
+        });
+    }
+
+    // "Biii-biiip": buzina com dois toques, timbre de corneta (quadrada suavizada, dois tons juntos).
+    private static AudioClip SynthHorn()
+    {
+        return Synth("Buzina", 0.55f, (t, n) =>
+        {
+            bool on = t < 0.16f || t > 0.24f && t < 0.52f;
+            if (!on)
+            {
+                return 0f;
+            }
+
+            float a = Mathf.Sin(2f * Mathf.PI * 415f * t);
+            float b = Mathf.Sin(2f * Mathf.PI * 523f * t);
+            float wave = Mathf.Clamp((a + b) * 1.6f, -1f, 1f);
+            return wave * 0.28f;
         });
     }
 

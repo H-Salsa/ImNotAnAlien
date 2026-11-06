@@ -187,6 +187,7 @@ public sealed class AlienHealth : MonoBehaviour
 
         DnaOrbSystem.SpawnFrom(this, transform.position + Vector3.up * 1.2f, dnaValue, orbCount);
         TintAsDrained();
+        WantedSystem.ReportKill(transform.position, brain != null && brain.AlienRole == AlienBrain.Role.Policial);
 
         Debug.Log($"{name} foi derrotado.", this);
         Died?.Invoke(this);

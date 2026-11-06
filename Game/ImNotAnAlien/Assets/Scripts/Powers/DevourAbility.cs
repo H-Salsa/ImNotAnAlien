@@ -215,6 +215,7 @@ public sealed class DevourAbility : MonoBehaviour
         }
 
         GameFeel.Devour(endPosition, skinColor);
+        WantedSystem.ReportDevour(endPosition);
         devouring = false;
     }
 
