@@ -332,6 +332,7 @@ public sealed class TrafficSystem : MonoBehaviour
         body.isKinematic = true; // dirigindo: quem move é o TrafficCar
         body.interpolation = RigidbodyInterpolation.Interpolate;
         car.AddComponent<TelekinesisTarget>();
+        car.AddComponent<ExplosiveVehicle>(); // tem gasolina: pode pegar fogo e explodir
 
         TrafficCar trafficCar = car.AddComponent<TrafficCar>();
         trafficCar.SetDriver(driver.gameObject);

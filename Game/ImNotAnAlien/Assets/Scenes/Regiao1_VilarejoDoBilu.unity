@@ -10619,7 +10619,7 @@ Transform:
   m_GameObject: {fileID: 247579782}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 1, z: -0, w: -0.00000004371139}
-  m_LocalPosition: {x: 214, y: 0.05, z: -177.4}
+  m_LocalPosition: {x: 214, y: 0.05, z: -173.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -18504,6 +18504,7 @@ MonoBehaviour:
   collapseClip: {fileID: 0}
   splashClip: {fileID: 0}
   sirenClip: {fileID: 0}
+  hornClip: {fileID: 0}
 --- !u!4 &401011204
 Transform:
   m_ObjectHideFlags: 0
@@ -23542,7 +23543,7 @@ Transform:
   m_GameObject: {fileID: 483963560}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 2.6, y: 0.05, z: -66}
+  m_LocalPosition: {x: 6.4, y: 0.05, z: -66}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -24298,7 +24299,7 @@ Transform:
   m_GameObject: {fileID: 497967872}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 167.6, y: 0.05, z: -62}
+  m_LocalPosition: {x: 171.4, y: 0.05, z: -62}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -32716,7 +32717,7 @@ Transform:
   m_GameObject: {fileID: 685924602}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 204, y: 0.05, z: -2.6}
+  m_LocalPosition: {x: 204, y: 0.05, z: -6.4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -36900,7 +36901,7 @@ Transform:
   m_GameObject: {fileID: 796995832}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 162.4, y: 0.05, z: 40}
+  m_LocalPosition: {x: 158.6, y: 0.05, z: 40}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -47289,7 +47290,7 @@ Transform:
   m_GameObject: {fileID: 1027675967}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -2.6, y: 0.05, z: -214}
+  m_LocalPosition: {x: -6.4, y: 0.05, z: -214}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -48777,7 +48778,7 @@ Transform:
   m_GameObject: {fileID: 1068489186}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 1, z: -0, w: -0.00000004371139}
-  m_LocalPosition: {x: 128, y: 0.05, z: 2.6}
+  m_LocalPosition: {x: 128, y: 0.05, z: 6.4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -51333,7 +51334,7 @@ Transform:
   m_GameObject: {fileID: 1120797533}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 66, y: 0.05, z: -2.6}
+  m_LocalPosition: {x: 66, y: 0.05, z: -6.4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -56876,7 +56877,7 @@ Transform:
   m_GameObject: {fileID: 1231937234}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -14, y: 0.05, z: -2.6}
+  m_LocalPosition: {x: -14, y: 0.05, z: -6.4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -67334,7 +67335,7 @@ Transform:
   m_GameObject: {fileID: 1403613248}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 52, y: 0.05, z: -182.6}
+  m_LocalPosition: {x: 52, y: 0.05, z: -186.4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -73427,6 +73428,7 @@ GameObject:
   - component: {fileID: 1546027946}
   - component: {fileID: 1546027948}
   - component: {fileID: 1546027949}
+  - component: {fileID: 1546027950}
   m_Layer: 0
   m_Name: Sistemas
   m_TagString: Untagged
@@ -73644,6 +73646,7 @@ MonoBehaviour:
   spawnMaxDistance: 80
   despawnDistance: 110
   initialMinDistance: 15
+  wantedPoliceMinDistance: 55
   checkInterval: 0.5
   maxSpawnsPerCheck: 2
 --- !u!114 &1546027949
@@ -73676,6 +73679,63 @@ MonoBehaviour:
   policeSightRadius: 30
   extraPolicePerStar: 00000000010000000300000005000000070000000a000000
   maxCountingLevel: 2
+--- !u!114 &1546027950
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1546027941}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9dceb713d6e5c3544aad96923b0131df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TrafficSystem
+  roads:
+  - name: Principal (Leste-Oeste)
+    eastWest: 1
+    at: 0
+    from: -60
+    to: 240
+  - name: Sul (Leste-Oeste)
+    eastWest: 1
+    at: -180
+    from: -60
+    to: 240
+  - name: Ponte Oeste (Norte-Sul)
+    eastWest: 0
+    at: 0
+    from: -240
+    to: 60
+  - name: Ponte Leste (Norte-Sul)
+    eastWest: 0
+    at: 165
+    from: -240
+    to: 60
+  laneOffset: 2.5
+  intersectionClearance: 6.5
+  targetCars: 6
+  spawnMinDistance: 50
+  spawnMaxDistance: 120
+  despawnDistance: 140
+  cruiseSpeed: 9
+  turnSpeed: 4.5
+  bodyColors:
+  - {fileID: 2100000, guid: e56b1412712ef69469b7ac3fe97a1c1b, type: 2}
+  - {fileID: 2100000, guid: 51fb915282c315945a516852b268f902, type: 2}
+  - {fileID: 2100000, guid: 2437bd030d8d11b4b81b31224b91c7a3, type: 2}
+  - {fileID: 2100000, guid: dd9a8759bd4928d4caccdf62fdc04b5f, type: 2}
+  - {fileID: 2100000, guid: 145f5cb61d6b3b14faa7c8503c65efad, type: 2}
+  - {fileID: 2100000, guid: 90c2411750171174e9bd1ae438f6379e, type: 2}
+  glass: {fileID: 2100000, guid: 1cd7130e4652c37498d9d7c4fc80695d, type: 2}
+  wheel: {fileID: 2100000, guid: 40961aa771a05de449d8f5feb0fa6b9b, type: 2}
+  driverSkins:
+  - {fileID: 2100000, guid: 03894583dd73c7e4ca665cf981dc7ca9, type: 2}
+  - {fileID: 2100000, guid: d346da4b6d336a94f87efd722a8be8ee, type: 2}
+  - {fileID: 2100000, guid: 94a6520d73d1b33428086944ae0511b4, type: 2}
+  - {fileID: 2100000, guid: 57eaab94f5c9b0e43a28d76f54eaf9d3, type: 2}
+  - {fileID: 2100000, guid: edcf0712cfa4efe4387c5a02d9c3acb6, type: 2}
+  eye: {fileID: 2100000, guid: f6efada7311421d43b504a394f05a172, type: 2}
 --- !u!1 &1547514251
 GameObject:
   m_ObjectHideFlags: 0

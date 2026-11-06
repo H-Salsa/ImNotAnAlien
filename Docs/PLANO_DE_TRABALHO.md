@@ -209,9 +209,9 @@ O autor escolheu começar pela destruição (caminho mais simples agora) em 5/11
 - HUD: linha PROCURADO com 5 losangos abaixo do contador; sirene ao subir uma estrela.
 - Ideia futura: reforços especiais no ★★★★★.
 
-### Missão 14 — Trânsito
+### Missão 14 — Trânsito ✅
 
-**Em andamento.** Ferramenta `ImNotAnAlien > Preparar Transito (Missao 14)`.
+**Concluída em 6/11/2026; aprovada pelo autor.** Ferramenta `ImNotAnAlien > Preparar Transito (Missao 14)`.
 
 - Rede montada a partir das 4 ruas (cruzamentos e pontas automáticos); cerca de 6 carros por perto, surgindo e sumindo fora da vista.
 - Conversíveis com motorista alienígena visível; mão direita, curvas nos cruzamentos, retorno no fim da rua; 9 m/s na reta, 4,5 m/s nas curvas.
@@ -219,6 +219,8 @@ O autor escolheu começar pela destruição (caminho mais simples agora) em 5/11
 - Telecinese ou Onda de Impacto num carro em movimento: vira carro comum e o motorista é ejetado (vira civil e conta para a cota, se houver vaga).
 - Carros estacionados foram tirados das faixas.
 - Ideia futura: carros de polícia com o nível de procurado.
+
+**Carros explosivos** (pedido do autor em 6/11/2026; ferramenta `ImNotAnAlien > Preparar Carros Explosivos`): carros perdem vida com batidas fortes (vida 60; dano = (velocidade − 12) × 4, sem contar enquanto segurados); danificados soltam fumaça; sem vida pegam fogo e explodem em 2,5 s (ou na hora com outra pancada forte). Explosão de raio 8 m: empurra tudo, fere alienígenas (120) e o jogador (40), danifica casas (300) e outros carros (reação em cadeia), conta como crime e deixa uma carcaça queimada.
 
 ### Missão 15 — Arte dos alienígenas e do protagonista
 

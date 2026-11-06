@@ -48,6 +48,7 @@ public sealed class GameFeel : MonoBehaviour
     [SerializeField] private AudioClip splashClip;
     [SerializeField] private AudioClip sirenClip;
     [SerializeField] private AudioClip hornClip;
+    [SerializeField] private AudioClip explosionClip;
 
     private const int SampleRate = 44100;
     private const int VoiceCount = 10;
@@ -90,6 +91,7 @@ public sealed class GameFeel : MonoBehaviour
         if (splashClip == null) splashClip = SynthSplash();
         if (sirenClip == null) sirenClip = SynthSiren();
         if (hornClip == null) hornClip = SynthHorn();
+        if (explosionClip == null) explosionClip = SynthExplosion();
     }
 
     private void OnDestroy()
@@ -323,6 +325,112 @@ public sealed class GameFeel : MonoBehaviour
         {
             Instance.Play(Instance.hornClip, position, 0.6f, 0.9f, 1.15f);
         }
+    }
+
+    // ---------- Fogo, fumaça e explosão (carros) ----------
+
+    // Explosão: bola de fogo em cubinhos, fumaça escura, clarão de luz, estrondo e tela tremendo.
+    public static void Explosion(Vector3 position, float radius)
+    {
+        if (Instance == null)
+        {
+            return;
+        }
+
+        GameFeel feel = Instance;
+        feel.EmitDebris(position, 45, new Color(1f, 0.45f, 0.1f), 2.2f);   // fogo laranja
+        feel.EmitDebris(position, 30, new Color(1f, 0.85f, 0.3f), 1.6f);   // miolo amarelo
+        feel.EmitDebris(position + Vector3.up, 45, new Color(0.18f, 0.17f, 0.17f), 1.1f); // fumaça
+        feel.Play(feel.explosionClip, position, 1f, 0.9f, 1.05f);
+        feel.ShakeFrom(position, Mathf.Clamp(radius / 9f, 0.5f, 1f));
+        feel.HitStop(feel.hitStopDuration * 1.6f);
+        feel.StartCoroutine(feel.FlashRoutine(position, radius));
+    }
+
+    private System.Collections.IEnumerator FlashRoutine(Vector3 position, float radius)
+    {
+        GameObject flashObject = new GameObject("Clarao_Explosao");
+        flashObject.transform.position = position + Vector3.up;
+        Light flash = flashObject.AddComponent<Light>();
+        flash.type = LightType.Point;
+        flash.color = new Color(1f, 0.6f, 0.25f);
+        flash.range = radius * 2.5f;
+        flash.shadows = LightShadows.None;
+
+        const float duration = 0.45f;
+        for (float t = 0f; t < duration; t += Time.unscaledDeltaTime)
+        {
+            flash.intensity = Mathf.Lerp(12f, 0f, t / duration);
+            yield return null;
+        }
+
+        Destroy(flashObject);
+    }
+
+    // Fogo contínuo (cubinhos laranja subindo). Preso ao objeto: acompanha o carro.
+    public static ParticleSystem CreateFire(Transform parent, Vector3 localOffset)
+    {
+        return Instance != null
+            ? Instance.CreateLoop("Fogo", parent, localOffset, new Color(1f, 0.4f, 0.08f), new Color(1f, 0.85f, 0.3f),
+                30f, new Vector2(1.5f, 3f), new Vector2(0.15f, 0.45f), 0.7f)
+            : null;
+    }
+
+    // Fumaça contínua (cubinhos cinza escuro subindo devagar).
+    public static ParticleSystem CreateSmoke(Transform parent, Vector3 localOffset)
+    {
+        return Instance != null
+            ? Instance.CreateLoop("Fumaca", parent, localOffset, new Color(0.15f, 0.15f, 0.15f), new Color(0.4f, 0.4f, 0.42f),
+                10f, new Vector2(1f, 2f), new Vector2(0.3f, 0.7f), 2f)
+            : null;
+    }
+
+    private ParticleSystem CreateLoop(string name, Transform parent, Vector3 localOffset, Color colorA, Color colorB, float rate,
+        Vector2 speed, Vector2 size, float lifetime)
+    {
+        GameObject go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = localOffset;
+        ParticleSystem system = go.AddComponent<ParticleSystem>();
+        system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+        ParticleSystem.MainModule main = system.main;
+        main.loop = true;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(lifetime * 0.7f, lifetime);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(speed.x, speed.y);
+        main.startSize = new ParticleSystem.MinMaxCurve(size.x, size.y);
+        main.startColor = new ParticleSystem.MinMaxGradient(colorA, colorB);
+        main.startRotation3D = true;
+        main.startRotationX = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+        main.startRotationY = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+        main.startRotationZ = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+        main.gravityModifier = -0.15f; // sobe
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.maxParticles = 200;
+
+        ParticleSystem.EmissionModule emission = system.emission;
+        emission.rateOverTime = rate;
+
+        ParticleSystem.ShapeModule shape = system.shape;
+        shape.shapeType = ParticleSystemShapeType.Cone;
+        shape.angle = 15f;
+        shape.radius = 0.5f;
+        shape.rotation = new Vector3(-90f, 0f, 0f); // para cima
+
+        ParticleSystem.SizeOverLifetimeModule shrink = system.sizeOverLifetime;
+        shrink.enabled = true;
+        shrink.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0f));
+
+        ParticleSystemRenderer particleRenderer = go.GetComponent<ParticleSystemRenderer>();
+        particleRenderer.renderMode = ParticleSystemRenderMode.Mesh;
+        particleRenderer.mesh = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+        if (particleMaterial != null)
+        {
+            particleRenderer.sharedMaterial = particleMaterial;
+        }
+
+        system.Play();
+        return system;
     }
 
     public static void EvolutionBought()
@@ -723,6 +831,22 @@ public sealed class GameFeel : MonoBehaviour
             float b = Mathf.Sin(2f * Mathf.PI * 523f * t);
             float wave = Mathf.Clamp((a + b) * 1.6f, -1f, 1f);
             return wave * 0.28f;
+        });
+    }
+
+    // "KABUM": estalo forte + ronco grave longo + chiado abafado da bola de fogo.
+    private static AudioClip SynthExplosion()
+    {
+        float rumble = 0f;
+        float roar = 0f;
+        return Synth("Explosao", 1.6f, (t, n) =>
+        {
+            float crack = n * Mathf.Exp(-t * 35f);
+            rumble += (n - rumble) * 0.02f;
+            roar += (n - roar) * 0.15f;
+            float boom = Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(65f, 28f, Mathf.Clamp01(t / 0.8f)) * t) * Mathf.Exp(-t * 2.6f);
+            float mix = crack * 0.9f + boom * 1.1f + rumble * 7f * Mathf.Exp(-t * 1.8f) + roar * 1.5f * Mathf.Exp(-t * 4f);
+            return Mathf.Clamp(mix * 1.1f, -1f, 1f);
         });
     }
 
