@@ -141,9 +141,9 @@ Rumo aprovado pelo autor em 5/11/2026: mais alienígenas, evoluções com DNA e 
 - Devorar com a tecla 1 e barra de vida sobre o alienígena mirado (D12).
 - Vida do jogador: barra no canto superior esquerdo, flash vermelho, regeneração após 4 s, derrota e renascimento no início sem perder progresso.
 
-### Missão 9 — Evoluções
+### Missão 9 — Evoluções ✅
 
-**Em andamento (6/11/2026).** Ferramenta `ImNotAnAlien > Preparar Evolucoes` ([D16](DECISOES.md)).
+**Concluída em 5/11/2026; testada pelo autor.** O autor pretende voltar ao menu para ajustes finos (custos, efeitos, aparência). Ferramenta `ImNotAnAlien > Preparar Evolucoes` ([D16](DECISOES.md)).
 
 | Evolução | Níveis e efeito | Custos (DNA) |
 | --- | --- | --- |
@@ -163,6 +163,21 @@ Definida pelo autor em 5/11/2026 ([D15](DECISOES.md)), ainda sem versão: estrut
 ### Estado em 5/11/2026 (fim do dia)
 
 Missão 8 testada pelo autor: dano por peso, Devorar (alcance 20 m), policiais com rajada rápida desviável (mira travada no aviso), vida do jogador e marcadores dos últimos 3 alienígenas. Autor adicionou uma casa no lado leste e moveu o `Civil_05`. Lembretes: salvar a cena (Ctrl+S) e refazer o Bake do NavMesh ao mudar o cenário. **Próximo passo: Missão 9.**
+
+**Versão 0.3 concluída em 5/11/2026:** ciclo completo (explorar, enfrentar policiais, derrotar/devorar, coletar DNA, evoluir, limpar o setor).
+
+## Versão 0.4 — Destruição e cara de jogo
+
+O autor escolheu começar pela destruição (caminho mais simples agora) em 5/11/2026; a arte (personagens e cenário estilizados) deve vir logo depois, por ser o que mais pesa para a Steam.
+
+### Missão 10 — Estruturas destrutíveis ✅
+
+**Concluída em 5/11/2026; aprovada pelo autor.** Ajuste após o teste: os blocos só afundam depois de pousar e parar (no máximo 6 s com física); a separação inicial entre blocos sobrepostos foi suavizada para não lançá-los para cima. Ferramenta `ImNotAnAlien > Preparar Destruicao` ([D15](DECISOES.md)).
+
+- Casas dentro de `Esquina_Blockout` (nome começando com "Casa" e com parte "Paredes") ganham `DestructibleStructure`; o prédio fica de fora (Superforça).
+- Só objetos de 300 kg ou mais causam dano: o carro (900 kg) derruba uma casa com cerca de 3 arremessos (2 com Força Telecinética). Vida da casa: 500.
+- Cada batida: tremor, poeira, lascas e a casa fica mais encardida.
+- Ao cair: blocos caem por 1,2–2,2 s, afundam no chão e são apagados; fica um monte de escombros; o NavMesh é atualizado em tempo de jogo.
 
 ## Depois da 0.1 (sem ordem aprovada)
 

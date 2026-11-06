@@ -44,6 +44,7 @@ public sealed class GameFeel : MonoBehaviour
     [SerializeField] private AudioClip devourClip;
     [SerializeField] private AudioClip shockwaveClip;
     [SerializeField] private AudioClip evolutionClip;
+    [SerializeField] private AudioClip collapseClip;
 
     private const int SampleRate = 44100;
     private const int VoiceCount = 10;
@@ -82,6 +83,7 @@ public sealed class GameFeel : MonoBehaviour
         if (devourClip == null) devourClip = SynthDevour();
         if (shockwaveClip == null) shockwaveClip = SynthShockwave();
         if (evolutionClip == null) evolutionClip = SynthEvolution();
+        if (collapseClip == null) collapseClip = SynthCollapse();
     }
 
     private void OnDestroy()
@@ -252,6 +254,34 @@ public sealed class GameFeel : MonoBehaviour
 
         feel.Play(feel.shockwaveClip, center, 1f, 0.95f, 1.05f);
         CameraShake.AddTrauma(0.55f);
+    }
+
+    // Estrutura atingida (sem cair): poeira e lascas.
+    public static void StructureHit(Vector3 point, Color color)
+    {
+        if (Instance == null)
+        {
+            return;
+        }
+
+        Instance.EmitDebris(point, 14, color, 1f);
+        Instance.EmitDebris(point, 10, new Color(0.75f, 0.72f, 0.68f), 0.7f); // poeira
+        Instance.Play(Instance.impactClip, point, 0.9f, 0.6f, 0.7f);          // baque mais grave
+    }
+
+    // Estrutura desmoronando: estrondo, nuvem de poeira e tela tremendo.
+    public static void StructureCollapse(Vector3 center, Color color, float size)
+    {
+        if (Instance == null)
+        {
+            return;
+        }
+
+        Instance.EmitDebris(center, 60, color, 1.8f);
+        Instance.EmitDebris(center + Vector3.up, 50, new Color(0.75f, 0.72f, 0.68f), 1.3f);
+        Instance.Play(Instance.collapseClip, center, 1f, 0.9f, 1.05f);
+        Instance.ShakeFrom(center, Mathf.Clamp(size / 15f, 0.4f, 0.9f));
+        Instance.HitStop(Instance.hitStopDuration);
     }
 
     public static void EvolutionBought()
@@ -577,6 +607,35 @@ public sealed class GameFeel : MonoBehaviour
             float decay = index == notes.Length - 1 ? 4f : 20f;
             float wave = Mathf.Sin(2f * Mathf.PI * notes[index] * t) + 0.4f * Mathf.Sin(2f * Mathf.PI * notes[index] * 1.5f * t);
             return wave * Mathf.Exp(-local * decay) * 0.35f;
+        });
+    }
+
+    // Desmoronamento: ronco grave de ruído + estalos de coisas quebrando.
+    private static AudioClip SynthCollapse()
+    {
+        float rumble = 0f;
+        int crackSamples = 0;
+        System.Random crackRandom = new System.Random(7);
+        return Synth("Desmoronamento", 1.8f, (t, n) =>
+        {
+            rumble += (n - rumble) * 0.025f;                                   // ruído bem abafado = ronco
+            float body = rumble * 6f * Mathf.Exp(-t * 1.6f);
+            float boom = Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(70f, 30f, Mathf.Clamp01(t)) * t) * Mathf.Exp(-t * 3f);
+
+            // Estalos: rajadas curtas de ruído (~10 ms), cada vez mais raras.
+            if (crackSamples <= 0 && crackRandom.NextDouble() < 0.0006 * Mathf.Exp(-t * 1.5f))
+            {
+                crackSamples = 450;
+            }
+
+            float crack = 0f;
+            if (crackSamples > 0)
+            {
+                crack = n * 0.9f * (crackSamples / 450f);
+                crackSamples--;
+            }
+
+            return Mathf.Clamp(body * 0.8f + boom * 0.9f + crack, -1f, 1f);
         });
     }
 
