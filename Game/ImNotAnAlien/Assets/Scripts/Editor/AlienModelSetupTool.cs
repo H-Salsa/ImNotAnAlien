@@ -7,21 +7,26 @@ using UnityEngine;
 // Ferramenta de editor da Missão 15 — alienígenas com o modelo 3D feito no Blender.
 // Menu: ImNotAnAlien > Montar Aliens 3D (Missao 15)
 // Pode rodar com qualquer cena aberta. A ferramenta:
-// 1. Ajusta a importação de Art/Characters/Aliens/Alien_Civil.fbx (Humanoid, mesmo esqueleto do
-//    protagonista) e troca os materiais do FBX por materiais URP.
-// 2. Cria o Animator Controller dos aliens (andar/correr, voando, derrota, pose de pistola).
-// 3. Coloca o modelo dentro dos prefabs Alienigena e Alienigena_Policial (em "Corpo/Visual_Alien")
-//    e adiciona o AlienAnimator. As peças de cápsula ficam escondidas, não apagadas
+// 1. Ajusta a importação de Alien_Masculino.fbx e Alien_Feminino.fbx (Humanoid, mesmo esqueleto do
+//    protagonista; cada um traz o corpo e todas as roupas) e troca os materiais do FBX por URP.
+// 2. Cria o Animator Controller dos aliens (andar/correr, segurado, voando, derrota, pistola).
+// 3. Coloca os DOIS modelos dentro dos prefabs Alienigena e Alienigena_Policial
+//    ("Corpo/Visual_Alien_M" e "Corpo/Visual_Alien_F") e adiciona AlienAppearance (sorteia corpo,
+//    roupas e cores) e AlienAnimator. As peças de cápsula ficam escondidas, não apagadas
 //    (os colisores delas continuam sendo usados).
 // Pode rodar de novo depois de exportar uma versão nova do Blender.
 public static class AlienModelSetupTool
 {
-    private const string ModelPath = "Assets/Art/Characters/Aliens/Alien_Civil.fbx";
+    private static readonly (string path, string visual)[] Models =
+    {
+        ("Assets/Art/Characters/Aliens/Alien_Masculino.fbx", "Visual_Alien_M"),
+        ("Assets/Art/Characters/Aliens/Alien_Feminino.fbx", "Visual_Alien_F"),
+    };
     private const string AnimationsFbx = "Assets/Art/Characters/Quaternius/Animations/UAL1_Standard.fbx";
     private const string ControllerPath = "Assets/Art/Characters/Aliens/Alien.controller";
     private const string ArmsMaskPath = "Assets/Art/Characters/Aliens/Alien_Bracos.mask";
     private const string MaterialFolder = "Assets/Art/Materials/Aliens";
-    private const string VisualName = "Visual_Alien";
+    private static readonly string[] OldVisuals = { "Visual_Alien", "Visual_Alien_M", "Visual_Alien_F" };
 
     private static readonly string[] Prefabs =
     {
@@ -33,6 +38,11 @@ public static class AlienModelSetupTool
     private static readonly (string blender, string unity, string hex, float smooth)[] MaterialMap =
     {
         ("Alien_Pele", "M_Alien3D_Pele", "3FA59B", 0.35f),
+        ("Alien_Pele_Listra", "M_Alien3D_Pele_Listra", "2C7F7A", 0.35f),
+        ("Roupa_Civil", "M_Alien3D_Roupa", "F2F2F2", 0.15f),
+        ("Policia_Uniforme", "M_Alien3D_Policia_Uniforme", "1E2A4A", 0.25f),
+        ("Policia_Equipamento", "M_Alien3D_Policia_Equipamento", "1A1A1F", 0.4f),
+        ("Policia_Luz", "M_Alien3D_Policia_Luz", "3FF2FF", 0.6f),
         ("Alien_Olho_Branco", "M_Alien3D_Olho_Branco", "F2EEE3", 0.7f),
         ("Alien_Olho_Iris", "M_Alien3D_Olho_Iris", "E8922B", 0.7f),
         ("Alien_Olho_Pupila", "M_Alien3D_Olho_Pupila", "141018", 0.8f),
@@ -42,42 +52,52 @@ public static class AlienModelSetupTool
     [MenuItem("ImNotAnAlien/Montar Aliens 3D (Missao 15)")]
     public static void Setup()
     {
-        ModelImporter importer = AssetImporter.GetAtPath(ModelPath) as ModelImporter;
-        if (importer == null)
-        {
-            EditorUtility.DisplayDialog("Modelo não encontrado", $"Não achei {ModelPath}.\nExporte o alien do Blender primeiro.", "OK");
-            return;
-        }
-
         try
         {
-            EditorUtility.DisplayProgressBar("Missão 15", "Importando o modelo do alien...", 0.2f);
-            ConfigureImport(importer);
-
-            Avatar avatar = AssetDatabase.LoadAllAssetsAtPath(ModelPath).OfType<Avatar>().FirstOrDefault();
-            if (avatar == null || !avatar.isValid || !avatar.isHuman)
+            List<(GameObject model, Avatar avatar, string visual)> models = new List<(GameObject, Avatar, string)>();
+            foreach (var (path, visual) in Models)
             {
-                EditorUtility.DisplayDialog("Esqueleto com problema",
-                    "O esqueleto humanoide do Alien_Civil.fbx não ficou válido.\nSelecione o arquivo, aba Rig > Configure... e me mande um print.", "OK");
+                EditorUtility.DisplayProgressBar("Missão 15", $"Importando {System.IO.Path.GetFileName(path)}...", 0.2f);
+                ModelImporter importer = AssetImporter.GetAtPath(path) as ModelImporter;
+                if (importer == null)
+                {
+                    Debug.LogWarning($"Missão 15: não achei {path} (exporte do Blender).");
+                    continue;
+                }
+
+                ConfigureImport(importer);
+                Avatar avatar = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Avatar>().FirstOrDefault();
+                if (avatar == null || !avatar.isValid || !avatar.isHuman)
+                {
+                    EditorUtility.DisplayDialog("Esqueleto com problema",
+                        $"O esqueleto humanoide de {System.IO.Path.GetFileName(path)} não ficou válido.\nSelecione o arquivo, aba Rig > Configure... e me mande um print.", "OK");
+                    return;
+                }
+
+                models.Add((AssetDatabase.LoadAssetAtPath<GameObject>(path), avatar, visual));
+            }
+
+            if (models.Count == 0)
+            {
+                EditorUtility.DisplayDialog("Modelos não encontrados", "Exporte Alien_Masculino.fbx / Alien_Feminino.fbx do Blender primeiro.", "OK");
                 return;
             }
 
             EditorUtility.DisplayProgressBar("Missão 15", "Criando as animações...", 0.5f);
             AnimatorController controller = CreateController(out List<string> missing);
 
-            EditorUtility.DisplayProgressBar("Missão 15", "Colocando o modelo nos prefabs...", 0.8f);
-            GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath);
+            EditorUtility.DisplayProgressBar("Missão 15", "Colocando os modelos nos prefabs...", 0.8f);
             int done = 0;
             foreach (string path in Prefabs)
             {
-                if (AddModelToPrefab(path, model, avatar, controller))
+                if (AddModelsToPrefab(path, models, controller))
                 {
                     done++;
                 }
             }
 
             AssetDatabase.SaveAssets();
-            string message = $"Modelo 3D colocado em {done} prefab(s) de alienígena." +
+            string message = $"Modelos 3D ({models.Count}) colocados em {done} prefab(s) de alienígena." +
                              (missing.Count > 0 ? $"\nClipes não encontrados: {string.Join(", ", missing)}" : "") +
                              "\n\nDê Play na Regiao1_VilarejoDoBilu para testar.";
             Debug.Log(message);
@@ -125,6 +145,13 @@ public static class AlienModelSetupTool
         ColorUtility.TryParseHtmlString("#" + hex, out Color color);
         material.color = color;
         material.SetFloat("_Smoothness", smoothness);
+        if (name.EndsWith("_Luz"))
+        {
+            // detalhe ciano que brilha (colete e capacete do policial)
+            material.EnableKeyword("_EMISSION");
+            material.SetColor("_EmissionColor", color * 2.5f);
+            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+        }
         EditorUtility.SetDirty(material);
         return material;
     }
@@ -241,7 +268,8 @@ public static class AlienModelSetupTool
 
     // ---------- Prefabs ----------
 
-    private static bool AddModelToPrefab(string path, GameObject model, Avatar avatar, AnimatorController controller)
+    private static bool AddModelsToPrefab(string path, List<(GameObject model, Avatar avatar, string visual)> models,
+        AnimatorController controller)
     {
         if (AssetDatabase.LoadAssetAtPath<GameObject>(path) == null)
         {
@@ -259,28 +287,39 @@ public static class AlienModelSetupTool
                 return false;
             }
 
-            Transform old = body.Find(VisualName);
-            if (old != null)
+            foreach (string oldName in OldVisuals)
             {
-                Object.DestroyImmediate(old.gameObject);
+                Transform old = body.Find(oldName);
+                if (old != null)
+                {
+                    Object.DestroyImmediate(old.gameObject);
+                }
             }
 
-            GameObject visual = (GameObject)PrefabUtility.InstantiatePrefab(model, body);
-            visual.name = VisualName;
-            visual.transform.localPosition = Vector3.zero;
-            visual.transform.localRotation = Quaternion.identity;
-            visual.transform.localScale = Vector3.one;
-
-            Animator animator = visual.GetComponent<Animator>();
-            if (animator == null)
+            foreach (var (model, avatar, visualName) in models)
             {
-                animator = visual.AddComponent<Animator>();
+                GameObject visual = (GameObject)PrefabUtility.InstantiatePrefab(model, body);
+                visual.name = visualName;
+                visual.transform.localPosition = Vector3.zero;
+                visual.transform.localRotation = Quaternion.identity;
+                visual.transform.localScale = Vector3.one;
+
+                Animator animator = visual.GetComponent<Animator>();
+                if (animator == null)
+                {
+                    animator = visual.AddComponent<Animator>();
+                }
+
+                animator.avatar = avatar;
+                animator.runtimeAnimatorController = controller;
+                animator.applyRootMotion = false;
+                animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
             }
 
-            animator.avatar = avatar;
-            animator.runtimeAnimatorController = controller;
-            animator.applyRootMotion = false;
-            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+            if (root.GetComponent<AlienAppearance>() == null)
+            {
+                root.AddComponent<AlienAppearance>();
+            }
 
             AlienAnimator alienAnimator = root.GetComponent<AlienAnimator>();
             if (alienAnimator == null)
@@ -288,8 +327,9 @@ public static class AlienModelSetupTool
                 alienAnimator = root.AddComponent<AlienAnimator>();
             }
 
+            // O AlienAnimator acha sozinho o modelo que sobrou depois do sorteio.
             SerializedObject data = new SerializedObject(alienAnimator);
-            data.FindProperty("animator").objectReferenceValue = animator;
+            data.FindProperty("animator").objectReferenceValue = null;
             data.ApplyModifiedPropertiesWithoutUndo();
 
             PrefabUtility.SaveAsPrefabAsset(root, path);

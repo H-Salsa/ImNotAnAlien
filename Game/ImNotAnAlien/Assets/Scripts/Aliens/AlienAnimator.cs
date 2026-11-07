@@ -4,8 +4,6 @@ using UnityEngine.AI;
 // Liga o modelo 3D do alienígena (Missão 15) ao comportamento que já existia.
 // Fica na raiz do alienígena (junto do AlienBrain). O modelo é o filho "Corpo/Visual_Alien".
 // - Esconde as peças antigas de cápsula (os colisores delas continuam funcionando).
-// - Cor da pele: civis usam a cor sorteada pelo PopulationSpawner; policiais são sempre
-//   verde-azulados (decisão D20).
 // - Animações: andar/correr pela velocidade do NavMeshAgent e pose de pistola quando o policial
 //   está atacando. Segurado pela telecinese: mexe braços e pernas devagar, procurando o chão.
 //   Arremessado ou morto: braços, pernas e cabeça ficam moles (AlienRagdoll).
@@ -20,8 +18,6 @@ public sealed class AlienAnimator : MonoBehaviour
     private static readonly int HeldId = Animator.StringToHash("Held");
 
     [SerializeField] private Animator animator;
-    [Tooltip("Cor da pele dos policiais (sempre verde-azulado).")]
-    [SerializeField] private Color policeSkin = new Color(0.247f, 0.647f, 0.608f);
     [Tooltip("Posição da arma em relação à mão direita (para frente, para cima).")]
     [SerializeField] private Vector2 weaponOffset = new Vector2(0.08f, 0.02f);
 
@@ -51,7 +47,8 @@ public sealed class AlienAnimator : MonoBehaviour
         brain = GetComponent<AlienBrain>();
         health = GetComponent<AlienHealth>();
         agent = GetComponent<NavMeshAgent>();
-        if (animator == null)
+        // Com dois modelos (masculino e feminino), o AlienAppearance desliga um deles antes daqui.
+        if (animator == null || !animator.gameObject.activeInHierarchy)
         {
             animator = GetComponentInChildren<Animator>();
         }
@@ -89,18 +86,7 @@ public sealed class AlienAnimator : MonoBehaviour
     {
         rootBody = GetComponent<Rigidbody>();
 
-        // O PopulationSpawner pinta o tronco antigo logo depois de criar o alien; aqui copiamos a cor.
-        bool police = brain != null && brain.AlienRole == AlienBrain.Role.Policial;
-        Color skin = police ? policeSkin : OldSkinColor();
-        SkinnedMeshRenderer model = animator.GetComponentInChildren<SkinnedMeshRenderer>();
-        if (model != null)
-        {
-            Material[] materials = model.materials; // cópias só deste alien
-            if (materials.Length > 0)
-            {
-                materials[0].color = skin; // o primeiro material é a pele
-            }
-        }
+        // A cor da pele e as roupas ficam por conta do AlienAppearance.
     }
 
     private void Update()
@@ -217,16 +203,5 @@ public sealed class AlienAnimator : MonoBehaviour
 
             part.enabled = false;
         }
-    }
-
-    private Color OldSkinColor()
-    {
-        Transform trunk = transform.Find("Corpo/Tronco");
-        if (trunk != null && trunk.TryGetComponent(out Renderer renderer) && renderer.sharedMaterial != null)
-        {
-            return renderer.sharedMaterial.color;
-        }
-
-        return new Color(0.72f, 0.6f, 0.91f);
     }
 }

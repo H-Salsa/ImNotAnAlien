@@ -233,6 +233,25 @@ Pedido do autor em 6/11/2026: trocar as cápsulas por personagens estilizados (p
 
 **Falta:** listras na cabeça e cor por código (material único com máscara), expressões (apavorado/bravo), roupa do civil, roupa do policial com boné (níveis baixos) e capacete (níveis altos), versão feminina e variação de corpo, motoristas do trânsito com o modelo novo, roupa/visual definitivo do protagonista.
 
+## Versão 0.5 — O planeta (decisão D21)
+
+Ordem aprovada pelo autor em 6/11/2026. Cada missão só começa depois que a anterior estiver testada e aprovada.
+
+### Missão 16 — Carregar o mundo sob demanda
+Cortar o Vilarejo do Bilu em blocos (posições fixas, sem sorteio ainda). Carregar os blocos em volta do jogador e descarregar os de trás, montando o NavMesh de cada bloco ao carregar, com alienígenas, trânsito e telecinese funcionando na fronteira entre blocos. Recentralizar o mundo de tempos em tempos para não tremer longe da origem.
+
+### Missão 17 — Estado permanente por região e salvamento
+Cada região guarda semente, cota total, quantos alienígenas restam e se está limpa. Região limpa continua limpa ao voltar. Salvar e carregar o jogo (DNA, evoluções, regiões).
+
+### Missão 18 — Blocos sorteados pela semente
+Peças de bloco feitas à mão com "conexões" nas bordas (rua, calçada, rio, mato). O jogo encaixa as peças a partir da semente, sem erros de ligação. Além de quarteirões com ruas, entram parques, florestas e outras áreas abertas para quebrar a sequência de ruas. Novo jogo sorteia uma semente nova.
+
+### Missão 19 — Planeta que dá a volta, quatro bases e mapa
+Grade com coordenadas de latitude/longitude que dá a volta. Bases fixas no norte, sul, leste e oeste (pontos de referência, descanso e recursos a definir). Mapa do planeta mostrando regiões limpas e o progresso até o teletransporte.
+
+### Missão 20 — Ambientes e enfeites procedurais
+Tipos de região (subúrbio, zona industrial, fazendas, deserto, laboratórios…) e enfeites colocados por regras dentro dos blocos. Dificuldade subindo com a distância do ponto inicial.
+
 ## Depois da 0.1 (sem ordem aprovada)
 
 - Trocar cápsulas por personagens estilizados (pacotes de assets prontos e animações do Mixamo, com ajustes no Blender).

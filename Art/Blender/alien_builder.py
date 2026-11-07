@@ -25,8 +25,17 @@ HEAD_PROFILE = [
     (1.996, 0.034, -0.038, -0.086),
 ]
 
+# Listras do crânio: uma coluna a cada "every" (48 colunas no total).
+STRIPES = dict(every=6, above_eyes=0.045, below_top=0.03)
+
 # Inclinação da cabeça para trás (o bulbo "cai" para trás, como na arte conceitual).
 TILT = dict(degrees=20.0, pivot=(0.0, -0.035, 1.600), start=1.600, full=1.740)
+
+
+# Valores acima são do corpo masculino (osso Head em z = 1.5998). Para outros corpos (feminino),
+# tudo da cabeça é deslocado pela diferença de altura do osso Head (veja apply_body_offset).
+BASE_HEAD_Z = 1.5998
+OFFSET = dict(dz=0.0, head_scale=1.0)
 
 
 def _smooth(a, b, x):
@@ -40,6 +49,16 @@ def tilt_point(p, factor_z=None):
     if f <= 0:
         return Vector(p)
     a = math.radians(TILT["degrees"]) * f
+    pv = Vector(TILT["pivot"])
+    d = p - pv
+    y = d.y * math.cos(a) - d.z * math.sin(a)
+    z = d.y * math.sin(a) + d.z * math.cos(a)
+    return pv + Vector((d.x, y, z))
+
+
+def untilt_point(p):
+    """Desfaz a inclinação total (vale para pontos do crânio, acima de TILT['full'])."""
+    a = -math.radians(TILT["degrees"])
     pv = Vector(TILT["pivot"])
     d = p - pv
     y = d.y * math.cos(a) - d.z * math.sin(a)
@@ -104,11 +123,18 @@ def build_head(body, name="AlienHead", profile=None):
     bm = bmesh.new()
     ring0 = [bm.verts.new(p) for _, p in boundary]
     rings = []
-    for z, hx, yf, yb in _sample(profile, 4):
+    samples = _sample(profile, 4)
+    for z, hx, yf, yb in samples:
         rings.append([bm.verts.new(tilt_point(head_point(z, hx, yf, yb, th))) for th in thetas])
-    for a, b in zip(rings, rings[1:]):
+    # Listras: faixas "de melão" (colunas) no crânio, da testa até perto do topo.
+    stripe_from = EYE["z"] + STRIPES["above_eyes"]
+    stripe_to = profile[-1][0] - STRIPES["below_top"]
+    for k, (a, b) in enumerate(zip(rings, rings[1:])):
+        z_mid = (samples[k][0] + samples[k + 1][0]) * 0.5
         for j in range(seg):
-            bm.faces.new((a[j], a[(j + 1) % seg], b[(j + 1) % seg], b[j]))
+            f = bm.faces.new((a[j], a[(j + 1) % seg], b[(j + 1) % seg], b[j]))
+            if stripe_from < z_mid < stripe_to and (j - seg // 2) % STRIPES["every"] == 0:
+                f.material_index = 1
 
     # Costura: liga a borda do pescoço (vértices em ângulos irregulares) ao primeiro anel
     # (ângulos regulares) com triângulos, andando pelos dois em ordem de ângulo ("zíper").
@@ -160,7 +186,7 @@ def build_head(body, name="AlienHead", profile=None):
     neck = obj.vertex_groups.get("neck_01") or obj.vertex_groups.new(name="neck_01")
     head = obj.vertex_groups.get("Head") or obj.vertex_groups.new(name="Head")
     for v in me.vertices[len(boundary):]:
-        w = _smooth(1.585, 1.650, v.co.z)
+        w = _smooth(1.585 + OFFSET["dz"], 1.650 + OFFSET["dz"], v.co.z)
         head.add([v.index], w, 'REPLACE')
         if w < 1:
             neck.add([v.index], 1 - w, 'REPLACE')
@@ -179,7 +205,8 @@ def join_into(body, parts):
     bm = bmesh.new()
     bm.from_mesh(body.data)
     mw = body.matrix_world
-    seam = [v for v in bm.verts if 1.45 < (mw @ v.co).z < 1.6 and abs((mw @ v.co).x) < 0.15]
+    dz = OFFSET["dz"]
+    seam = [v for v in bm.verts if 1.45 + dz < (mw @ v.co).z < 1.6 + dz and abs((mw @ v.co).x) < 0.15]
     bmesh.ops.remove_doubles(bm, verts=seam, dist=0.0003)
     bm.to_mesh(body.data)
     bm.free()
@@ -336,21 +363,29 @@ def build_hand(arm, side, mats, wrist_info=None):
     hand_tail = bone_world(arm, f"hand_{side}", tail=True)
     hand_dir = (hand_tail - wrist).normalized()
 
-    verts, radii, edges = [], [], []
+    verts, radii, flat, edges = [], [], [], []
+    k = OFFSET["head_scale"]  # mão um pouco menor no corpo feminino
 
-    def add(p, r):
+    def add(p, r, f=1.0):
         verts.append(Vector(p))
         radii.append(r)
+        flat.append(f)
         return len(verts) - 1
 
     if wrist_info:
-        w = add(wrist_info[0], wrist_info[1])
+        # Um pedacinho de "pulso" redondo antes da palma: a costura fica num lugar redondo,
+        # longe da palma achatada (evita dobras no pulso).
+        w = add(wrist_info[0], wrist_info[1], 0.85)
+        w2 = add(wrist_info[0] + hand_dir * 0.024, wrist_info[1] * 0.95, 0.8)
+        edges.append((w, w2))
     else:
-        w = add(wrist - hand_dir * 0.045, HAND["wrist"])
+        w2 = add(wrist - hand_dir * 0.045, HAND["wrist"] * k, 0.85)
     bases = [bone_world(arm, f"{f}_01_{side}") for f in ("index", "ring")]
     palm_center = (wrist + (bases[0] + bases[1]) * 0.5) * 0.5
-    p = add(palm_center, HAND["palm"])
-    edges.append((w, p))
+    if wrist_info and (palm_center - wrist_info[0]).dot(hand_dir) < 0.045:
+        palm_center = wrist_info[0] + hand_dir * 0.045 + (palm_center - wrist_info[0] - hand_dir * (palm_center - wrist_info[0]).dot(hand_dir))
+    p = add(palm_center, HAND["palm"] * k, 0.6)
+    edges.append((w2, p))
 
     for f in FINGERS:
         chain = [bone_world(arm, f"{f}_0{i}_{side}") for i in (1, 2, 3)]
@@ -369,7 +404,7 @@ def build_hand(arm, side, mats, wrist_info=None):
                 r = HAND["finger_base"] + (HAND["finger_mid"] - HAND["finger_base"]) * t
             if f == "thumb":
                 r *= 1.05
-            v = add(c, r)
+            v = add(c, r * k)
             edges.append((prev, v))
             prev = v
 
@@ -380,7 +415,7 @@ def build_hand(arm, side, mats, wrist_info=None):
     skin = obj.modifiers.new("Skin", 'SKIN')
     skin.use_smooth_shade = True
     for i, sv in enumerate(me.skin_vertices[0].data):
-        sv.radius = (radii[i], radii[i] * (0.85 if i == 0 else 0.6 if i == 1 else 1.0))
+        sv.radius = (radii[i], radii[i] * flat[i])
         sv.use_root = (i == 0)
     sub = obj.modifiers.new("Subdivision", 'SUBSURF')
     sub.levels = sub.render_levels = 2
@@ -686,11 +721,71 @@ def _remove_small_islands(obj, min_verts=60):
     bm.free()
 
 
+QUATERNIUS = r"C:\WorkSpace\ImNotAnAlien\Game\ImNotAnAlien\Assets\Art\Characters\Quaternius\Base"
+BASES = {"m": QUATERNIUS + r"\Superhero_Male_FullBody.fbx", "f": QUATERNIUS + r"\Superhero_Female_FullBody.fbx"}
+# Ajustes por corpo: cabeça um pouco menor na feminina e corpo menos afinado (ela já é mais magra).
+GENDER = {
+    "m": dict(head_scale=1.0, slim=1.0),
+    "f": dict(head_scale=0.95, slim=0.55),
+}
+
+_BASE_PROFILE = [tuple(r) for r in HEAD_PROFILE]
+_BASE_TILT = dict(TILT)
+_BASE_EYE = dict(EYE)
+_BASE_FACE = dict(FACE)
+_BASE_SLIM = dict(SLIM)
+
+
+def setup_base(gender):
+    """Num arquivo VAZIO do Blender: importa o corpo base (m/f) e prepara os nomes usados aqui.
+    Rode bpy.ops.wm.read_homefile(use_empty=True) numa chamada separada antes."""
+    bpy.ops.import_scene.fbx(filepath=BASES[gender])
+    for n in ("Eyes", "Eyebrows"):
+        o = bpy.data.objects.get(n)
+        if o:
+            bpy.data.objects.remove(o, do_unlink=True)
+    body = next(o for o in bpy.data.objects if o.type == 'MESH')
+    body.name = "Body"
+    orig = body.copy()
+    orig.data = body.data.copy()
+    orig.name = "Body_Original"
+    bpy.context.scene.collection.objects.link(orig)
+    orig.hide_set(True)
+    orig.hide_render = True
+    bpy.context.scene["alien_gender"] = gender
+    return body
+
+
+def apply_body_offset(arm, gender):
+    """Ajusta a cabeça, olhos, rosto e afinamento para o corpo carregado."""
+    dz = bone_world(arm, "Head").z - BASE_HEAD_Z
+    g = GENDER[gender]
+    k = g["head_scale"]
+    OFFSET["dz"] = dz
+    OFFSET["head_scale"] = k
+    base_z = _BASE_PROFILE[0][0]
+    HEAD_PROFILE[:] = [(base_z + (z - base_z) * k + dz, hx * k, yf * k, yb * k) for z, hx, yf, yb in _BASE_PROFILE]
+    TILT.update(_BASE_TILT)
+    TILT["pivot"] = (_BASE_TILT["pivot"][0], _BASE_TILT["pivot"][1], _BASE_TILT["pivot"][2] + dz)
+    TILT["start"] = _BASE_TILT["start"] + dz
+    TILT["full"] = _BASE_TILT["full"] + dz
+    EYE.update(_BASE_EYE)
+    EYE["z"] = base_z + (_BASE_EYE["z"] - base_z) * k + dz
+    EYE["y"] = _BASE_EYE["y"] * k
+    EYE["x"] = _BASE_EYE["x"] * k
+    FACE.update(_BASE_FACE)
+    FACE["nose_z"] = base_z + (_BASE_FACE["nose_z"] - base_z) * k + dz
+    FACE["mouth_z"] = base_z + (_BASE_FACE["mouth_z"] - base_z) * k + dz
+    for key, v in _BASE_SLIM.items():
+        SLIM[key] = 1.0 - (1.0 - v) * g["slim"]
+
+
 def rebuild_alien():
-    """Refaz o alien inteiro a partir do corpo original (SuperHero_Male_Original)."""
+    """Refaz o alien inteiro a partir do corpo original (Body_Original)."""
     arm = bpy.data.objects["Armature"]
-    body = bpy.data.objects["SuperHero_Male"]
-    orig = bpy.data.objects["SuperHero_Male_Original"]
+    body = bpy.data.objects["Body"]
+    orig = bpy.data.objects["Body_Original"]
+    apply_body_offset(arm, bpy.context.scene.get("alien_gender", "m"))
     mats = alien_materials()
     for n in ("AlienHead", "AlienEye_R", "AlienEye_L", "AlienLid_R", "AlienLid_L", "AlienHand_l", "AlienHand_r",
               "AlienNose", "AlienMouth"):
@@ -705,11 +800,14 @@ def rebuild_alien():
     delete_body_part(body, ["Head", "neck_01"], 0.5)
     for s in ("l", "r"):
         delete_body_part(body, hand_groups(s), 0.25)
+        # Os pés ficam sempre dentro do tênis/bota: apagados para não atravessarem o calçado.
+        delete_body_part(body, [f"foot_{s}", f"ball_{s}", f"ball_leaf_{s}"], 0.5)
     _remove_small_islands(body)
     slim_body(body, arm)
 
     head = build_head(body)
     head.data.materials.append(mats["skin"])
+    head.data.materials.append(mats["stripe"])
     hands = [build_hand(arm, s, mats, wrist_boundary(body, arm, s)) for s in ("l", "r")]
     eyes = build_eyes(mats)
     for o in eyes:
@@ -738,10 +836,17 @@ def smooth_seams(body, arm, radius=0.03, repeat=4):
     body.data.update()
 
 
-def fill_small_holes(body, max_sides=8):
+def fill_small_holes(body, max_sides=16):
     """Tapa buraquinhos que sobram nas costuras."""
     bm = bmesh.new()
     bm.from_mesh(body.data)
+    # Arestas com 3 faces (sobra da costura): apaga o triângulo menor e tapa o buraco depois.
+    extra = set()
+    for e in bm.edges:
+        if len(e.link_faces) > 2:
+            extra.add(min(e.link_faces, key=lambda f: f.calc_area()))
+    if extra:
+        bmesh.ops.delete(bm, geom=list(extra), context='FACES_ONLY')
     edges = [e for e in bm.edges if e.is_boundary]
     bmesh.ops.holes_fill(bm, edges=edges, sides=max_sides)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
@@ -752,14 +857,17 @@ def fill_small_holes(body, max_sides=8):
 
 # ---------- Exportar para o Unity ----------
 
-EXPORT_PATH = r"C:\WorkSpace\ImNotAnAlien\Game\ImNotAnAlien\Assets\Art\Characters\Aliens\Alien_Civil.fbx"
+EXPORT_DIR = r"C:\WorkSpace\ImNotAnAlien\Game\ImNotAnAlien\Assets\Art\Characters\Aliens"
+EXPORT_NAMES = {"m": "Alien_Masculino.fbx", "f": "Alien_Feminino.fbx"}
 
 
-def export_alien(path=EXPORT_PATH):
+def export_alien(path=None):
     """Une olhos, pálpebras, nariz e boca no corpo e exporta Armature + corpo em FBX."""
     import os
+    if path is None:
+        path = os.path.join(EXPORT_DIR, EXPORT_NAMES[bpy.context.scene.get("alien_gender", "m")])
     arm = bpy.data.objects["Armature"]
-    body = bpy.data.objects["SuperHero_Male"]
+    body = bpy.data.objects["Body"]
     parts = []
     for n in ("AlienEye_R", "AlienEye_L", "AlienLid_R", "AlienLid_L", "AlienNose", "AlienMouth"):
         o = bpy.data.objects.get(n)
@@ -780,11 +888,15 @@ def export_alien(path=EXPORT_PATH):
             bpy.ops.object.join()
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    garments = [bpy.data.objects[n] for n in GARMENTS_CIVIL + GARMENTS_POLICE if n in bpy.data.objects]
     arm.hide_set(False)
     body.hide_set(False)
     bpy.ops.object.select_all(action='DESELECT')
     arm.select_set(True)
     body.select_set(True)
+    for g in garments:
+        g.hide_set(False)
+        g.select_set(True)
     bpy.context.view_layer.objects.active = arm
     bpy.ops.export_scene.fbx(
         filepath=path, use_selection=True, object_types={'ARMATURE', 'MESH'},
@@ -792,4 +904,569 @@ def export_alien(path=EXPORT_PATH):
         apply_unit_scale=True, apply_scale_options='FBX_SCALE_NONE',
         axis_forward='-Z', axis_up='Y', use_armature_deform_only=False)
     arm.hide_set(True)
+    for g in garments:
+        g.hide_set(True)
+    return path
+
+
+# ---------- Roupas ----------
+# Cada peça é uma "casca" tirada do próprio corpo: as faces da região escolhida são copiadas
+# (com os mesmos pesos dos ossos), afastadas um pouco da pele e suavizadas. Assim a roupa dobra
+# junto com as animações. Cada peça é um objeto separado (o Unity liga/desliga cada uma).
+# Civis: material "Roupa_Civil" (branco, o Unity pinta cada peça de uma cor).
+# Polícia: azul-marinho, equipamento preto e detalhes ciano brilhantes (D20).
+
+TORSO = ("spine_01", "spine_02", "spine_03", "clavicle_l", "clavicle_r", "pelvis")
+GARMENTS_CIVIL = ("Camiseta", "Regata", "MangaLonga", "Calca", "Bermuda", "Tenis")
+GARMENTS_POLICE = ("Pol_Macacao", "Pol_Colete", "Pol_Cinto", "Pol_Coldre", "Pol_Botas", "Pol_Bone", "Pol_Capacete")
+
+
+def clothing_materials():
+    return {
+        "civil": material("Roupa_Civil", "#F2F2F2", 0.8),
+        "uniform": material("Policia_Uniforme", "#1E2A4A", 0.75),
+        "gear": material("Policia_Equipamento", "#1A1A1F", 0.6),
+        "light": material("Policia_Luz", "#3FF2FF", 0.3),
+    }
+
+
+class _Rig:
+    """Medidas do corpo atual tiradas dos ossos (funciona para o masculino e o feminino)."""
+
+    def __init__(self, arm):
+        self.arm = arm
+        self.waist = bone_world(arm, "spine_01").z + 0.02
+        self.collar = bone_world(arm, "neck_01").z - 0.015
+        self.chest = (bone_world(arm, "spine_02").z + bone_world(arm, "spine_03").z) * 0.5 + 0.03
+        self.segs = {b.name: (arm.matrix_world @ b.head_local, arm.matrix_world @ b.tail_local) for b in arm.data.bones}
+        self.neck = bone_world(arm, "neck_01")
+
+    def in_neck(self, p, radius=0.075):
+        """Gola redonda: só tira a região em volta do pescoço (os ombros continuam cobertos)."""
+        flat = Vector((p.x - self.neck.x, p.y - self.neck.y, 0.0))
+        return p.z > self.collar - 0.03 and flat.length < radius * OFFSET["head_scale"]
+
+    def t(self, bone, p):
+        """0 no começo do osso, 1 no fim."""
+        a, b = self.segs[bone]
+        ab = b - a
+        return (p - a).dot(ab) / max(ab.length_squared, 1e-12)
+
+
+def _weights(dv, names):
+    return {names[i]: w for i, w in dv.items() if i in names}
+
+
+def _sum(w, prefixes):
+    return sum(v for k, v in w.items() if k in prefixes or any(k.startswith(p + "_") for p in prefixes))
+
+
+def _dominant(w):
+    return max(w.items(), key=lambda kv: kv[1])[0] if w else ""
+
+
+def make_shell(body, arm, name, keep, offset, mat, smooth=2, flat_sole=False, face_mat=None, mats_extra=(),
+               border_smooth=6):
+    """keep(p_mundo, pesos) -> bool para cada vértice. Faces com todos os vértices aceitos viram a peça."""
+    old = bpy.data.objects.get(name)
+    if old:
+        bpy.data.objects.remove(old, do_unlink=True)
+    mw = body.matrix_world
+    names = {g.index: g.name for g in body.vertex_groups}
+    bm = bmesh.new()
+    bm.from_mesh(body.data)
+    deform = bm.verts.layers.deform.active
+    keep_set = {v for v in bm.verts if keep(mw @ v.co, _weights(v[deform], names))}
+    drop = [f for f in bm.faces if not all(v in keep_set for v in f.verts)]
+    bmesh.ops.delete(bm, geom=drop, context='FACES')
+    loose = [v for v in bm.verts if not v.link_faces]
+    bmesh.ops.delete(bm, geom=loose, context='VERTS')
+    # Pontas soltas na borda (faces presas por um lado só) viram "espinhos" depois de afastar
+    # e suavizar: apaga essas faces algumas vezes.
+    for _ in range(3):
+        tips = [f for f in bm.faces if sum(1 for e in f.edges if e.is_boundary) >= 3]
+        if not tips:
+            break
+        bmesh.ops.delete(bm, geom=tips, context='FACES')
+        loose = [v for v in bm.verts if not v.link_faces]
+        bmesh.ops.delete(bm, geom=loose, context='VERTS')
+    # tira pedacinhos soltos
+    seen, small = set(), []
+    for v in bm.verts:
+        if v in seen:
+            continue
+        stack, island = [v], []
+        seen.add(v)
+        while stack:
+            x = stack.pop()
+            island.append(x)
+            for e in x.link_edges:
+                o = e.other_vert(x)
+                if o not in seen:
+                    seen.add(o)
+                    stack.append(o)
+        if len(island) < 25:
+            small += island
+    if small:
+        bmesh.ops.delete(bm, geom=small, context='VERTS')
+    bm.normal_update()
+    origin = {v: (v.co.copy(), v.normal.copy()) for v in bm.verts}
+    for v in bm.verts:
+        v.co += v.normal * offset
+    # suaviza (some com os músculos e deixa cara de tecido) e arruma a barra (bordas)
+    for _ in range(smooth):
+        bmesh.ops.smooth_vert(bm, verts=list(bm.verts), factor=0.5,
+                              use_axis_x=True, use_axis_y=True, use_axis_z=True)
+    border = [v for v in bm.verts if v.is_boundary]
+    for _ in range(border_smooth if border else 0):  # alças finas: pouca suavização (senão viram um fio)
+        bmesh.ops.smooth_vert(bm, verts=border, factor=0.5,
+                              use_axis_x=True, use_axis_y=True, use_axis_z=True)
+    # A suavização "encolhe" a roupa nas partes salientes (peito, ombro) e a pele furava o tecido.
+    # Aqui cada ponto volta a ficar pelo menos "offset" para fora da pele de onde ele saiu.
+    for v in bm.verts:
+        o, n = origin[v]
+        d = (v.co - o).dot(n)
+        if d < offset:
+            v.co += n * (offset - d)
+    if flat_sole:
+        inv = mw.inverted()
+        for v in bm.verts:
+            w = mw @ v.co
+            if w.z < 0.012:
+                w.z = -0.004
+                v.co = inv @ w
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    obj = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(obj)
+    obj.parent = body.parent
+    obj.matrix_world = mw.copy()
+    for g in sorted(body.vertex_groups, key=lambda g: g.index):
+        obj.vertex_groups.new(name=g.name)
+    mod = obj.modifiers.new("Armature", 'ARMATURE')
+    mod.object = arm
+    me.materials.clear()
+    me.materials.append(mat)
+    for m in mats_extra:
+        me.materials.append(m)
+    for poly in me.polygons:
+        poly.material_index = 0
+        poly.use_smooth = True
+    if face_mat:
+        for poly in me.polygons:
+            idx = face_mat(mw @ poly.center, poly)
+            if idx:
+                poly.material_index = idx
+    return obj
+
+
+def make_box(arm, name, bone, center, size, mat, body):
+    """Peça rígida simples (ex.: coldre), presa a um osso só."""
+    old = bpy.data.objects.get(name)
+    if old:
+        bpy.data.objects.remove(old, do_unlink=True)
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    for v in bm.verts:
+        v.co = Vector((v.co.x * size[0], v.co.y * size[1], v.co.z * size[2]))
+    bmesh.ops.bevel(bm, geom=list(bm.edges), offset=min(size) * 0.2, segments=2, affect='EDGES')
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    obj = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(obj)
+    for v in me.vertices:
+        v.co += center
+    obj.parent = body.parent
+    obj.matrix_parent_inverse = body.parent.matrix_world.inverted()
+    g = obj.vertex_groups.new(name=bone)
+    g.add([v.index for v in me.vertices], 1.0, 'REPLACE')
+    mod = obj.modifiers.new("Armature", 'ARMATURE')
+    mod.object = arm
+    me.materials.append(mat)
+    for poly in me.polygons:
+        poly.use_smooth = True
+    return obj
+
+
+def build_clothes(gender_tag=None):
+    arm = bpy.data.objects["Armature"]
+    body = bpy.data.objects["Body"]
+    apply_body_offset(arm, bpy.context.scene.get("alien_gender", "m"))
+    cm = clothing_materials()
+    rig = _Rig(arm)
+    made = []
+
+    def no_hands_head(w):
+        return _sum(w, ("Head", "neck_01", "hand", "thumb", "index", "middle", "ring", "pinky")) < 0.3
+
+    def arm_ok(w, p, max_upper, max_lower):
+        side = "l" if w.get("upperarm_l", 0) + w.get("lowerarm_l", 0) >= w.get("upperarm_r", 0) + w.get("lowerarm_r", 0) else "r"
+        up, lo = w.get(f"upperarm_{side}", 0), w.get(f"lowerarm_{side}", 0)
+        if lo > 0.3:
+            return max_lower is not None and rig.t(f"lowerarm_{side}", p) < max_lower
+        if up > 0.3:
+            return rig.t(f"upperarm_{side}", p) < max_upper
+        return True
+
+    def leg_ok(w, p, max_thigh, max_calf, min_calf=None):
+        side = "l" if w.get("thigh_l", 0) + w.get("calf_l", 0) >= w.get("thigh_r", 0) + w.get("calf_r", 0) else "r"
+        th, ca = w.get(f"thigh_{side}", 0), w.get(f"calf_{side}", 0)
+        if _sum(w, ("foot", "ball")) > 0.3:
+            return False
+        if ca > 0.3:
+            t = rig.t(f"calf_{side}", p)
+            return max_calf is not None and t < max_calf and (min_calf is None or t >= min_calf)
+        if th > 0.3:
+            return rig.t(f"thigh_{side}", p) < max_thigh
+        return True
+
+    def top(max_upper, max_lower, shoulders=True):
+        def keep(p, w):
+            if not no_hands_head(w) or rig.in_neck(p) or p.z < rig.waist - 0.09:
+                return False
+            if _sum(w, ("thigh", "calf", "foot", "ball")) > 0.3:
+                return False
+            if not shoulders and _sum(w, ("upperarm", "clavicle")) > 0.35:
+                return False
+            return arm_ok(w, p, max_upper, max_lower)
+        return keep
+
+    def bottom(max_thigh, max_calf):
+        def keep(p, w):
+            if p.z > rig.waist + 0.02 or not no_hands_head(w):
+                return False
+            if _sum(w, ("upperarm", "lowerarm")) > 0.2:
+                return False
+            return leg_ok(w, p, max_thigh, max_calf)
+        return keep
+
+    def feet(min_calf, offset, name, mat):
+        return build_shoes(arm, body, name, mat, min_calf, boot=min_calf < 0.8)
+
+    # --- Civis ---
+    made.append(make_shell(body, arm, "Camiseta", top(0.5, None), 0.02, cm["civil"], smooth=5))
+    # Regata: corpo coberto até a axila; acima dela só as alças sobre os ombros.
+    armpit = rig.chest + 0.11
+
+    def tank(p, w):
+        # gola mais fechada que a camiseta, para as alças ficarem largas sobre o ombro
+        if _sum(w, ("Head", "hand", "thumb", "index", "middle", "ring", "pinky")) >= 0.3 or w.get("neck_01", 0) >= 0.6:
+            return False
+        if rig.in_neck(p, 0.062) or p.z < rig.waist - 0.09:
+            return False
+        if _sum(w, ("thigh", "calf", "foot", "ball", "lowerarm")) > 0.3:
+            return False
+        if p.z > armpit:  # alças: decididas pela posição (o ombro tem muito peso do braço)
+            return abs(p.x - rig.neck.x) < 0.165 * OFFSET["head_scale"] and _sum(w, ("upperarm",)) < 0.8
+        return _sum(w, ("upperarm",)) <= 0.45
+    made.append(make_shell(body, arm, "Regata", tank, 0.018, cm["civil"], smooth=5, border_smooth=1))
+    made.append(make_shell(body, arm, "MangaLonga", top(1.01, 0.88), 0.02, cm["civil"], smooth=5))
+    made.append(make_shell(body, arm, "Calca", bottom(1.01, 0.97), 0.015, cm["civil"], smooth=4))
+    made.append(make_shell(body, arm, "Bermuda", bottom(0.72, None), 0.016, cm["civil"], smooth=4))
+    made.append(feet(0.8, 0.03, "Tenis", cm["civil"]))
+
+    # --- Polícia ---
+    def suit(p, w):
+        if not no_hands_head(w) or rig.in_neck(p):
+            return False
+        if _sum(w, ("foot", "ball")) > 0.3:
+            return False
+        if _sum(w, ("upperarm", "lowerarm")) > 0.3:
+            return arm_ok(w, p, 1.01, 0.9)
+        if _sum(w, ("thigh", "calf")) > 0.3:
+            return leg_ok(w, p, 1.01, 0.8)
+        return True
+    made.append(make_shell(body, arm, "Pol_Macacao", suit, 0.016, cm["uniform"], smooth=4))
+
+    def vest(p, w):
+        # Colete: tronco até o ombro, com abertura grande no pescoço e cava nos braços.
+        if not no_hands_head(w) or rig.in_neck(p, 0.09) or p.z < rig.waist + 0.04:
+            return False
+        if _sum(w, ("lowerarm", "thigh")) > 0.25:
+            return False
+        if p.z > rig.chest + 0.11:
+            return abs(p.x - rig.neck.x) < 0.14 * OFFSET["head_scale"] and _sum(w, ("upperarm",)) < 0.8
+        return _sum(w, ("upperarm",)) <= 0.25
+
+    def vest_light(c, poly):
+        return 1 if abs(c.z - (rig.chest - 0.03)) < 0.022 else 0
+    made.append(make_shell(body, arm, "Pol_Colete", vest, 0.034, cm["gear"], smooth=6,
+                           face_mat=vest_light, mats_extra=(cm["light"],), border_smooth=1))
+
+    made.append(build_belt(body, arm, "Pol_Cinto", rig.waist - 0.03, cm["gear"]))
+    made.append(feet(0.6, 0.034, "Pol_Botas", cm["gear"]))
+
+    # Coldre na coxa direita (lado de fora).
+    thigh_a, thigh_b = rig.segs["thigh_r"]
+    out = Vector((1 if thigh_a.x > 0 else -1, 0, 0))
+    holster_c = thigh_a + (thigh_b - thigh_a) * 0.25 + out * 0.085 * OFFSET["head_scale"]
+    made.append(make_box(arm, "Pol_Coldre", "thigh_r", holster_c, (0.022, 0.045, 0.075), cm["gear"], body))
+
+    made += build_headwear(body, arm, cm)
+    for o in made:
+        o.hide_set(True)
+    return made
+
+
+def build_belt(body, arm, name, z, mat, height=0.045, offset=0.03, segments=48):
+    """Cinto: um anel em volta da cintura, achado lançando raios de dentro para fora no corpo."""
+    from mathutils.bvhtree import BVHTree
+    old = bpy.data.objects.get(name)
+    if old:
+        bpy.data.objects.remove(old, do_unlink=True)
+    mw = body.matrix_world
+    bm = bmesh.new()
+    bm.from_mesh(body.data)
+    bm.transform(mw)
+    tree = BVHTree.FromBMesh(bm)
+    bm.free()
+    center = Vector((bone_world(arm, "spine_01").x, bone_world(arm, "spine_01").y, z))
+    rings = []
+    for dz in (-height / 2, height / 2):
+        ring = []
+        for i in range(segments):
+            a = 2 * math.pi * i / segments
+            d = Vector((math.sin(a), math.cos(a), 0.0))
+            origin = center + Vector((0, 0, dz)) + d * 0.4
+            hit = tree.ray_cast(origin, -d, 0.5)
+            p = hit[0] if hit[0] is not None else center + d * 0.12
+            ring.append(p + d * offset)
+        rings.append(ring)
+    verts = rings[0] + rings[1]
+    faces = [(i, (i + 1) % segments, segments + (i + 1) % segments, segments + i) for i in range(segments)]
+    me = bpy.data.meshes.new(name)
+    me.from_pydata([tuple(v) for v in verts], [], faces)
+    obj = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(obj)
+    sol = obj.modifiers.new("Solidify", 'SOLIDIFY')
+    sol.thickness = 0.012
+    sol.offset = 1.0
+    with bpy.context.temp_override(object=obj, active_object=obj):
+        bpy.ops.object.modifier_apply(modifier="Solidify")
+    for poly in obj.data.polygons:
+        poly.use_smooth = True
+    obj.data.materials.append(mat)
+    weight_by_bones(obj, arm, ["pelvis", "spine_01"])
+    obj.parent = body.parent
+    obj.matrix_parent_inverse = body.parent.matrix_world.inverted()
+    obj.modifiers.new("Armature", 'ARMATURE').object = arm
+    return obj
+
+
+def build_shoes(arm, body, name, mat, start_t, boot=False):
+    """Calçado arredondado (tênis/bota) feito com 'pele' (skin) ao longo dos ossos do pé."""
+    old = bpy.data.objects.get(name)
+    if old:
+        bpy.data.objects.remove(old, do_unlink=True)
+    k = OFFSET["head_scale"]
+    verts, radii, edges, flat = [], [], [], []
+
+    def add(p, r, f):
+        verts.append(Vector(p))
+        radii.append(r * k)
+        flat.append(f)
+        return len(verts) - 1
+
+    for side in ("l", "r"):
+        calf_a, calf_b = bone_world(arm, f"calf_{side}"), bone_world(arm, f"calf_{side}", tail=True)
+        foot = bone_world(arm, f"foot_{side}")
+        ball = bone_world(arm, f"ball_{side}")
+        toe = bone_world(arm, f"ball_{side}", tail=True)
+        toe = toe + (toe - ball).normalized() * 0.03
+        heel = foot - (ball - foot).normalized() * 0.035
+        top = calf_a + (calf_b - calf_a) * start_t
+        chain = [(top, 0.06 if boot else 0.052, 1.0)]
+        if boot:
+            chain.append((calf_a + (calf_b - calf_a) * ((start_t + 1) / 2), 0.06, 1.0))
+        chain += [
+            (Vector((foot.x, foot.y, foot.z)), 0.066, 1.0),
+            (Vector((ball.x, ball.y, 0.05)), 0.07, 0.62),
+            (Vector((toe.x, toe.y, 0.045)), 0.058, 0.6),
+        ]
+        prev = None
+        for p, r, f in chain:
+            i = add(p, r, f)
+            if prev is not None:
+                edges.append((prev, i))
+            prev = i
+    me = bpy.data.meshes.new(name)
+    me.from_pydata([tuple(v) for v in verts], edges, [])
+    obj = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(obj)
+    skin = obj.modifiers.new("Skin", 'SKIN')
+    roots = {0, len(verts) // 2}
+    for i, sv in enumerate(me.skin_vertices[0].data):
+        sv.radius = (radii[i], radii[i] * flat[i])
+        sv.use_root = i in roots
+    sub = obj.modifiers.new("Subdivision", 'SUBSURF')
+    sub.levels = 2
+    for m in list(obj.modifiers):
+        with bpy.context.temp_override(object=obj, active_object=obj):
+            bpy.ops.object.modifier_apply(modifier=m.name)
+    lowest = min(v.co.z for v in obj.data.vertices)
+    for v in obj.data.vertices:
+        v.co.z -= lowest + 0.004   # encosta no chão
+        if v.co.z < 0.012:
+            v.co.z = -0.004        # sola reta
+    for poly in obj.data.polygons:
+        poly.use_smooth = True
+    obj.data.materials.append(mat)
+    bones = []
+    for side in ("l", "r"):
+        bones += [f"calf_{side}", f"foot_{side}", f"ball_{side}"]
+    weight_by_bones(obj, arm, bones)
+    obj.parent = body.parent
+    obj.matrix_parent_inverse = body.parent.matrix_world.inverted()
+    obj.modifiers.new("Armature", 'ARMATURE').object = arm
+    return obj
+
+
+CAP = dict(front_above_eyes=0.075, slope=0.43)  # altura do boné na testa e inclinação do corte
+
+
+def _head_frame():
+    """Eixo 'para cima' da cabeça inclinada e um ponto na altura da testa."""
+    up = tilt_dir(Vector((0, 0, 1)), TILT["full"]).normalized()
+    pivot = Vector(TILT["pivot"])
+    return up, pivot
+
+
+def build_headwear(body, arm, cm):
+    up, pivot = _head_frame()
+    brow = tilt_point(Vector((0, 0.1, EYE["z"] + 0.045)), factor_z=EYE["z"] + 0.045)
+    eye_line = tilt_point(Vector((0, 0.1, EYE["z"] - 0.005)), factor_z=EYE["z"])
+    top = tilt_point(Vector((0, (HEAD_PROFILE[-1][2] + HEAD_PROFILE[-1][3]) / 2, HEAD_PROFILE[-1][0])))
+    fwd = tilt_dir(Vector((0, 1, 0)), TILT["full"]).normalized()
+
+    def h(p):
+        return (p - pivot).dot(up)
+
+    def is_head(w):
+        return w.get("Head", 0) > 0.9
+
+    # Boné: cobre o alto do crânio, cortado por um plano inclinado (baixo na testa, mais alto
+    # atrás), medido na cabeça "desinclinada". A aba sai do ponto mais à frente dessa borda.
+    mw = body.matrix_world
+    head_idx = body.vertex_groups["Head"].index
+    pts = [mw @ v.co for v in body.data.vertices
+           if any(g.group == head_idx and g.weight > 0.9 for g in v.groups)]
+    k = OFFSET["head_scale"]
+    z_front = EYE["z"] + CAP["front_above_eyes"] * k
+    y_front = 0.10 * k
+    slope = CAP["slope"]
+
+    def cap_value(p):
+        q = untilt_point(p)
+        return q.z - (z_front + slope * (y_front - q.y))
+
+    def cap(p, w):
+        return is_head(w) and cap_value(p) > 0
+    cap_obj = make_shell(body, arm, "Pol_Bone", cap, 0.013, cm["uniform"], smooth=3)
+    # base da aba: a borda do próprio boné, no trecho mais à frente
+    bm_cap = bmesh.new()
+    bm_cap.from_mesh(cap_obj.data)
+    cmw = cap_obj.matrix_world
+    border = [cmw @ v.co for v in bm_cap.verts if v.is_boundary]
+    bm_cap.free()
+    border.sort(key=lambda p: -p.dot(fwd))
+    front = border[:max(3, len(border) // 8)]
+    visor_base = sum(front, Vector()) / len(front) if front else brow
+    visor = build_visor(body, arm, cm, visor_base - fwd * 0.012, fwd, up)
+
+    # Capacete: cobre o crânio até a linha dos olhos, com abertura para o rosto.
+    def helmet(p, w):
+        if not is_head(w) or h(p) < h(eye_line):
+            return False
+        front = (p - pivot).dot(fwd)
+        if front > 0.03 and h(p) < h(brow) + 0.02:
+            return False  # abertura do rosto
+        return True
+
+    def helmet_light(c, poly):
+        side = abs(c.x)
+        return 1 if side < 0.012 and h(c) > h(brow) else 0
+    helmet_obj = make_shell(body, arm, "Pol_Capacete", helmet, 0.028, cm["uniform"], smooth=4,
+                            face_mat=helmet_light, mats_extra=(cm["light"],))
+    # a viseira vai junto com o boné (mesmo objeto)
+    _merge_into(cap_obj, visor)
+    return [cap_obj, helmet_obj]
+
+
+def build_visor(body, arm, cm, brow, fwd, up):
+    name = "Pol_Bone_Aba"
+    old = bpy.data.objects.get(name)
+    if old:
+        bpy.data.objects.remove(old, do_unlink=True)
+    k = OFFSET["head_scale"]
+    right = fwd.cross(up).normalized()
+    # ponto da testa na superfície (lançando um raio na cabeça)
+    base = brow + fwd * 0.004
+    down = (fwd * math.cos(math.radians(14)) - up * math.sin(math.radians(14))).normalized()
+    fwd = down
+    bm = bmesh.new()
+    rx, ry = 0.09 * k, 0.07 * k
+    ring = []
+    steps = 16
+    for i in range(steps + 1):
+        a = math.pi * i / steps
+        x = math.cos(a) * rx
+        y = math.sin(a) * ry
+        ring.append(bm.verts.new(base + right * x + fwd * (y + 0.01) - up * (y * 0.25)))
+    center = bm.verts.new(base + fwd * 0.005)
+    for i in range(steps):
+        bm.faces.new((center, ring[i], ring[i + 1]))
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    obj = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(obj)
+    sol = obj.modifiers.new("Solidify", 'SOLIDIFY')
+    sol.thickness = 0.008
+    with bpy.context.temp_override(object=obj, active_object=obj):
+        bpy.ops.object.modifier_apply(modifier="Solidify")
+    obj.parent = body.parent
+    obj.matrix_parent_inverse = body.parent.matrix_world.inverted()
+    g = obj.vertex_groups.new(name="Head")
+    g.add([v.index for v in obj.data.vertices], 1.0, 'REPLACE')
+    obj.modifiers.new("Armature", 'ARMATURE').object = arm
+    obj.data.materials.append(cm["uniform"])
+    return obj
+
+
+def _merge_into(target, part):
+    bpy.ops.object.select_all(action='DESELECT')
+    part.select_set(True)
+    target.select_set(True)
+    bpy.context.view_layer.objects.active = target
+    with bpy.context.temp_override(active_object=target, selected_editable_objects=[target, part]):
+        bpy.ops.object.join()
+
+
+def show_outfit(names):
+    """Mostra só as peças pedidas (para conferir no Blender)."""
+    for n in GARMENTS_CIVIL + GARMENTS_POLICE:
+        o = bpy.data.objects.get(n)
+        if o:
+            o.hide_set(n not in names)
+            o.hide_render = n not in names
+
+
+def preview(path=r"C:\WorkSpace\ImNotAnAlien\Art\Blender\_preview.png", target=(0, 0, 1.2), offset=(0.6, 1.1, 0.15), size=700):
+    """Renderiza uma imagem rápida (Workbench) para conferir o resultado."""
+    sc = bpy.context.scene
+    cam = bpy.data.objects.get("PreviewCam")
+    if cam is None:
+        cam = bpy.data.objects.new("PreviewCam", bpy.data.cameras.new("PreviewCam"))
+        sc.collection.objects.link(cam)
+    t = Vector(target)
+    cam.location = t + Vector(offset)
+    cam.rotation_euler = (t - cam.location).to_track_quat('-Z', 'Y').to_euler()
+    sc.camera = cam
+    sc.render.engine = 'BLENDER_WORKBENCH'
+    sc.display.shading.color_type = 'MATERIAL'
+    sc.render.resolution_x = sc.render.resolution_y = size
+    sc.render.filepath = path
+    bpy.ops.render.render(write_still=True)
     return path
