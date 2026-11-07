@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 // Ferramenta de editor da Missão 15 — alienígenas com o modelo 3D feito no Blender.
@@ -25,6 +26,7 @@ public static class AlienModelSetupTool
     private const string AnimationsFbx = "Assets/Art/Characters/Quaternius/Animations/UAL1_Standard.fbx";
     private const string ControllerPath = "Assets/Art/Characters/Aliens/Alien.controller";
     private const string ArmsMaskPath = "Assets/Art/Characters/Aliens/Alien_Bracos.mask";
+    private const string DriverControllerPath = "Assets/Art/Characters/Aliens/Alien_Motorista.controller";
     private const string MaterialFolder = "Assets/Art/Materials/Aliens";
     private static readonly string[] OldVisuals = { "Visual_Alien", "Visual_Alien_M", "Visual_Alien_F" };
 
@@ -96,8 +98,12 @@ public static class AlienModelSetupTool
                 }
             }
 
+            bool traffic = SetupTrafficDrivers(models);
+
             AssetDatabase.SaveAssets();
             string message = $"Modelos 3D ({models.Count}) colocados em {done} prefab(s) de alienígena." +
+                             (traffic ? "\nMotoristas do trânsito trocados pelo alien 3D: SALVE A CENA (Ctrl+S)." :
+                                 "\n(Trânsito não encontrado nesta cena: rode de novo com a Regiao1_VilarejoDoBilu aberta para trocar os motoristas.)") +
                              (missing.Count > 0 ? $"\nClipes não encontrados: {string.Join(", ", missing)}" : "") +
                              "\n\nDê Play na Regiao1_VilarejoDoBilu para testar.";
             Debug.Log(message);
@@ -117,6 +123,8 @@ public static class AlienModelSetupTool
         importer.animationType = ModelImporterAnimationType.Human;
         importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
         importer.importAnimation = false;
+        importer.importBlendShapes = true;
+        importer.weldVertices = false; // não junta vértices iguais (estragava a boca aberta da expressão)
         importer.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
 
         foreach (var (blender, unity, hex, smooth) in MaterialMap)
@@ -256,6 +264,39 @@ public static class AlienModelSetupTool
 
         EditorUtility.SetDirty(controller);
         return controller;
+    }
+
+    // ---------- Motoristas do trânsito ----------
+
+    private static bool SetupTrafficDrivers(List<(GameObject model, Avatar avatar, string visual)> models)
+    {
+        AnimationClip driving = AssetDatabase.LoadAllAssetsAtPath(AnimationsFbx).OfType<AnimationClip>()
+            .FirstOrDefault(c => c.name == "Driving_Loop");
+        AssetDatabase.DeleteAsset(DriverControllerPath);
+        AnimatorController controller = AnimatorController.CreateAnimatorControllerAtPath(DriverControllerPath);
+        AnimatorState state = controller.layers[0].stateMachine.AddState("Dirigindo");
+        state.motion = driving;
+        controller.layers[0].stateMachine.defaultState = state;
+        EditorUtility.SetDirty(controller);
+
+        TrafficSystem traffic = Object.FindFirstObjectByType<TrafficSystem>();
+        if (traffic == null)
+        {
+            return false;
+        }
+
+        SerializedObject data = new SerializedObject(traffic);
+        SerializedProperty list = data.FindProperty("driverModels");
+        list.arraySize = models.Count;
+        for (int i = 0; i < models.Count; i++)
+        {
+            list.GetArrayElementAtIndex(i).objectReferenceValue = models[i].model;
+        }
+
+        data.FindProperty("driverController").objectReferenceValue = controller;
+        data.ApplyModifiedProperties();
+        EditorSceneManager.MarkSceneDirty(traffic.gameObject.scene);
+        return true;
     }
 
     private static AnimatorStateTransition Link(AnimatorState from, AnimatorState to, float duration)

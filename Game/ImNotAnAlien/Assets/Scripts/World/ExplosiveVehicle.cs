@@ -249,8 +249,11 @@ public sealed class ExplosiveVehicle : MonoBehaviour
                 continue;
             }
 
-            Material material = part.material;
-            material.color = Color.Lerp(material.color, Charcoal, 0.85f);
+            // Todos os materiais da peça (o carro 3D tem vários numa malha só).
+            foreach (Material material in part.materials)
+            {
+                material.color = Color.Lerp(material.color, Charcoal, 0.85f);
+            }
         }
 
         if (fire != null)

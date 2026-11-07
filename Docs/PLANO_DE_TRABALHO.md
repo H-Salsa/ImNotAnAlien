@@ -231,7 +231,16 @@ Pedido do autor em 6/11/2026: trocar as cápsulas por personagens estilizados (p
 - Blender conectado ao Claude (conector oficial da Blender Lab). Alien gerado por `Art/Blender/alien_builder.py` (arquivo `Art/Blender/Alien_Base.blend`): cabeça em bulbo inclinada para trás e costurada no pescoço, olhos grandes laranja com pálpebra, nariz de fendas, boca, mãos de 3 dedos costuradas nos braços, corpo magro (decisão D20).
 - Alien no jogo (`ImNotAnAlien > Montar Aliens 3D (Missao 15)`, `AlienAnimator`, `AlienRagdoll`): anda/corre/mira com pistola; segurado pela telecinese fica de pé, de frente para o jogador, balançando braços e pernas; arremessado ou morto vira boneco de pano com juntas naturais (cotovelo/joelho, cintura, pescoço) e "músculo" que afrouxa na morte. Policiais sempre verde-azulados.
 
-**Falta:** listras na cabeça e cor por código (material único com máscara), expressões (apavorado/bravo), roupa do civil, roupa do policial com boné (níveis baixos) e capacete (níveis altos), versão feminina e variação de corpo, motoristas do trânsito com o modelo novo, roupa/visual definitivo do protagonista.
+**Feito em 7/11/2026 (aprovado pelo autor):**
+- Alien: listras da cabeça num tom mais escuro da pele, 15 cores de pele para civis (verde-azulado só da polícia), versão feminina (`Alien_Feminino.fbx`), tamanho 10% maior e pequena variação entre eles (`AlienAppearance`).
+- Roupas sorteadas: civis com camiseta, regata ou manga longa + calça ou bermuda + tênis, cada peça de uma cor; policiais com macacão, colete, cinto, coldre e botas, boné nos níveis baixos e capacete a partir de 3 estrelas.
+- Expressões (blend shapes): apavorado com boca aberta gritando (fugindo, segurado, voando, morto) e bravo (policiais). Civil fugindo olha para trás, para o jogador, trocando de ombro suavemente.
+- Fuga corrigida: o civil foge na velocidade certa e escolhe o caminho mais livre.
+- Motoristas do trânsito com o modelo 3D, sentados no banco da frente, cabeça na bolha e pés nos pedais (`SeatedDriver`).
+- Carros flutuantes 3D feitos no Blender por `Art/Blender/car_builder.py` a partir das plantas do autor: carro civil (`Carro_Civil.fbx`, 8 combinações de cores) e viatura (`Viatura.fbx`, ainda sem uso). Bolha de vidro comprida no teto, faróis redondos, 4 portas separadas com dobradiça (prontas para a animação de entrar e sair), interior com bancos, painel e volante (`ImNotAnAlien > Montar Carros 3D (Missao 15)`, `HoverCar`).
+- Carro desligado: discos apagam e ele cai. Explosão: carro inteiro queimado, teto afundado e lataria amassada, vidros estourados em cacos, discos, retrovisores, um para-choque e algumas portas voando, as outras portas penduradas.
+
+**Falta:** trocar os carros estacionados da região pelo modelo 3D; visual definitivo do protagonista (só cueca, macacão do laboratório ou pacote de roupas — a decidir); distintivo da viatura acompanhar a porta quando houver animação de entrar no carro.
 
 ## Versão 0.5 — O planeta (decisão D21)
 
@@ -256,6 +265,7 @@ Tipos de região (subúrbio, zona industrial, fazendas, deserto, laboratórios�
 
 - Trocar cápsulas por personagens estilizados (pacotes de assets prontos e animações do Mixamo, com ajustes no Blender).
 - Sistema de consumo e DNA, setores e recompensas — regras ainda em aberto.
+- Polimento dos efeitos visuais (pedido do autor em 7/11/2026): fumaça mais densa e escura, fogo, faíscas e brasas na carcaça do carro, explosão mais bonita. Hoje são partículas simples (`GameFeel`).
 - Página "em breve" na Steam assim que houver imagens e um vídeo curto que mostrem o jogo.
 
 ## Decisão pendente para o autor: multijogador

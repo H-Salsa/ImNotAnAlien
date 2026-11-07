@@ -857,6 +857,175 @@ def fill_small_holes(body, max_sides=16):
 
 # ---------- Exportar para o Unity ----------
 
+# ---------- Expressões (shape keys / blend shapes no Unity) ----------
+# "Apavorado": olhos crescem, pálpebras sobem e a boca ABRE num grito (oval escuro, a linha vira o lábio de cima).
+# "Bravo": pálpebras descem e inclinam para dentro; cantos da boca bem para baixo.
+EXPRESSIONS = {
+    "Apavorado": dict(lid_lift=42.0, lid_tilt=0.0, mouth_center=0.0, mouth_corners=0.0, mouth_width=1.0,
+                      mouth_wave=0.0, eye_scale=1.2, scream=dict(half_w=0.024, half_h=0.024, drop=0.012)),
+    "Bravo": dict(lid_lift=-22.0, lid_tilt=-32.0, mouth_center=0.002, mouth_corners=-0.014, mouth_width=0.85,
+                  mouth_wave=0.0, eye_scale=0.95),
+}
+
+
+def _rotate_about(p, pivot, axis, degrees):
+    from mathutils import Matrix
+    m = Matrix.Rotation(math.radians(degrees), 3, axis.normalized())
+    return pivot + m @ (p - pivot)
+
+
+def add_expressions(arm, body, parts):
+    """Cria as shape keys nas pálpebras e na boca (e chaves vazias no corpo) antes de unir tudo."""
+    apply_body_offset(arm, bpy.context.scene.get("alien_gender", "m"))
+    _FACE_TREE.clear()
+    mouth_line = next((o for o in parts if o.name == "AlienMouth"), None)
+    scream_obj = None
+    if mouth_line is not None:
+        scream_obj = _make_scream_disk(mouth_line)
+        parts.append(scream_obj)
+    names = ["Basis"] + list(EXPRESSIONS)
+    for obj in [body] + parts:
+        if obj.data.shape_keys is None:
+            obj.shape_key_add(name="Basis", from_mix=False)
+        for n in names[1:]:
+            if obj.data.shape_keys.key_blocks.get(n) is None:
+                obj.shape_key_add(name=n, from_mix=False)
+
+    right = Vector((1, 0, 0))
+    up = tilt_dir(Vector((0, 0, 1)), EYE["z"]).normalized()
+    fwd = tilt_dir(Vector((0, 1, 0)), EYE["z"]).normalized()
+    for obj in parts:
+        keys = obj.data.shape_keys.key_blocks
+        mw = obj.matrix_world
+        inv = mw.inverted()
+        base = [mw @ v.co for v in obj.data.vertices]
+        if obj.name.startswith("AlienEye_"):
+            side = 1 if obj.name.endswith("_R") else -1
+            center = _tilt_rigid(Vector((EYE["x"] * side, EYE["y"], EYE["z"])), EYE["z"])
+            for n, e in EXPRESSIONS.items():
+                kb = keys[n]
+                for i, p in enumerate(base):
+                    kb.data[i].co = inv @ (center + (p - center) * e["eye_scale"])
+        elif obj.name.startswith("AlienLid_"):
+            side = 1 if obj.name.endswith("_R") else -1
+            center = _tilt_rigid(Vector((EYE["x"] * side, EYE["y"], EYE["z"])), EYE["z"])
+            for n, e in EXPRESSIONS.items():
+                kb = keys[n]
+                for i, p in enumerate(base):
+                    p = center + (p - center) * e["eye_scale"]  # a pálpebra acompanha o olho
+                    q = _rotate_about(p, center, right, e["lid_lift"])
+                    q = _rotate_about(q, center, fwd, -side * e["lid_tilt"])
+                    kb.data[i].co = inv @ q
+        elif obj.name == "AlienMouthOpen":
+            # Base e "Bravo": encolhido num ponto (invisível). "Apavorado": oval aberto no rosto.
+            c = obj["mouth_center"]
+            c = Vector(c)
+            half_n = len(base) // 2
+            ring = half_n - 1
+            for n, e in EXPRESSIONS.items():
+                kb = keys[n]
+                sc = e.get("scream")
+                for i in range(len(base)):
+                    j = i % half_n
+                    if sc is None:
+                        # fechado: um ovalzinho escondido dentro da cabeça (pontos diferentes, para o
+                        # Unity não "soldar" os vértices e estragar o oval)
+                        a = 2 * math.pi * (j - 1) / ring if j else 0.0
+                        q = c + right * (math.cos(a) * 0.004 * (j > 0)) + up * (math.sin(a) * 0.003 * (j > 0)) \
+                            - Vector((0, 0.012 + 0.001 * (i >= half_n), 0))
+                        kb.data[i].co = inv @ q
+                        continue
+                    if j == 0:
+                        q = _scream_point(body, c, 0.0, 0.0, sc, right, up, fwd, depth=0.002)
+                    else:
+                        a = 2 * math.pi * (j - 1) / ring
+                        q = _scream_point(body, c, math.cos(a), math.sin(a), sc, right, up, fwd)
+                    kb.data[i].co = inv @ q
+        elif obj.name == "AlienMouth":
+            c = sum(base, Vector()) / len(base)
+            half = max(abs((p - c).dot(right)) for p in base) or 0.02
+            for n, e in EXPRESSIONS.items():
+                kb = keys[n]
+                sc = e.get("scream")
+                if sc is not None:
+                    # a linha da boca vira o lábio de cima, contornando a metade de cima do oval
+                    for i, p in enumerate(base):
+                        d = p - c
+                        u = max(-1.0, min(1.0, d.dot(right) / half))
+                        ang = math.pi * (1 - (u + 1) / 2)          # u=-1 -> esquerda, u=1 -> direita
+                        spine = c + right * d.dot(right)
+                        rest = p - spine                             # grossura do tubo
+                        q = _scream_point(body, c, math.cos(ang), math.sin(ang), sc, right, up, fwd) + rest
+                        kb.data[i].co = inv @ q
+                    continue
+                for i, p in enumerate(base):
+                    d = p - c
+                    u = d.dot(right) / half
+                    q = c + (d - right * d.dot(right) * (1 - e["mouth_width"]))
+                    q += up * (e["mouth_center"] * (1 - u * u) + e["mouth_corners"] * u * u
+                               + e["mouth_wave"] * math.sin(u * math.pi * 2.5))  # boca tremida (medo)
+                    kb.data[i].co = inv @ q
+
+
+def _make_scream_disk(mouth_line, segments=28):
+    """Oval escuro da boca aberta (começa encolhido num ponto; a shape key abre)."""
+    old = bpy.data.objects.get("AlienMouthOpen")
+    if old:
+        bpy.data.objects.remove(old, do_unlink=True)
+    mw = mouth_line.matrix_world
+    pts = [mw @ v.co for v in mouth_line.data.vertices]
+    c = sum(pts, Vector()) / len(pts)
+    # Dois "lados" com vértices próprios (no Unity só a frente de cada face aparece; assim o oval
+    # aparece de qualquer jeito).
+    n = segments + 1
+    up_m = tilt_dir(Vector((0, 0, 1)), c.z).normalized()
+    verts = []
+    for side in range(2):
+        verts.append(tuple(c - Vector((0, 0.012 + 0.001 * side, 0))))
+        for i in range(segments):
+            a = 2 * math.pi * i / segments
+            verts.append(tuple(c + Vector((math.cos(a) * 0.004, 0, 0)) + up_m * (math.sin(a) * 0.003)
+                               - Vector((0, 0.012 + 0.001 * side, 0))))
+    faces = [(0, 1 + i, 1 + (i + 1) % segments) for i in range(segments)]
+    faces += [(n, n + 1 + (i + 1) % segments, n + 1 + i) for i in range(segments)]
+    me = bpy.data.meshes.new("AlienMouthOpen")
+    me.from_pydata(verts, [], faces)
+    obj = bpy.data.objects.new("AlienMouthOpen", me)
+    bpy.context.scene.collection.objects.link(obj)
+    obj["mouth_center"] = list(c)
+    me.materials.append(alien_materials()["mouth"])
+    g = obj.vertex_groups.new(name="Head")
+    g.add([v.index for v in me.vertices], 1.0, 'REPLACE')
+    return obj
+
+
+_FACE_TREE = {}
+
+
+def _face_tree(body):
+    from mathutils.bvhtree import BVHTree
+    key = body.name
+    if key not in _FACE_TREE:
+        bm = bmesh.new()
+        bm.from_mesh(body.data)
+        bm.transform(body.matrix_world)
+        _FACE_TREE[key] = BVHTree.FromBMesh(bm)
+        bm.free()
+    return _FACE_TREE[key]
+
+
+def _scream_point(body, c, cx, cy, sc, right, up, fwd, depth=0.0):
+    """Ponto do oval do grito projetado na superfície do rosto (um pouco para fora)."""
+    # Na altura da boca o rosto quase não é inclinado: usa a vertical e um raio horizontal.
+    up_m = tilt_dir(Vector((0, 0, 1)), c.z).normalized()
+    target = c + right * (cx * sc["half_w"]) + up_m * (cy * sc["half_h"] - sc["drop"])
+    hit = _face_tree(body).ray_cast(target + Vector((0, 0.08, 0)), Vector((0, -1, 0)), 0.2)
+    if hit[0] is None:
+        return target
+    # empurra para a frente (o normal da cabeça costurada pode vir invertido)
+    return hit[0] + Vector((0, 0.003 - depth, 0))
+
+
 EXPORT_DIR = r"C:\WorkSpace\ImNotAnAlien\Game\ImNotAnAlien\Assets\Art\Characters\Aliens"
 EXPORT_NAMES = {"m": "Alien_Masculino.fbx", "f": "Alien_Feminino.fbx"}
 
@@ -877,6 +1046,7 @@ def export_alien(path=None):
             with bpy.context.temp_override(object=o, active_object=o):
                 bpy.ops.object.modifier_apply(modifier=m.name)
         parts.append(o)
+    add_expressions(arm, body, parts)
     if parts:
         bpy.ops.object.select_all(action='DESELECT')
         for p in parts:

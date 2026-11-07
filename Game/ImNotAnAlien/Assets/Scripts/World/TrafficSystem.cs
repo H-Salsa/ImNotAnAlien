@@ -8,7 +8,7 @@ using UnityEngine;
 // - Mantém alguns carros circulando perto do jogador. Eles surgem e somem fora da vista.
 // - Cada carro (TrafficCar) anda na faixa da direita, faz curvas nos cruzamentos, faz retorno
 //   no fim da rua, freia diante de obstáculos e buzina.
-// - Carros são montados por código (conversível com motorista alienígena visível).
+// - Carros: o modelo 3D flutuante (carModel) com pintura sorteada; sem modelo, caixas por código.
 [DisallowMultipleComponent]
 public sealed class TrafficSystem : MonoBehaviour
 {
@@ -49,6 +49,35 @@ public sealed class TrafficSystem : MonoBehaviour
     [SerializeField] private Material wheel;
     [SerializeField] private Material[] driverSkins;
     [SerializeField] private Material eye;
+
+    [Header("Motoristas (modelo 3D — Missão 15)")]
+    [Tooltip("Modelos de alien (Alien_Masculino / Alien_Feminino). Vazio = motorista antigo de cápsula.")]
+    [SerializeField] private GameObject[] driverModels;
+    [Tooltip("Animator Controller com a animação de dirigir.")]
+    [SerializeField] private RuntimeAnimatorController driverController;
+    [SerializeField, Range(0.8f, 1.5f)] private float driverScale = 1.1f;
+    [Tooltip("Altura do quadril do motorista em relação ao carro (o banco).")]
+    [SerializeField] private float driverSeatHeight = 0.95f;
+
+    [Header("Carro 3D (flutuante)")]
+    [Tooltip("Modelo do carro (Carro_Civil.fbx). Vazio = carro antigo de caixas.")]
+    [SerializeField] private GameObject carModel;
+    [Tooltip("Pares de cores (pintura principal, detalhe/faixa de baixo) sorteados para cada carro.")]
+    [SerializeField] private Color[] carPaints =
+    {
+        Hex("F1DFC0"), Hex("E2735A"),   // creme e coral (a arte original)
+        Hex("BFEBDD"), Hex("2E8C76"),   // menta e verde
+        Hex("D9C9F2"), Hex("7B5BC4"),   // lilás e roxo
+        Hex("F4D35E"), Hex("3E6FB0"),   // amarelo e azul
+        Hex("F6C1CF"), Hex("A33B5C"),   // rosa e vinho
+        Hex("F2F2F2"), Hex("E8894A"),   // branco e laranja
+        Hex("A8D8F0"), Hex("2B5D8C"),   // azul-claro e azul
+        Hex("E8E1D3"), Hex("4A4F57"),   // areia e grafite
+    };
+    [Tooltip("Carro 3D: onde fica o quadril do motorista (x = lado, y = altura, z = frente).")]
+    [SerializeField] private Vector3 carSeatHips = new Vector3(-0.34f, 0.73f, 0.02f);
+    [Tooltip("Carro 3D: ponto entre os pedais (os pés do motorista vão para lá).")]
+    [SerializeField] private Vector3 carSeatPedals = new Vector3(-0.34f, 0.53f, 0.66f);
 
     private readonly List<Vector3> nodes = new List<Vector3>();
     private readonly List<List<int>> neighbors = new List<List<int>>();
@@ -298,6 +327,109 @@ public sealed class TrafficSystem : MonoBehaviour
         car.transform.SetPositionAndRotation(position, Quaternion.LookRotation(direction));
         car.transform.SetParent(transform, true);
 
+        if (carModel != null)
+        {
+            BuildModelCar(car.transform);
+        }
+        else
+        {
+            BuildBoxCar(car.transform);
+        }
+
+        // Motorista (do lado esquerdo): o alien 3D dirigindo; sem modelo, o boneco antigo de cápsula.
+        Transform driver = BuildModelDriver(car.transform);
+        if (driver == null)
+        {
+            Material skin = Pick(driverSkins);
+            driver = new GameObject("Motorista").transform;
+            driver.SetParent(car.transform, false);
+            driver.localPosition = new Vector3(-0.45f, 0f, -0.3f);
+            Part(PrimitiveType.Capsule, "Tronco", driver, new Vector3(0f, 1.35f, 0f), new Vector3(0.55f, 0.4f, 0.55f), skin);
+            Part(PrimitiveType.Sphere, "Cabeca", driver, new Vector3(0f, 1.95f, 0f), Vector3.one * 0.62f, skin);
+            Part(PrimitiveType.Sphere, "Olho_E", driver, new Vector3(-0.13f, 1.98f, 0.25f), new Vector3(0.18f, 0.24f, 0.1f), eye, new Vector3(0f, 0f, -20f));
+            Part(PrimitiveType.Sphere, "Olho_D", driver, new Vector3(0.13f, 1.98f, 0.25f), new Vector3(0.18f, 0.24f, 0.1f), eye, new Vector3(0f, 0f, 20f));
+        }
+
+        Rigidbody body = car.AddComponent<Rigidbody>();
+        body.mass = 900f;
+        body.isKinematic = true; // dirigindo: quem move é o TrafficCar
+        body.interpolation = RigidbodyInterpolation.Interpolate;
+        car.AddComponent<TelekinesisTarget>();
+        car.AddComponent<ExplosiveVehicle>(); // tem gasolina: pode pegar fogo e explodir
+        if (carModel != null)
+        {
+            car.AddComponent<HoverCar>(); // discos acesos, apagam quando o carro "morre"
+        }
+
+        TrafficCar trafficCar = car.AddComponent<TrafficCar>();
+        trafficCar.SetDriver(driver.gameObject);
+        return trafficCar;
+    }
+
+    // Carro 3D flutuante (Missão 15): modelo + colisores do tamanho dele + pintura sorteada.
+    private void BuildModelCar(Transform car)
+    {
+        // Casco: de baixo dos discos (17 cm) até a linha da janela; cabine por cima.
+        BoxCollider hull = car.gameObject.AddComponent<BoxCollider>();
+        hull.center = new Vector3(0f, 0.615f, 0f);
+        hull.size = new Vector3(1.76f, 0.89f, 3.2f);
+        BoxCollider cabin = car.gameObject.AddComponent<BoxCollider>();
+        cabin.center = new Vector3(0f, 1.38f, -0.2f);
+        cabin.size = new Vector3(1.56f, 0.72f, 2.35f);
+
+        GameObject visual = Instantiate(carModel, car);
+        visual.name = "Visual";
+        visual.transform.localPosition = Vector3.zero;
+        // O FBX do Blender vem com a frente apontando para trás (-Z): gira 180° para a frente
+        // do modelo ficar no sentido em que o carro anda (+Z).
+        visual.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        foreach (Collider extra in visual.GetComponentsInChildren<Collider>())
+        {
+            Destroy(extra);
+        }
+
+        int pair = UnityEngine.Random.Range(0, Mathf.Max(1, carPaints.Length / 2));
+        Color main = carPaints.Length >= 2 ? carPaints[pair * 2] : Color.white;
+        Color detail = carPaints.Length >= 2 ? carPaints[pair * 2 + 1] : Color.gray;
+        Material paintMat = null, detailMat = null;
+        foreach (Renderer r in visual.GetComponentsInChildren<Renderer>())
+        {
+            Material[] mats = r.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++)
+            {
+                if (mats[i] == null)
+                {
+                    continue;
+                }
+
+                string n = mats[i].name;
+                if (n.Contains("Pintura") || n.Contains("Parachoque"))
+                {
+                    if (paintMat == null)
+                    {
+                        paintMat = new Material(mats[i]) { color = main };
+                    }
+
+                    mats[i] = paintMat;
+                }
+                else if (n.Contains("Detalhe"))
+                {
+                    if (detailMat == null)
+                    {
+                        detailMat = new Material(mats[i]) { color = detail };
+                    }
+
+                    mats[i] = detailMat;
+                }
+            }
+
+            r.sharedMaterials = mats;
+        }
+    }
+
+    private void BuildBoxCar(Transform carTransform)
+    {
+        GameObject car = carTransform.gameObject;
         BoxCollider hull = car.AddComponent<BoxCollider>();
         hull.center = new Vector3(0f, 0.65f, 0f);
         hull.size = new Vector3(2f, 1.3f, 4.2f);
@@ -316,27 +448,6 @@ public sealed class TrafficSystem : MonoBehaviour
                     wheel, new Vector3(0f, 0f, 90f));
             }
         }
-
-        // Motorista: tronco + cabeção + olhos (do lado esquerdo, mão direita).
-        Material skin = Pick(driverSkins);
-        Transform driver = new GameObject("Motorista").transform;
-        driver.SetParent(car.transform, false);
-        driver.localPosition = new Vector3(-0.45f, 0f, -0.3f);
-        Part(PrimitiveType.Capsule, "Tronco", driver, new Vector3(0f, 1.35f, 0f), new Vector3(0.55f, 0.4f, 0.55f), skin);
-        Part(PrimitiveType.Sphere, "Cabeca", driver, new Vector3(0f, 1.95f, 0f), Vector3.one * 0.62f, skin);
-        Part(PrimitiveType.Sphere, "Olho_E", driver, new Vector3(-0.13f, 1.98f, 0.25f), new Vector3(0.18f, 0.24f, 0.1f), eye, new Vector3(0f, 0f, -20f));
-        Part(PrimitiveType.Sphere, "Olho_D", driver, new Vector3(0.13f, 1.98f, 0.25f), new Vector3(0.18f, 0.24f, 0.1f), eye, new Vector3(0f, 0f, 20f));
-
-        Rigidbody body = car.AddComponent<Rigidbody>();
-        body.mass = 900f;
-        body.isKinematic = true; // dirigindo: quem move é o TrafficCar
-        body.interpolation = RigidbodyInterpolation.Interpolate;
-        car.AddComponent<TelekinesisTarget>();
-        car.AddComponent<ExplosiveVehicle>(); // tem gasolina: pode pegar fogo e explodir
-
-        TrafficCar trafficCar = car.AddComponent<TrafficCar>();
-        trafficCar.SetDriver(driver.gameObject);
-        return trafficCar;
     }
 
     private static void Part(PrimitiveType type, string name, Transform parent, Vector3 position, Vector3 scale, Material material,
@@ -357,6 +468,53 @@ public sealed class TrafficSystem : MonoBehaviour
         {
             go.GetComponent<Renderer>().sharedMaterial = material;
         }
+    }
+
+    private Transform BuildModelDriver(Transform car)
+    {
+        if (driverModels == null || driverModels.Length == 0 || driverController == null)
+        {
+            return null;
+        }
+
+        GameObject source = driverModels[UnityEngine.Random.Range(0, driverModels.Length)];
+        if (source == null)
+        {
+            return null;
+        }
+
+        GameObject model = Instantiate(source, car);
+        model.name = "Motorista";
+        model.transform.localPosition = carModel != null
+            ? new Vector3(carSeatHips.x, 0.3f, carSeatHips.z)
+            : new Vector3(-0.45f, 0.3f, -0.35f);
+        model.transform.localRotation = Quaternion.identity;
+        model.transform.localScale = Vector3.one * driverScale;
+
+        if (model.TryGetComponent(out Animator animator))
+        {
+            animator.runtimeAnimatorController = driverController;
+            animator.applyRootMotion = false;
+            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+        }
+
+        AlienAppearance.DressRandomCivil(model.transform);
+        SeatedDriver seated = model.AddComponent<SeatedDriver>();
+        if (carModel != null)
+        {
+            seated.Init(carSeatHips, carSeatPedals);
+        }
+        else
+        {
+            seated.Init(driverSeatHeight);
+        }
+        return model.transform;
+    }
+
+    private static Color Hex(string hex)
+    {
+        ColorUtility.TryParseHtmlString("#" + hex, out Color color);
+        return color;
     }
 
     private static Material Pick(Material[] options)

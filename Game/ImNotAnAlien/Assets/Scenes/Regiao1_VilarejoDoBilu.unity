@@ -18511,7 +18511,7 @@ MonoBehaviour:
   hitStopSpeed: 18
   hitStopDuration: 0.06
   shakeRange: 30
-  masterVolume: 0.8
+  masterVolume: 0.5
   impactClip: {fileID: 0}
   liftClip: {fileID: 0}
   throwClip: {fileID: 0}
@@ -60465,6 +60465,14 @@ MonoBehaviour:
   speedSmoothing: 10
   airborneDelay: 0.2
   throwSpeedThreshold: 12
+  armAimWeight: 1
+  torsoAimAmount: 1
+  maxTorsoYaw: 85
+  maxArmCross: 0.15
+  faceHeldTurnSpeed: 8
+  useHitAnimation: 0
+  flinchAngle: 18
+  flinchRecovery: 7
   minSwimDepth: 0.8
   swimRootDepth: 1.1
 --- !u!1 &1281673692
@@ -73987,6 +73995,32 @@ MonoBehaviour:
   - {fileID: 2100000, guid: 57eaab94f5c9b0e43a28d76f54eaf9d3, type: 2}
   - {fileID: 2100000, guid: edcf0712cfa4efe4387c5a02d9c3acb6, type: 2}
   eye: {fileID: 2100000, guid: f6efada7311421d43b504a394f05a172, type: 2}
+  driverModels:
+  - {fileID: 919132149155446097, guid: 4a8ca4cfff7452c44ba1f7b110734835, type: 3}
+  - {fileID: 919132149155446097, guid: 3e315434d87f0c947ae21ebc9726311f, type: 3}
+  driverController: {fileID: 9100000, guid: 310e4c667eb1a8849a6f2901896b7b57, type: 2}
+  driverScale: 1.1
+  driverSeatHeight: 0.95
+  carModel: {fileID: 919132149155446097, guid: c51bf70a2d5c25c468f8d6df32d165cb, type: 3}
+  carPaints:
+  - {r: 0.94509804, g: 0.8745098, b: 0.7529412, a: 1}
+  - {r: 0.8862745, g: 0.4509804, b: 0.3529412, a: 1}
+  - {r: 0.7490196, g: 0.92156863, b: 0.8666667, a: 1}
+  - {r: 0.18039216, g: 0.54901963, b: 0.4627451, a: 1}
+  - {r: 0.8509804, g: 0.7882353, b: 0.9490196, a: 1}
+  - {r: 0.48235294, g: 0.35686275, b: 0.76862746, a: 1}
+  - {r: 0.95686275, g: 0.827451, b: 0.36862746, a: 1}
+  - {r: 0.24313726, g: 0.43529412, b: 0.6901961, a: 1}
+  - {r: 0.9647059, g: 0.75686276, b: 0.8117647, a: 1}
+  - {r: 0.6392157, g: 0.23137255, b: 0.36078432, a: 1}
+  - {r: 0.9490196, g: 0.9490196, b: 0.9490196, a: 1}
+  - {r: 0.9098039, g: 0.5372549, b: 0.2901961, a: 1}
+  - {r: 0.65882355, g: 0.84705883, b: 0.9411765, a: 1}
+  - {r: 0.16862746, g: 0.3647059, b: 0.54901963, a: 1}
+  - {r: 0.9098039, g: 0.88235295, b: 0.827451, a: 1}
+  - {r: 0.2901961, g: 0.30980393, b: 0.34117648, a: 1}
+  carSeatHips: {x: -0.34, y: 0.73, z: 0.02}
+  carSeatPedals: {x: -0.34, y: 0.53, z: 0.66}
 --- !u!1 &1547514251
 GameObject:
   m_ObjectHideFlags: 0

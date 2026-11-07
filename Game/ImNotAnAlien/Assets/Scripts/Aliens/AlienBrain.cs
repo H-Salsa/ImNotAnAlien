@@ -73,7 +73,7 @@ public sealed class AlienBrain : MonoBehaviour
     [Tooltip("Se cair abaixo desta altura (fora do mapa), o alienígena é removido.")]
     [SerializeField] private float fallOutHeight = -30f;
 
-    private static readonly float[] FleeAngles = { 0f, 40f, -40f, 80f, -80f, 120f, -120f };
+    private static readonly float[] FleeAngles = { 0f, 25f, -25f, 50f, -50f, 75f, -75f, 100f, -100f, 130f, -130f };
 
     private NavMeshAgent agent;
     private Rigidbody physicsBody;
@@ -123,7 +123,9 @@ public sealed class AlienBrain : MonoBehaviour
 
         physicsBody.isKinematic = true;
         physicsBody.mass = 60f;
-        physicsBody.interpolation = RigidbodyInterpolation.Interpolate;
+        // Interpolação só quando a física move o corpo (voando). Andando pelo NavMesh (cinemático),
+        // a interpolação puxava o alien de volta e ele andava a menos da metade da velocidade.
+        physicsBody.interpolation = RigidbodyInterpolation.None;
         physicsBody.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
 
         if (!TryGetComponent(out ImpactFeedback _))
@@ -182,6 +184,14 @@ public sealed class AlienBrain : MonoBehaviour
     private void Update()
     {
         UpdateScareHop();
+
+        RigidbodyInterpolation wanted = physicsBody != null && !physicsBody.isKinematic
+            ? RigidbodyInterpolation.Interpolate
+            : RigidbodyInterpolation.None;
+        if (physicsBody != null && physicsBody.interpolation != wanted)
+        {
+            physicsBody.interpolation = wanted;
+        }
 
         if (state == State.Devoured)
         {
@@ -328,6 +338,7 @@ public sealed class AlienBrain : MonoBehaviour
     {
         state = State.Wandering;
         agent.speed = wanderSpeed;
+        agent.autoBraking = true;
         agent.updateRotation = true;
         idleTimer = Random.Range(idleTimeRange.x, idleTimeRange.y);
         if (alertIcon != null)
@@ -371,10 +382,15 @@ public sealed class AlienBrain : MonoBehaviour
     {
         state = State.Fleeing;
         agent.speed = fleeSpeed;
+        agent.acceleration = Mathf.Max(agent.acceleration, 20f);
+        agent.autoBraking = false; // não freia perto do destino (o destino é trocado o tempo todo)
+        lastFleeDirection = Vector3.zero;
         agent.updateRotation = true;
         repathTimer = 0f;
         StartScare();
     }
+
+    private Vector3 lastFleeDirection;
 
     private void UpdateFlee()
     {
@@ -395,16 +411,57 @@ public sealed class AlienBrain : MonoBehaviour
 
         away.Normalize();
 
-        // Tenta fugir em linha reta; se houver parede, tenta ângulos cada vez mais abertos.
+        // Escolhe a direção com caminho LIVRE em linha reta (sem atravessar casas), preferindo
+        // "para longe do jogador". Antes, um ponto atrás de uma casa fazia o alien dar a volta
+        // (às vezes na direção do jogador) e ele era alcançado fácil.
+        Vector3 origin = transform.position;
+        float bestScore = float.MinValue;
+        Vector3 bestTarget = Vector3.zero;
+        bool found = false;
         foreach (float angle in FleeAngles)
         {
             Vector3 direction = Quaternion.Euler(0f, angle, 0f) * away;
-            Vector3 target = transform.position + direction * fleeDistance;
-            if (NavMesh.SamplePosition(target, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+            float lookAhead = Mathf.Max(fleeDistance, 16f);
+            Vector3 wanted = origin + direction * lookAhead;
+            float clear = lookAhead;
+            Vector3 end = wanted;
+            if (NavMesh.Raycast(origin, wanted, out NavMeshHit wall, NavMesh.AllAreas))
             {
-                agent.SetDestination(hit.position);
-                return;
+                clear = wall.distance;
+                end = wall.position;
             }
+
+            float awayness = Vector3.Dot(direction, away);
+            if (clear < 2f || awayness < -0.1f)
+            {
+                continue;
+            }
+
+            // Vale o quanto ele se AFASTA de verdade (distância livre x quanto aponta para longe),
+            // com um bônus para manter a direção anterior (não fica ziguezagueando).
+            float keep = lastFleeDirection == Vector3.zero ? 0f : Vector3.Dot(direction, lastFleeDirection);
+            float score = clear * (awayness + 0.35f * keep);
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestTarget = end;
+                found = true;
+            }
+        }
+
+        if (found)
+        {
+            Vector3 chosen = bestTarget - origin;
+            chosen.y = 0f;
+            lastFleeDirection = chosen.normalized;
+            agent.SetDestination(bestTarget);
+            return;
+        }
+
+        // Encurralado: tenta o caminho mais longe possível, mesmo dando a volta.
+        if (NavMesh.SamplePosition(origin + away * fleeDistance, out NavMeshHit hit, 4f, NavMesh.AllAreas))
+        {
+            agent.SetDestination(hit.position);
         }
     }
 
