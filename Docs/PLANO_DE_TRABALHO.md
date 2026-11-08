@@ -222,7 +222,7 @@ O autor escolheu começar pela destruição (caminho mais simples agora) em 5/11
 
 **Carros explosivos** (pedido do autor em 6/11/2026; ferramenta `ImNotAnAlien > Preparar Carros Explosivos`): carros perdem vida com batidas fortes (vida 60; dano = (velocidade − 12) × 4, sem contar enquanto segurados); danificados soltam fumaça; sem vida pegam fogo e explodem em 2,5 s (ou na hora com outra pancada forte). Explosão de raio 8 m: empurra tudo, fere alienígenas (120) e o jogador (40), danifica casas (300) e outros carros (reação em cadeia), conta como crime e deixa uma carcaça queimada.
 
-### Missão 15 — Arte dos alienígenas e do protagonista
+### Missão 15 — Arte dos alienígenas e do protagonista ✅
 
 Pedido do autor em 6/11/2026: trocar as cápsulas por personagens estilizados (protagonista com animações, alienígenas civis e policiais).
 
@@ -240,7 +240,11 @@ Pedido do autor em 6/11/2026: trocar as cápsulas por personagens estilizados (p
 - Carros flutuantes 3D feitos no Blender por `Art/Blender/car_builder.py` a partir das plantas do autor: carro civil (`Carro_Civil.fbx`, 8 combinações de cores) e viatura (`Viatura.fbx`, ainda sem uso). Bolha de vidro comprida no teto, faróis redondos, 4 portas separadas com dobradiça (prontas para a animação de entrar e sair), interior com bancos, painel e volante (`ImNotAnAlien > Montar Carros 3D (Missao 15)`, `HoverCar`).
 - Carro desligado: discos apagam e ele cai. Explosão: carro inteiro queimado, teto afundado e lataria amassada, vidros estourados em cacos, discos, retrovisores, um para-choque e algumas portas voando, as outras portas penduradas.
 
-**Falta:** trocar os carros estacionados da região pelo modelo 3D; visual definitivo do protagonista (só cueca, macacão do laboratório ou pacote de roupas — a decidir); distintivo da viatura acompanhar a porta quando houver animação de entrar no carro.
+**Feito em 7/11/2026 (aprovado pelo autor), fim da missão:**
+- Carros estacionados trocados pelo carro 3D (`ImNotAnAlien > Trocar Carros Estacionados (Missao 15)`, `CarPaint`): começam desligados, cores sorteadas, mesma destruição do trânsito.
+- Protagonista definitivo "Fugitivo H-19" (decisão D24), gerado por `Art/Blender/protagonist_builder.py` e ajustado à mão pelo autor (ajustes guardados em `Protagonista_H19_ajustes.blend`): macacão marfim com faixa coral e H-19 nas costas, gola oval larga costurada no macacão, manga rasgada, algema travada com luz piscando e marcas do experimento no braço da telecinese (esquerdo), botas com formato de pé, barba por fazer. `ProtagonistLook`: marcas em 4 estágios com brilho na cor do poder e cabeça que cresce a cada poder novo até virar um bulbo de alien.
+
+**Ficou para depois:** versão de cueca e chinelo para a cutscene inicial; distintivo da viatura acompanhar a porta quando houver a animação de entrar no carro.
 
 ## Versão 0.5 — O planeta (decisão D21)
 
