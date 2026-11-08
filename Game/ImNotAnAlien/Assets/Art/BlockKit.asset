@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed5262c82ded23a4eb01d328cf41743e, type: 3}
+  m_Name: BlockKit
+  m_EditorClassIdentifier: Assembly-CSharp::BlockKit
+  grass: {fileID: 2100000, guid: 4457cc7123f85484eb79faa94e8fa26c, type: 2}
+  asphalt: {fileID: 2100000, guid: 70fc81f8e266c564c8d06b4147b34d32, type: 2}
+  laneMark: {fileID: 2100000, guid: 496ce5c472a611f4bb91318650a8ad55, type: 2}
+  sidewalk: {fileID: 2100000, guid: bc9d4777817aa5f498f56ec0c6818867, type: 2}
+  path: {fileID: 2100000, guid: 2fa0465c12139ac4c953131f7564978e, type: 2}
+  sand: {fileID: 2100000, guid: 628fa517eafd7f1469f38e1c3787b5ed, type: 2}
+  soil: {fileID: 2100000, guid: 2d6eaf8de66662d4fb9df6a81b6e5697, type: 2}
+  water: {fileID: 2100000, guid: d23e56ea186954a4ba9333677caedaa3, type: 2}
+  riverBed: {fileID: 2100000, guid: edf4ae126e62c2b4394a0715cf3d898c, type: 2}
+  houseWalls:
+  - {fileID: 2100000, guid: d7a67a3da4befa542a3337f58d46ed63, type: 2}
+  - {fileID: 2100000, guid: eb793e7c5abd591419ddeee9babb52be, type: 2}
+  - {fileID: 2100000, guid: 2f8d074a75b41864799a593a95aa66dc, type: 2}
+  - {fileID: 2100000, guid: 1db972faeb613a6419bcdbce9dafe545, type: 2}
+  - {fileID: 2100000, guid: 1c941db09e2d8e3499706cf9ee9f5729, type: 2}
+  - {fileID: 2100000, guid: 7a972ff93875bb74abb5a13f4330bc32, type: 2}
+  houseRoofs:
+  - {fileID: 2100000, guid: 62ef1d3d91bb3a84593723feea1cc830, type: 2}
+  - {fileID: 2100000, guid: 86050cf253735e847bd6363c42728ff8, type: 2}
+  - {fileID: 2100000, guid: 634d248dcf631d24aa09410662bfad6e, type: 2}
+  door: {fileID: 2100000, guid: 2bc34fca944970443beb5f3b92d89c1c, type: 2}
+  window: {fileID: 2100000, guid: dad3d3502c6def4459d74929b33144d3, type: 2}
+  buildingColors:
+  - {fileID: 2100000, guid: f65ddd57f27e6b5468c5589f522b0fc0, type: 2}
+  - {fileID: 2100000, guid: e0921e20cd4c5194fbc14b6297edaff0, type: 2}
+  - {fileID: 2100000, guid: f875c184af3aec84690dac4db295a4b8, type: 2}
+  - {fileID: 2100000, guid: 5cc6859b7a88beb40b652d853940400f, type: 2}
+  awningColors:
+  - {fileID: 2100000, guid: 1bf71be778b2d564e8d3887f548ccf05, type: 2}
+  - {fileID: 2100000, guid: 8c3f420aad2d2a54b8ee2ab34d8c7306, type: 2}
+  - {fileID: 2100000, guid: d84f0c9615c669742b35cc48a9b5780e, type: 2}
+  - {fileID: 2100000, guid: c1c465f80ce617d4ea99a87391dc9b45, type: 2}
+  warehouse: {fileID: 2100000, guid: 3f7239f3ff0061548850be781762cc62, type: 2}
+  warehouseRoof: {fileID: 2100000, guid: 185b851e874fc0f469c8c9ace592a6a7, type: 2}
+  barn: {fileID: 2100000, guid: d3269e9551497a841b28fe05976a498a, type: 2}
+  barnRoof: {fileID: 2100000, guid: d57a3ec79e7e6f448b2c510700137d0f, type: 2}
+  trunk: {fileID: 2100000, guid: c303f59f8cede8b42ba428e1018561f8, type: 2}
+  canopies:
+  - {fileID: 2100000, guid: 6e5b754e1a8e42a41a466b6271a4badc, type: 2}
+  - {fileID: 2100000, guid: 2b621aeeeca8edc4297997213c389dc6, type: 2}
+  - {fileID: 2100000, guid: cbfaf87b8ba4d5e40a3158444af44265, type: 2}
+  bush: {fileID: 2100000, guid: ee9f96b8c6482444eb6f4e76228bc6d7, type: 2}
+  rock: {fileID: 2100000, guid: 5adae69a6fab2f244a63ba9c35db0b80, type: 2}
+  crop: {fileID: 2100000, guid: a368c73df5383dd4aa4cd45e3168a657, type: 2}
+  flower: {fileID: 2100000, guid: db628757569b6c944bb4154d4084b9d7, type: 2}
+  wood: {fileID: 2100000, guid: efeac23a4b290fb409af495d39805111, type: 2}
+  bench: {fileID: 2100000, guid: fa8189a5da62abf49b11e9c2a71768da, type: 2}
+  fence: {fileID: 2100000, guid: c4298b36e27001c48b31a06a2f8c30af, type: 2}
+  lampPole: {fileID: 2100000, guid: 5fa73d294f789244cb8b1edffc948436, type: 2}
+  lampLight: {fileID: 2100000, guid: 64e2de47629882c4bbc2b183b8b1a521, type: 2}
+  crate: {fileID: 2100000, guid: 446910dbdba8d8c4fb45c92d1957d6cc, type: 2}
+  bin: {fileID: 2100000, guid: aad21b585f66e334bb33046150108a20, type: 2}
+  hay: {fileID: 2100000, guid: 3bbe413af7d8f4b49870e4b7abf36933, type: 2}
+  containerColors:
+  - {fileID: 2100000, guid: e982ebe19c3e3c64bbdfd1b5ebf58c12, type: 2}
+  - {fileID: 2100000, guid: 5062344642f617e47bf9e9cbdd7722e5, type: 2}
+  - {fileID: 2100000, guid: 3a9d7b880b51582438aaa63e5203bf29, type: 2}
+  - {fileID: 2100000, guid: 4e26d2f188db01041894f16448185d20, type: 2}
+  carModel: {fileID: 919132149155446097, guid: c51bf70a2d5c25c468f8d6df32d165cb, type: 3}

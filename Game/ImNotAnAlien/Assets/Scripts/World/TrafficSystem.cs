@@ -119,12 +119,21 @@ public sealed class TrafficSystem : MonoBehaviour
         PrototypeThirdPersonController controller = FindFirstObjectByType<PrototypeThirdPersonController>();
         player = controller != null ? controller.transform : null;
         mainCamera = Camera.main;
-        BuildGraph();
 
         streamer = WorldStreamer.Instance;
         if (streamer != null)
         {
             streamer.BlockUnloading += OnBlockUnloading;
+        }
+
+        // Mundo sorteado (Missão 18): a rede vem do sorteio; senão, das ruas da lista.
+        if (streamer != null && streamer.Layout != null)
+        {
+            BuildGraphFromLayout(streamer.Layout);
+        }
+        else
+        {
+            BuildGraph();
         }
 
         if (player == null || edges.Count == 0)
@@ -194,6 +203,25 @@ public sealed class TrafficSystem : MonoBehaviour
                 previousStop = stop;
             }
         }
+    }
+
+    private void BuildGraphFromLayout(WorldLayout layout)
+    {
+        List<Vector3> layoutNodes = new List<Vector3>();
+        List<(int a, int b)> layoutEdges = new List<(int a, int b)>();
+        layout.BuildRoadNetwork(layoutNodes, layoutEdges);
+        foreach (Vector3 node in layoutNodes)
+        {
+            nodes.Add(node);
+            neighbors.Add(new List<int>());
+        }
+
+        foreach ((int a, int b) in layoutEdges)
+        {
+            Connect(a, b);
+        }
+
+        Debug.Log($"Trânsito: {nodes.Count} cruzamentos e {edges.Count} trechos de rua no mapa sorteado.");
     }
 
     private int FindOrAddNode(Vector3 point)

@@ -9,6 +9,9 @@ EditorBuildSettings:
     path: Assets/Scenes/MenuInicial.unity
     guid: c2a9415b46d8ac14684d34b0be41a31e
   - enabled: 1
+    path: Assets/Scenes/Mundo_Sorteado.unity
+    guid: 6e9c27e102a18b74c85cb57f175ceb68
+  - enabled: 1
     path: Assets/Scenes/Regiao1_VilarejoDoBilu_Blocos.unity
     guid: a9f3a80c2c2a68948af97a601bd947f4
   - enabled: 1

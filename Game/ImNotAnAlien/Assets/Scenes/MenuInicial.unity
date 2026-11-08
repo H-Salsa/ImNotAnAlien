@@ -148,7 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4598a7018f4fe2741b949cfea4b2a9a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainMenu
-  gameSceneName: Regiao1_VilarejoDoBilu_Blocos
+  gameSceneName: Mundo_Sorteado
   accent: {r: 0.55, g: 0.4, b: 1, a: 1}
   dnaColor: {r: 0.35, g: 1, b: 0.65, a: 1}
 --- !u!4 &321315116

@@ -15,6 +15,10 @@ using UnityEngine.InputSystem;
 // - Névoa leve esconde a borda do que está carregado.
 //
 // Teste: F8 liga o MODO TESTE (raio pequeno e sem névoa), para ver os blocos entrando e saindo.
+//
+// Missão 18 — mundo sorteado: com "Procedural" ligado, a grade inteira (ex.: 9 × 9) é sorteada pela
+// semente do jogo salvo (WorldLayout). Os blocos da lista "Blocks" (o Vilarejo) ficam fixos; os outros
+// são montados por código (BlockBuilder) quando entram, sempre iguais para a mesma semente.
 [DefaultExecutionOrder(-860)]
 [DisallowMultipleComponent]
 public sealed class WorldStreamer : MonoBehaviour
@@ -43,6 +47,16 @@ public sealed class WorldStreamer : MonoBehaviour
     [SerializeField, Min(1f)] private float testLoadRadius = 25f;
     [SerializeField, Min(1f)] private float testUnloadRadius = 40f;
 
+    [Header("Mundo sorteado (Missão 18)")]
+    [SerializeField] private bool procedural;
+    [Tooltip("Tamanho da grade em blocos (X, Z).")]
+    [SerializeField] private Vector2Int gridSize = new Vector2Int(9, 9);
+    [SerializeField] private BlockKit kit;
+    [Tooltip("Semente usada quando não há jogo salvo (Play direto sem SaveManager).")]
+    [SerializeField] private int fallbackSeed = 12345;
+    [Tooltip("Paredes invisíveis em volta da grade (até o planeta dar a volta, na Missão 19).")]
+    [SerializeField] private bool mapWalls = true;
+
     [Header("Ritmo")]
     [SerializeField, Min(0.05f)] private float checkInterval = 0.2f;
     [Tooltip("Quantos blocos podem ser carregados por verificação (espalha o trabalho).")]
@@ -59,6 +73,7 @@ public sealed class WorldStreamer : MonoBehaviour
     [SerializeField, Min(1f)] private float fogEnd = 165f;
 
     private readonly Dictionary<Vector2Int, BlockEntry> entries = new Dictionary<Vector2Int, BlockEntry>();
+    private readonly HashSet<Vector2Int> cells = new HashSet<Vector2Int>();
     private readonly Dictionary<Vector2Int, WorldBlock> loaded = new Dictionary<Vector2Int, WorldBlock>();
     private readonly List<Vector2Int> scratch = new List<Vector2Int>();
 
@@ -74,6 +89,7 @@ public sealed class WorldStreamer : MonoBehaviour
     public event Action<WorldBlock> BlockLoaded;
 
     public IEnumerable<WorldBlock> LoadedBlocks => loaded.Values;
+    public WorldLayout Layout { get; private set; }
     public int LoadedCount => loaded.Count;
     public float BlockSize => blockSize;
     public bool TestMode => testMode;
@@ -104,6 +120,7 @@ public sealed class WorldStreamer : MonoBehaviour
 
         navMesh.EnsureInitialized();
         ApplyFog();
+        PrepareCells();
 
         if (player == null)
         {
@@ -112,7 +129,7 @@ public sealed class WorldStreamer : MonoBehaviour
 
         // Começo do jogo: carrega tudo o que está perto, na hora, e monta o NavMesh antes de
         // a população começar a surgir.
-        foreach (Vector2Int coord in entries.Keys)
+        foreach (Vector2Int coord in new List<Vector2Int>(cells)) // cópia: Load pode tirar blocos da lista
         {
             if (player == null || DistanceTo(coord) < LoadRadius)
             {
@@ -121,7 +138,70 @@ public sealed class WorldStreamer : MonoBehaviour
         }
 
         navMesh.BuildNow();
-        Debug.Log($"Mundo em blocos: {loaded.Count} de {entries.Count} blocos carregados no início.");
+        Debug.Log($"Mundo em blocos: {loaded.Count} de {cells.Count} blocos carregados no início.");
+    }
+
+    // Quais blocos existem: só os da lista (Missão 16) ou a grade sorteada inteira (Missão 18).
+    private void PrepareCells()
+    {
+        if (!procedural)
+        {
+            cells.UnionWith(entries.Keys);
+            return;
+        }
+
+        int seed = SaveManager.Instance != null && SaveManager.Instance.Data != null ? SaveManager.Instance.Data.worldSeed : fallbackSeed;
+        Dictionary<Vector2Int, BlockSpec> fixedSpecs = new Dictionary<Vector2Int, BlockSpec>();
+        foreach (BlockEntry entry in entries.Values)
+        {
+            WorldBlock block = entry.prefab.GetComponent<WorldBlock>();
+            if (block != null && block.HasSpec)
+            {
+                fixedSpecs[entry.coord] = block.Spec;
+            }
+        }
+
+        Layout = WorldLayout.Generate(gridSize.x, gridSize.y, gridOrigin, blockSize, seed, fixedSpecs);
+        for (int x = 0; x < gridSize.x; x++)
+        {
+            for (int z = 0; z < gridSize.y; z++)
+            {
+                cells.Add(new Vector2Int(x, z));
+            }
+        }
+
+        if (kit == null)
+        {
+            Debug.LogError("WorldStreamer: falta o Kit de Blocos (campo Kit no objeto Mundo); só os blocos fixos vão aparecer. " +
+                           "Arraste Assets/Art/BlockKit.asset para o campo ou rode 'Gerar Mundo Sorteado' de novo.", this);
+        }
+
+        if (mapWalls)
+        {
+            BuildMapWalls();
+        }
+
+        Debug.Log($"Mundo sorteado: semente {seed}, {gridSize.x} × {gridSize.y} blocos.");
+    }
+
+    private void BuildMapWalls()
+    {
+        GameObject walls = new GameObject("Limites_Mapa");
+        float width = gridSize.x * blockSize;
+        float depth = gridSize.y * blockSize;
+        Vector3 center = WorldOrigin.ToWorld(new Vector3(gridOrigin.x + width / 2f, 10f, gridOrigin.y + depth / 2f));
+        Wall(walls.transform, "Limite_Leste", center + new Vector3(width / 2f + 0.5f, 0f, 0f), new Vector3(1f, 20f, depth + 2f));
+        Wall(walls.transform, "Limite_Oeste", center - new Vector3(width / 2f + 0.5f, 0f, 0f), new Vector3(1f, 20f, depth + 2f));
+        Wall(walls.transform, "Limite_Norte", center + new Vector3(0f, 0f, depth / 2f + 0.5f), new Vector3(width + 2f, 20f, 1f));
+        Wall(walls.transform, "Limite_Sul", center - new Vector3(0f, 0f, depth / 2f + 0.5f), new Vector3(width + 2f, 20f, 1f));
+    }
+
+    private static void Wall(Transform parent, string name, Vector3 position, Vector3 size)
+    {
+        GameObject wall = new GameObject(name);
+        wall.transform.SetParent(parent, false);
+        wall.transform.position = position;
+        wall.AddComponent<BoxCollider>().size = size;
     }
 
     private void OnDestroy()
@@ -151,7 +231,7 @@ public sealed class WorldStreamer : MonoBehaviour
 
         // O bloco onde o jogador está nunca pode faltar (ex.: ao renascer longe).
         Vector2Int here = CoordAt(WorldOrigin.ToLogical(player.position));
-        if (entries.ContainsKey(here) && !loaded.ContainsKey(here))
+        if (cells.Contains(here) && !loaded.ContainsKey(here))
         {
             Load(here, true);
         }
@@ -194,7 +274,7 @@ public sealed class WorldStreamer : MonoBehaviour
 
         // Entram os que ficaram perto, do mais próximo para o mais longe.
         scratch.Clear();
-        foreach (Vector2Int coord in entries.Keys)
+        foreach (Vector2Int coord in cells)
         {
             if (!loaded.ContainsKey(coord) && DistanceTo(coord) < LoadRadius)
             {
@@ -211,19 +291,34 @@ public sealed class WorldStreamer : MonoBehaviour
 
     private void Load(Vector2Int coord, bool rebuildNavMesh)
     {
-        BlockEntry entry = entries[coord];
         Rect rect = BlockRectWorld(coord);
-        GameObject go = Instantiate(entry.prefab, new Vector3(rect.xMin, 0f, rect.yMin), Quaternion.identity);
-        go.name = entry.prefab.name;
+        GameObject go;
+        if (entries.TryGetValue(coord, out BlockEntry entry))
+        {
+            go = Instantiate(entry.prefab, new Vector3(rect.xMin, 0f, rect.yMin), Quaternion.identity);
+            go.name = entry.prefab.name;
+        }
+        else if (Layout != null && kit != null)
+        {
+            go = BlockBuilder.Build(Layout.Get(coord), kit, coord);
+            go.transform.position = new Vector3(rect.xMin, 0f, rect.yMin);
+        }
+        else
+        {
+            cells.Remove(coord);
+            return;
+        }
 
         WorldBlock block = go.GetComponent<WorldBlock>();
         if (block == null)
         {
-            Debug.LogWarning($"O prefab {entry.prefab.name} não tem WorldBlock. Rode de novo 'Cortar Vilarejo em Blocos'.", go);
+            Debug.LogWarning($"O bloco {go.name} não tem WorldBlock.", go);
             Destroy(go);
-            entries.Remove(coord);
+            cells.Remove(coord);
             return;
         }
+
+        block.SetCoord(coord);
 
         loaded[coord] = block;
         BlockLoaded?.Invoke(block);
@@ -340,7 +435,7 @@ public sealed class WorldStreamer : MonoBehaviour
 
     private bool IsCoordReady(Vector2Int coord)
     {
-        return !entries.ContainsKey(coord) || loaded.ContainsKey(coord);
+        return !cells.Contains(coord) || loaded.ContainsKey(coord);
     }
 
     // Distância do jogador até o bloco (0 = dentro dele), no plano X/Z.
@@ -385,19 +480,39 @@ public sealed class WorldStreamer : MonoBehaviour
 
         Vector3 logical = WorldOrigin.ToLogical(player.position);
         Vector2Int here = CoordAt(logical);
+        string type = Layout != null && Layout.Contains(here) ? Layout.Get(here).ToString() : "";
         string text = $"MODO TESTE DOS BLOCOS (F8)\n" +
-                      $"Bloco atual: ({here.x}, {here.y})   carregados: {loaded.Count} de {entries.Count}\n" +
+                      $"Bloco atual: ({here.x}, {here.y}) {type}   carregados: {loaded.Count} de {cells.Count}\n" +
                       $"Posição lógica: ({logical.x:0}, {logical.z:0})   origem: ({WorldOrigin.Offset.x:0}, {WorldOrigin.Offset.z:0})\n" +
                       $"NavMesh: {(navMesh != null && navMesh.IsBuilding ? "montando..." : "pronto")}   F9 = recentralizar";
-        GUI.Label(new Rect(12f, Screen.height - 86f, 640f, 80f), text);
+        GUI.Label(new Rect(12f, Screen.height - 86f, 900f, 80f), text);
     }
 
     private void OnDrawGizmos()
     {
-        foreach (BlockEntry entry in blocks)
+        List<Vector2Int> coords = new List<Vector2Int>();
+        if (procedural)
         {
-            Rect rect = BlockRectWorld(entry.coord);
-            bool isLoaded = Application.isPlaying && loaded.ContainsKey(entry.coord);
+            for (int x = 0; x < gridSize.x; x++)
+            {
+                for (int z = 0; z < gridSize.y; z++)
+                {
+                    coords.Add(new Vector2Int(x, z));
+                }
+            }
+        }
+        else
+        {
+            foreach (BlockEntry entry in blocks)
+            {
+                coords.Add(entry.coord);
+            }
+        }
+
+        foreach (Vector2Int coord in coords)
+        {
+            Rect rect = BlockRectWorld(coord);
+            bool isLoaded = Application.isPlaying && loaded.ContainsKey(coord);
             Gizmos.color = isLoaded ? new Color(0.2f, 1f, 0.4f, 0.9f) : new Color(1f, 1f, 1f, 0.35f);
             Gizmos.DrawWireCube(new Vector3(rect.center.x, 0.5f, rect.center.y), new Vector3(rect.width, 1f, rect.height));
         }

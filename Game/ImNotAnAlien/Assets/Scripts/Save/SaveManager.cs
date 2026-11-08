@@ -18,6 +18,9 @@ public sealed class SaveManager : MonoBehaviour
 {
     public static SaveManager Instance { get; private set; }
 
+    // Abaixo disso o jogador caiu para fora do mundo: essa posição não é salva nem carregada.
+    private const float MinValidHeight = -10f;
+
     [SerializeField] private string menuSceneName = "MenuInicial";
     [Tooltip("Salvamento automático a cada X segundos de jogo (0 = desligado).")]
     [SerializeField, Min(0f)] private float autosaveInterval = 180f;
@@ -73,7 +76,8 @@ public sealed class SaveManager : MonoBehaviour
         {
             startPosition = player.position;
             startRotation = player.rotation;
-            if (data.hasPlayerPosition)
+            // Posição salva fora do mundo (ex.: caiu no vazio): ignora e começa no ponto inicial.
+            if (data.hasPlayerPosition && data.playerPosition.y > MinValidHeight)
             {
                 player.position = WorldOrigin.ToWorld(data.playerPosition) + Vector3.up * 0.3f;
                 Physics.SyncTransforms();
@@ -235,8 +239,9 @@ public sealed class SaveManager : MonoBehaviour
             }
         }
 
-        // Morto: guarda o ponto de renascer.
-        bool dead = PlayerHealth.Instance != null && PlayerHealth.Instance.IsDead;
+        // Morto ou caindo no vazio: guarda o ponto de renascer.
+        bool dead = PlayerHealth.Instance != null && PlayerHealth.Instance.IsDead ||
+                    player != null && player.position.y < MinValidHeight;
         if (player != null)
         {
             data.hasPlayerPosition = true;
