@@ -23,6 +23,10 @@ public static class ProtagonistSetupTool
     private const string MaleFbx = Root + "/Base/Superhero_Male_FullBody.fbx";
     private const string FemaleFbx = Root + "/Base/Superhero_Female_FullBody.fbx";
     private const string HairFbx = Root + "/Hair/Hair_SimpleParted.fbx";
+    // Visual definitivo (D24): macacão H-19 feito no Blender por Art/Blender/protagonist_builder.py,
+    // com corpo, cabelo, barba, gola, algema, botas e marcas do experimento no mesmo esqueleto.
+    // Se o arquivo não existir, a ferramenta usa o corpo base com o cabelo, como antes.
+    private const string H19Fbx = "Assets/Art/Characters/Protagonista/Protagonista_H19.fbx";
     private const string BaseTextures = Root + "/Base/Textures";
     private const string HairTextures = Root + "/Hair/Textures";
 
@@ -66,7 +70,8 @@ public static class ProtagonistSetupTool
             ConfigureImports();
 
             EditorUtility.DisplayProgressBar("Missão 15", "Conferindo o esqueleto humanoide...", 0.5f);
-            if (!CheckAvatar(MaleFbx, out Avatar avatar) || !CheckAvatar(AnimationsFbx, out _))
+            bool h19 = AssetDatabase.LoadAssetAtPath<GameObject>(H19Fbx) != null;
+            if (!CheckAvatar(h19 ? H19Fbx : MaleFbx, out Avatar avatar) || !CheckAvatar(AnimationsFbx, out _))
             {
                 return;
             }
@@ -76,11 +81,11 @@ public static class ProtagonistSetupTool
             AnimatorController controller = CreateController(out List<string> missingClips);
 
             EditorUtility.DisplayProgressBar("Missão 15", "Colocando o modelo no jogador...", 0.9f);
-            bool hasHair = BuildVisual(player, avatar, controller, materials);
+            bool hasHair = BuildVisual(player, avatar, controller, materials, h19);
 
             AssetDatabase.SaveAssets();
 
-            string message = "Protagonista montado!\n\n" +
+            string message = (h19 ? "Protagonista H-19 montado (macacão de cobaia)!\n\n" : "Protagonista montado!\n\n") +
                              (hasHair ? "" : "(Cabelo não encontrado; seguiu sem.)\n") +
                              (missingClips.Count > 0 ? $"Clipes não encontrados: {string.Join(", ", missingClips)}\n" : "") +
                              "\nSALVE A CENA com Ctrl+S e dê Play.\nRode também na outra cena (Prototype / Regiao1) se quiser o modelo nas duas.";
@@ -100,6 +105,14 @@ public static class ProtagonistSetupTool
         ConfigureModel(AnimationsFbx, humanoid: true, animations: true);
         ConfigureModel(MaleFbx, humanoid: true, animations: false);
         ConfigureModel(FemaleFbx, humanoid: true, animations: false);
+        ConfigureModel(H19Fbx, humanoid: true, animations: false);
+        if (AssetImporter.GetAtPath(H19Fbx) is ModelImporter h19Importer &&
+            (!h19Importer.importBlendShapes || h19Importer.weldVertices))
+        {
+            h19Importer.importBlendShapes = true;   // "Cabeca_Alien": a cabeça que cresce
+            h19Importer.weldVertices = false;
+            h19Importer.SaveAndReimport();
+        }
 
         foreach (string guid in AssetDatabase.FindAssets("t:Model", new[] { Root + "/Hair" }))
         {
@@ -239,7 +252,24 @@ public static class ProtagonistSetupTool
         public Material skin;
         public Material eyes;
         public Material hair;
+        public Dictionary<string, Material> h19;
     }
+
+    // Materiais do macacão H-19 (nome no Blender -> cor, suavidade, metal, brilho).
+    private static readonly (string name, string hex, float smooth, float metal, float glow)[] H19Materials =
+    {
+        ("H19_Macacao", "E6D9C2", 0.15f, 0f, 0f),
+        ("H19_Faixa", "C8705A", 0.2f, 0f, 0f),
+        ("H19_Reforco", "D2C3A8", 0.1f, 0f, 0f),
+        ("H19_Escuro", "3A3634", 0.3f, 0f, 0f),
+        ("H19_Bota", "5E646C", 0.4f, 0f, 0f),
+        ("H19_Algema", "8A949C", 0.7f, 0.7f, 0f),
+        ("H19_Fio", "E39A7C", 0.4f, 0f, 0f),
+        ("H19_Codigo", "3A3634", 0.2f, 0f, 0f),
+        ("H19_Marcas", "5FF2D8", 0.6f, 0f, 1.5f),
+        ("H19_Metal_Escuro", "4A5056", 0.6f, 0.6f, 0f),
+        ("H19_Luz", "FF4A3A", 0.8f, 0f, 3f),
+    };
 
     private static Materials CreateMaterials(bool darkSkin)
     {
@@ -258,7 +288,34 @@ public static class ProtagonistSetupTool
             skin = MakeMaterial("Protagonista_Pele", skinColor, LoadTexture(BaseTextures, "T_Superhero_Male_Normal"), 0.35f, false),
             eyes = MakeMaterial("Protagonista_Olhos", LoadTexture(BaseTextures, "T_Eye_Brown"), LoadTexture(BaseTextures, "T_Eye_Normal"), 0.8f, false),
             hair = MakeMaterial("Protagonista_Cabelo", hairColor, hairNormal, 0.3f, hairHasAlpha),
+            h19 = H19Materials.ToDictionary(m => m.name, m => MakeColorMaterial(m.name, m.hex, m.smooth, m.metal, m.glow)),
         };
+    }
+
+    private static Material MakeColorMaterial(string name, string hex, float smoothness, float metallic, float glow)
+    {
+        EnsureFolder(MaterialFolder);
+        string path = $"{MaterialFolder}/M_{name}.mat";
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (material == null)
+        {
+            material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            AssetDatabase.CreateAsset(material, path);
+        }
+
+        ColorUtility.TryParseHtmlString("#" + hex, out Color color);
+        material.SetColor("_BaseColor", color);
+        material.SetFloat("_Smoothness", smoothness);
+        material.SetFloat("_Metallic", metallic);
+        if (glow > 0f)
+        {
+            material.EnableKeyword("_EMISSION");
+            material.SetColor("_EmissionColor", color * glow);
+            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+        }
+
+        EditorUtility.SetDirty(material);
+        return material;
     }
 
     private static Texture2D LoadTexture(string folder, string name)
@@ -459,9 +516,9 @@ public static class ProtagonistSetupTool
 
     // ---------- 4. Modelo no jogador ----------
 
-    private static bool BuildVisual(PrototypeThirdPersonController player, Avatar avatar, AnimatorController controller, Materials materials)
+    private static bool BuildVisual(PrototypeThirdPersonController player, Avatar avatar, AnimatorController controller, Materials materials, bool h19)
     {
-        GameObject modelAsset = AssetDatabase.LoadAssetAtPath<GameObject>(MaleFbx);
+        GameObject modelAsset = AssetDatabase.LoadAssetAtPath<GameObject>(h19 ? H19Fbx : MaleFbx);
         Transform playerTransform = player.transform;
 
         Undo.IncrementCurrentGroup();
@@ -500,7 +557,19 @@ public static class ProtagonistSetupTool
             ApplyMaterials(renderer, materials);
         }
 
-        bool hasHair = AddHair(visual, materials.hair);
+        if (h19)
+        {
+            // A textura do cabelo da Quaternius é cinza-claro: tinge de castanho-escuro (cabelo,
+            // barba e sobrancelhas do H-19).
+            materials.hair.SetColor("_BaseColor", new Color(0.36f, 0.24f, 0.16f));
+            EditorUtility.SetDirty(materials.hair);
+        }
+
+        bool hasHair = h19 || AddHair(visual, materials.hair);
+        if (h19 && visual.GetComponent<ProtagonistLook>() == null)
+        {
+            visual.AddComponent<ProtagonistLook>();
+        }
 
         // Esconde a cápsula (o colisor de verdade é o CharacterController).
         if (player.TryGetComponent(out MeshRenderer capsule))
@@ -533,6 +602,12 @@ public static class ProtagonistSetupTool
         for (int i = 0; i < current.Length; i++)
         {
             string name = current[i] != null ? current[i].name : "";
+            if (materials.h19 != null && materials.h19.TryGetValue(name.Split(' ')[0].Split('.')[0], out Material suit))
+            {
+                replaced[i] = suit;
+                continue;
+            }
+
             replaced[i] = name.Contains("Eye") ? materials.eyes
                 : name.Contains("Hair") ? materials.hair
                 : materials.skin;

@@ -83,6 +83,16 @@ public sealed class HoverCar : MonoBehaviour
                 r.sharedMaterials = mats;
             }
         }
+
+        // Carro estacionado (com física) já começa desligado: discos e faróis apagados.
+        if (traffic == null && body != null && !body.isKinematic)
+        {
+            power = 0f;
+            foreach ((Material material, Color _) in glows)
+            {
+                material.SetColor("_EmissionColor", Color.black);
+            }
+        }
     }
 
     private void Update()
