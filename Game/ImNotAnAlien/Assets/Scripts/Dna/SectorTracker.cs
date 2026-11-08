@@ -149,9 +149,11 @@ public sealed class SectorTracker : MonoBehaviour
 
     // ---------- Consultas ----------
 
+    // "position" é de MUNDO; as áreas dos setores são LÓGICAS, fixas no mapa (Missão 16).
     public int SectorAt(Vector3 position)
     {
-        Vector2 flat = new Vector2(position.x, position.z);
+        Vector3 logical = WorldOrigin.ToLogical(position);
+        Vector2 flat = new Vector2(logical.x, logical.z);
         for (int i = 0; i < sectors.Count; i++)
         {
             if (sectors[i].area.Contains(flat))
@@ -181,6 +183,30 @@ public sealed class SectorTracker : MonoBehaviour
     }
 
     public int SectorOf(AlienHealth alien) => alien.QuotaSector >= 0 ? alien.QuotaSector : SectorAt(alien.transform.position);
+
+    // Jogo salvo (Missão 17): devolve o progresso dos setores, pelo nome. Chamado antes do Start.
+    public void RestoreProgress(IReadOnlyList<SaveData.SectorSave> saved)
+    {
+        if (saved == null)
+        {
+            return;
+        }
+
+        foreach (SaveData.SectorSave item in saved)
+        {
+            SectorInfo sector = sectors.Find(s => s.name == item.name);
+            if (sector == null)
+            {
+                continue;
+            }
+
+            sector.consumed = Mathf.Clamp(item.consumed, 0, sector.quota);
+            sector.cleared = item.cleared || sector.consumed >= sector.quota;
+        }
+
+        IsCleared = sectors.Count > 0 && sectors.TrueForAll(s => s.cleared);
+        Changed?.Invoke();
+    }
 
     public void Track(AlienHealth alien)
     {

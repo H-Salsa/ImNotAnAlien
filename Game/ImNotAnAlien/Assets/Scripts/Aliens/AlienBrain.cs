@@ -149,6 +149,24 @@ public sealed class AlienBrain : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        WorldOrigin.Shifted -= OnOriginShifted; // (evita assinar duas vezes)
+        WorldOrigin.Shifted += OnOriginShifted;
+    }
+
+    private void OnDestroy()
+    {
+        WorldOrigin.Shifted -= OnOriginShifted;
+    }
+
+    // O mundo recentralizou (Missão 16): o "bairro" onde ele passeia anda junto.
+    // (O destino do NavMeshAgent é ajustado pelo WorldOrigin.)
+    private void OnOriginShifted(Vector3 delta)
+    {
+        home -= delta;
+    }
+
     private void Start()
     {
         PrototypeThirdPersonController controller = FindFirstObjectByType<PrototypeThirdPersonController>();

@@ -349,6 +349,14 @@ public sealed class DestructibleStructure : MonoBehaviour
     private IEnumerator UpdateNavMeshNextFrame()
     {
         yield return null;
+
+        // Mundo em blocos (Missão 16): um NavMesh só para os blocos carregados.
+        if (WorldNavMesh.Instance != null)
+        {
+            WorldNavMesh.Instance.RequestRebuild();
+            yield break;
+        }
+
         NavMeshSurface surface = GetComponentInParent<NavMeshSurface>();
         if (surface != null && surface.navMeshData != null)
         {

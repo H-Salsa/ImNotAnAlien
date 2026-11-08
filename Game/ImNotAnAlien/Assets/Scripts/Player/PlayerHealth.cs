@@ -41,6 +41,22 @@ public sealed class PlayerHealth : MonoBehaviour
         spawnRotation = transform.rotation;
     }
 
+    private void OnEnable()
+    {
+        WorldOrigin.Shifted += OnOriginShifted;
+    }
+
+    private void OnDisable()
+    {
+        WorldOrigin.Shifted -= OnOriginShifted;
+    }
+
+    // O mundo recentralizou (Missão 16): o ponto de renascer anda junto.
+    private void OnOriginShifted(Vector3 delta)
+    {
+        spawnPosition -= delta;
+    }
+
     private void OnDestroy()
     {
         if (Instance == this)
@@ -61,6 +77,13 @@ public sealed class PlayerHealth : MonoBehaviour
     }
 
     // Evolução "Pele Alienígena": aumenta a vida máxima e cura a diferença.
+    // Onde o jogador renasce (Missão 17: continua sendo o ponto inicial, mesmo ao carregar um jogo).
+    public void SetSpawnPoint(Vector3 position, Quaternion rotation)
+    {
+        spawnPosition = position;
+        spawnRotation = rotation;
+    }
+
     public void SetMaxHealth(float newMaxHealth)
     {
         newMaxHealth = Mathf.Max(1f, newMaxHealth);

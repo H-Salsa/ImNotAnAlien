@@ -250,11 +250,28 @@ Pedido do autor em 6/11/2026: trocar as cápsulas por personagens estilizados (p
 
 Ordem aprovada pelo autor em 6/11/2026. Cada missão só começa depois que a anterior estiver testada e aprovada.
 
-### Missão 16 — Carregar o mundo sob demanda
+### Missão 16 — Carregar o mundo sob demanda ✅
 Cortar o Vilarejo do Bilu em blocos (posições fixas, sem sorteio ainda). Carregar os blocos em volta do jogador e descarregar os de trás, montando o NavMesh de cada bloco ao carregar, com alienígenas, trânsito e telecinese funcionando na fronteira entre blocos. Recentralizar o mundo de tempos em tempos para não tremer longe da origem.
+
+**Concluída em 8/11/2026; testada e aprovada pelo autor.** Ferramenta `ImNotAnAlien > Cortar Vilarejo em Blocos (Missao 16)` (rodar com a cena `Regiao1_VilarejoDoBilu` aberta; ela não muda).
+
+- Escolhas do autor: blocos de 100 m (grade 3 × 3, canto sudoeste em x = −60, z = −240), origem flutuante já nesta missão e névoa leve.
+- Cena nova `Regiao1_VilarejoDoBilu_Blocos` com 9 prefabs em `Assets/Prefabs/Blocos/Vilarejo` (partes `Estatico` e `Dinamico`). Ruas, chão e rio cortados nas bordas (12 peças); casas, árvores, galpões e pontes ficam inteiros no bloco do seu centro. Para mudar o cenário, editar o prefab do bloco.
+- Objeto `Mundo`: `WorldStreamer` (carrega a 170 m e descarrega a 200 m da borda do bloco; névoa linear 70–165 m), `WorldNavMesh` (um NavMesh só para os blocos carregados, refeito em segundo plano; sem costuras entre blocos) e `WorldOrigin` (recentraliza a cada 1 km; posições lógicas × de mundo).
+- Alienígenas e trânsito só surgem em blocos carregados e somem com o bloco; objetos com física arremessados para outro bloco carregado mudam de dono; o que cai no vazio é apagado.
+- Teclas de teste: **F8** modo teste (raio 25/40 m, sem névoa, informações na tela) e **F9** recentraliza na hora.
+- Começam carregados 8 dos 9 blocos (o canto sudeste fica a mais de 170 m do início).
 
 ### Missão 17 — Estado permanente por região e salvamento
 Cada região guarda semente, cota total, quantos alienígenas restam e se está limpa. Região limpa continua limpa ao voltar. Salvar e carregar o jogo (DNA, evoluções, regiões).
+
+**Em andamento (8/11/2026).** Escolhas do autor ([D25](DECISOES.md)): salvamento automático **e** tecla, **três espaços** de jogo e **menu inicial** simples. Ferramenta `ImNotAnAlien > Preparar Salvamento (Missao 17)`.
+
+- Guarda: semente do mundo, DNA, nível de cada evolução, posição do jogador e, por região, semente, cota, consumidos e setores limpos. Não guarda nível de procurado, casas, carros nem alienígenas soltos (D23).
+- Salva sozinho ao limpar setor ou região, a cada 3 min e ao fechar o jogo; **F5** salva na mão; Tab > "Salvar e voltar ao menu".
+- Menu inicial (cena `MenuInicial`, primeira do Build): Continuar, Novo jogo (semente nova) e Apagar em cada espaço.
+- Arquivos `jogo_1.json` a `jogo_3.json` em `Application.persistentDataPath/Saves`, com cópia de segurança `.bak`.
+- Renascer continua no ponto inicial da região (as bases chegam na Missão 19).
 
 ### Missão 18 — Blocos sorteados pela semente
 Peças de bloco feitas à mão com "conexões" nas bordas (rua, calçada, rio, mato). O jogo encaixa as peças a partir da semente, sem erros de ligação. Além de quarteirões com ruas, entram parques, florestas e outras áreas abertas para quebrar a sequência de ruas. Novo jogo sorteia uma semente nova.

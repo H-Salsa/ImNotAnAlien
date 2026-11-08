@@ -123,8 +123,15 @@ public sealed class PlayerAnimator : MonoBehaviour
         }
     }
 
+    // O mundo recentralizou (Missão 16): o ponto mirado anda junto.
+    private void OnOriginShifted(Vector3 delta)
+    {
+        aimTarget -= delta;
+    }
+
     private void OnEnable()
     {
+        WorldOrigin.Shifted += OnOriginShifted;
         if (health != null)
         {
             health.Damaged += OnDamaged;
@@ -135,6 +142,7 @@ public sealed class PlayerAnimator : MonoBehaviour
 
     private void OnDisable()
     {
+        WorldOrigin.Shifted -= OnOriginShifted;
         if (health != null)
         {
             health.Damaged -= OnDamaged;

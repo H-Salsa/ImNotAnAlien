@@ -33,6 +33,25 @@ public sealed class TrafficCar : MonoBehaviour
 
     public bool IsAbandoned => abandoned;
 
+    private void OnEnable()
+    {
+        WorldOrigin.Shifted += OnOriginShifted;
+    }
+
+    private void OnDisable()
+    {
+        WorldOrigin.Shifted -= OnOriginShifted;
+    }
+
+    // O mundo recentralizou (Missão 16): a rota já montada anda junto.
+    private void OnOriginShifted(Vector3 delta)
+    {
+        for (int i = 0; i < path.Count; i++)
+        {
+            path[i] -= delta;
+        }
+    }
+
     public void SetDriver(GameObject driverVisual)
     {
         driver = driverVisual;

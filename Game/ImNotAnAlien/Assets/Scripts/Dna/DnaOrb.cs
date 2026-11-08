@@ -64,6 +64,22 @@ public sealed class DnaOrb : MonoBehaviour
         return orb;
     }
 
+    private void OnEnable()
+    {
+        WorldOrigin.Shifted += OnOriginShifted;
+    }
+
+    private void OnDisable()
+    {
+        WorldOrigin.Shifted -= OnOriginShifted;
+    }
+
+    // O mundo recentralizou (Missão 16): o ponto onde o orbe flutua anda junto.
+    private void OnOriginShifted(Vector3 delta)
+    {
+        restPosition -= delta;
+    }
+
     private void Update()
     {
         if (system == null)

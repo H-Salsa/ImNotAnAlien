@@ -38,6 +38,13 @@ public sealed class DnaInventory : MonoBehaviour
         Changed?.Invoke(Total, amount);
     }
 
+    // Jogo salvo (Missão 17): define o total de uma vez.
+    public void SetTotal(int total)
+    {
+        Total = Mathf.Max(0, total);
+        Changed?.Invoke(Total, 0);
+    }
+
     // Para as evoluções futuras: retorna false se não houver DNA suficiente.
     public bool TrySpend(int amount)
     {

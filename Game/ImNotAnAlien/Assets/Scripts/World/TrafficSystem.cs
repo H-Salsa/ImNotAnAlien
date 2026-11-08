@@ -9,6 +9,8 @@ using UnityEngine;
 // - Cada carro (TrafficCar) anda na faixa da direita, faz curvas nos cruzamentos, faz retorno
 //   no fim da rua, freia diante de obstáculos e buzina.
 // - Carros: o modelo 3D flutuante (carModel) com pintura sorteada; sem modelo, caixas por código.
+// - Mundo em blocos (Missão 16): as ruas são LÓGICAS (fixas no mapa); Node() devolve a posição
+//   de MUNDO. Carros só surgem sobre blocos carregados e somem com o bloco descarregado.
 [DisallowMultipleComponent]
 public sealed class TrafficSystem : MonoBehaviour
 {
@@ -87,6 +89,7 @@ public sealed class TrafficSystem : MonoBehaviour
     private Transform player;
     private Camera mainCamera;
     private float timer;
+    private WorldStreamer streamer;
 
     public float LaneOffset => laneOffset;
     public float Clearance => intersectionClearance;
@@ -104,6 +107,11 @@ public sealed class TrafficSystem : MonoBehaviour
         {
             Instance = null;
         }
+
+        if (streamer != null)
+        {
+            streamer.BlockUnloading -= OnBlockUnloading;
+        }
     }
 
     private void Start()
@@ -112,6 +120,12 @@ public sealed class TrafficSystem : MonoBehaviour
         player = controller != null ? controller.transform : null;
         mainCamera = Camera.main;
         BuildGraph();
+
+        streamer = WorldStreamer.Instance;
+        if (streamer != null)
+        {
+            streamer.BlockUnloading += OnBlockUnloading;
+        }
 
         if (player == null || edges.Count == 0)
         {
@@ -138,7 +152,8 @@ public sealed class TrafficSystem : MonoBehaviour
 
     // ---------- Rede de ruas ----------
 
-    public Vector3 Node(int index) => nodes[index];
+    // Posição de MUNDO do nó (a rede é guardada em coordenadas lógicas).
+    public Vector3 Node(int index) => WorldOrigin.ToWorld(nodes[index]);
 
     public IReadOnlyList<int> Neighbors(int index) => neighbors[index];
 
@@ -229,8 +244,8 @@ public sealed class TrafficSystem : MonoBehaviour
             int from = reverse ? edge.b : edge.a;
             int to = reverse ? edge.a : edge.b;
 
-            Vector3 start = nodes[from];
-            Vector3 end = nodes[to];
+            Vector3 start = Node(from);
+            Vector3 end = Node(to);
             Vector3 direction = (end - start).normalized;
             float length = Vector3.Distance(start, end);
             if (length < intersectionClearance * 2f + 4f)
@@ -241,6 +256,11 @@ public sealed class TrafficSystem : MonoBehaviour
             float along = UnityEngine.Random.Range(intersectionClearance + 2f, length - intersectionClearance - 2f);
             Vector3 right = Vector3.Cross(Vector3.up, direction);
             Vector3 position = start + direction * along + right * laneOffset;
+
+            if (streamer != null && !streamer.IsLoaded(position, 15f))
+            {
+                continue; // rua de um bloco que não está carregado
+            }
 
             float distance = Vector3.Distance(position, player.position);
             if (distance < spawnMinDistance || distance > spawnMaxDistance || IsVisible(position + Vector3.up))
@@ -287,11 +307,36 @@ public sealed class TrafficSystem : MonoBehaviour
                 continue;
             }
 
-            if ((car.transform.position - player.position).sqrMagnitude > range && !IsVisible(car.transform.position + Vector3.up, car.transform))
+            bool far = (car.transform.position - player.position).sqrMagnitude > range;
+            bool offMap = streamer != null && !streamer.IsLoaded(car.transform.position);
+            if ((far || offMap) && !IsVisible(car.transform.position + Vector3.up, car.transform))
             {
                 cars.RemoveAt(i);
                 Destroy(car.gameObject);
             }
+        }
+    }
+
+    // Um bloco vai ser descarregado: os carros que estão nele somem agora.
+    private void OnBlockUnloading(Rect worldArea)
+    {
+        for (int i = cars.Count - 1; i >= 0; i--)
+        {
+            TrafficCar car = cars[i];
+            if (car == null)
+            {
+                cars.RemoveAt(i);
+                continue;
+            }
+
+            Vector3 p = car.transform.position;
+            if (!worldArea.Contains(new Vector2(p.x, p.z)) || (p - player.position).sqrMagnitude < 30f * 30f)
+            {
+                continue; // fora do bloco, ou perto do jogador (talvez na mão da telecinese)
+            }
+
+            cars.RemoveAt(i);
+            Destroy(car.gameObject);
         }
     }
 

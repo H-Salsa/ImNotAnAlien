@@ -61,6 +61,23 @@ public sealed class AlienPoliceWeapon : MonoBehaviour
         CancelCharge();
     }
 
+    private void OnEnable()
+    {
+        WorldOrigin.Shifted -= OnOriginShifted; // (evita assinar duas vezes)
+        WorldOrigin.Shifted += OnOriginShifted;
+    }
+
+    private void OnDestroy()
+    {
+        WorldOrigin.Shifted -= OnOriginShifted;
+    }
+
+    // O mundo recentralizou (Missão 16): o alvo travado anda junto.
+    private void OnOriginShifted(Vector3 delta)
+    {
+        lockedTarget -= delta;
+    }
+
     public void ResetCooldown()
     {
         cooldown = Random.Range(fireIntervalRange.x, fireIntervalRange.y) * 0.6f; // a primeira rajada sai um pouco antes

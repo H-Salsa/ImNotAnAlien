@@ -10,6 +10,8 @@ using UnityEngine.AI;
 // - Só surgem alienígenas que contam em setores que ainda têm cota; quando falta pouco,
 //   surgem só os que faltam (os marcadores do HUD mostram onde estão).
 // - Policiais extras por nível de procurado serão pedidos a este componente (Missão 13).
+// - Mundo em blocos (Missão 16): só surgem sobre blocos carregados, e quem está num bloco
+//   que vai ser descarregado some junto com ele.
 [DisallowMultipleComponent]
 public sealed class PopulationSpawner : MonoBehaviour
 {
@@ -45,6 +47,7 @@ public sealed class PopulationSpawner : MonoBehaviour
     private SectorTracker tracker;
     private float timer;
     private int serial;
+    private WorldStreamer streamer;
 
     // Pedido extra de policiais (Missão 13: nível de procurado). Contam ou não para a cota.
     public int ExtraPolice { get; set; }
@@ -63,6 +66,11 @@ public sealed class PopulationSpawner : MonoBehaviour
         {
             Instance = null;
         }
+
+        if (streamer != null)
+        {
+            streamer.BlockUnloading -= OnBlockUnloading;
+        }
     }
 
     private void Start()
@@ -77,6 +85,12 @@ public sealed class PopulationSpawner : MonoBehaviour
             Debug.LogWarning("PopulationSpawner: falta jogador, SectorTracker ou prefabs. Rode 'Preparar Populacao'.", this);
             enabled = false;
             return;
+        }
+
+        streamer = WorldStreamer.Instance;
+        if (streamer != null)
+        {
+            streamer.BlockUnloading += OnBlockUnloading;
         }
 
         // Enche o bairro no começo (pode surgir à vista, a partir de uma distância menor).
@@ -214,6 +228,11 @@ public sealed class PopulationSpawner : MonoBehaviour
                 continue; // nada de surgir no fundo do rio ou em telhados
             }
 
+            if (streamer != null && !streamer.IsLoaded(point, 8f))
+            {
+                continue; // perto da borda do que está carregado
+            }
+
             sector = tracker.SectorAt(point);
             if (sector < 0 || tracker.IsSectorCleared(sector))
             {
@@ -333,6 +352,34 @@ public sealed class PopulationSpawner : MonoBehaviour
             if (!calm || IsVisible(alien.transform.position + Vector3.up * 1.2f, alien.transform))
             {
                 continue;
+            }
+
+            active.RemoveAt(i);
+            Destroy(alien.gameObject);
+        }
+    }
+
+    // Um bloco vai ser descarregado: quem está nele some agora (antes de o chão sumir).
+    private void OnBlockUnloading(Rect worldArea)
+    {
+        for (int i = active.Count - 1; i >= 0; i--)
+        {
+            AlienHealth alien = active[i];
+            if (alien == null)
+            {
+                active.RemoveAt(i);
+                continue;
+            }
+
+            Vector3 p = alien.transform.position;
+            if (!worldArea.Contains(new Vector2(p.x, p.z)))
+            {
+                continue;
+            }
+
+            if (alien.TryGetComponent(out AlienBrain brain) && brain.IsHeld)
+            {
+                continue; // está na mão do jogador
             }
 
             active.RemoveAt(i);

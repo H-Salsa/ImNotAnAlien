@@ -63,6 +63,22 @@ public sealed class WantedSystem : MonoBehaviour
         Instance = this;
     }
 
+    private void OnEnable()
+    {
+        WorldOrigin.Shifted += OnOriginShifted;
+    }
+
+    private void OnDisable()
+    {
+        WorldOrigin.Shifted -= OnOriginShifted;
+    }
+
+    // O mundo recentralizou (Missão 16): o último lugar visto anda junto.
+    private void OnOriginShifted(Vector3 delta)
+    {
+        LastKnownPosition -= delta;
+    }
+
     private void OnDestroy()
     {
         if (Instance == this)

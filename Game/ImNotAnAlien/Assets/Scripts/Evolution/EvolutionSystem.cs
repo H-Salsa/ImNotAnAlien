@@ -197,6 +197,20 @@ public sealed class EvolutionSystem : MonoBehaviour
         return true;
     }
 
+    // Jogo salvo (Missão 17): volta uma evolução ao nível guardado, sem cobrar DNA.
+    public void SetLevel(EvolutionId id, int level)
+    {
+        Evolution evolution = evolutions.Find(e => e.id == id);
+        if (evolution == null)
+        {
+            return;
+        }
+
+        level = Mathf.Clamp(level, 0, evolution.levelCosts.Length);
+        levels[id] = level;
+        Apply(id, level);
+    }
+
     // ---------- Efeitos de cada nível ----------
 
     private void Apply(EvolutionId id, int level)

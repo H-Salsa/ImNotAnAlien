@@ -155,7 +155,18 @@ public sealed class EvolutionMenu : MonoBehaviour
 
         smallStyle.normal.textColor = new Color(1f, 1f, 1f, 0.6f);
         smallStyle.fontSize = 20;
-        GUI.Label(new Rect(0f, height - 70f, width, 30f), "Tab ou Esc para voltar ao jogo", smallStyle);
+        GUI.Label(new Rect(0f, height - 70f, width, 30f), "Tab ou Esc para voltar ao jogo   ·   F5 salva o jogo", smallStyle);
+
+        // Missão 17: sair para o menu inicial (salva antes).
+        if (SaveManager.Instance != null &&
+            GUI.Button(new Rect((width - 360f) / 2f, height - 140f, 360f, 52f), "Salvar e voltar ao menu", buttonStyle))
+        {
+            GUI.matrix = previous;
+            isOpen = false;
+            IsOpen = false;
+            SaveManager.Instance.SaveAndQuitToMenu();
+            return;
+        }
 
         GUI.matrix = previous;
     }
