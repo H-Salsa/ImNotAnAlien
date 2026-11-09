@@ -43,9 +43,12 @@ public static class BlockBuilder
 
     // ---------- Entrada ----------
 
-    public static GameObject Build(BlockSpec spec, BlockKit kit, Vector2Int coord, string name = null)
+    // "position" = canto sudoeste do bloco no MUNDO. O bloco já nasce no lugar: se fosse montado na
+    // origem e movido depois, os objetos com física (carros) podiam ficar presos lá e ser arremessados.
+    public static GameObject Build(BlockSpec spec, BlockKit kit, Vector2Int coord, Vector3 position, string name = null)
     {
         GameObject rootObject = new GameObject(name ?? $"Bloco_{coord.x}_{coord.y}_{spec.type}");
+        rootObject.transform.position = position;
         Ctx c = new Ctx
         {
             kit = kit,
@@ -84,6 +87,7 @@ public static class BlockBuilder
         WorldBlock block = rootObject.AddComponent<WorldBlock>();
         block.Setup(coord, c.est, c.dyn);
         block.SetSpec(spec);
+        Physics.SyncTransforms();
         return rootObject;
     }
 
@@ -192,7 +196,7 @@ public static class BlockBuilder
         int lampSide = c.rng.Next(2) == 0 ? -1 : 1;
         for (float t = Mathf.Max(from + 6f, 18f); t < to - 3f; t += 22f)
         {
-            Vector2 p = Center + d * t + perp * lampSide * (RoadHalf + 2.2f);
+            Vector2 p = Center + d * t + perp * lampSide * (RoadHalf + 2.45f); // beira de fora da calçada
             Lamp(c, parent, p);
             lampSide = -lampSide;
         }
@@ -222,7 +226,7 @@ public static class BlockBuilder
             if (c.rng.NextDouble() < carChance && c.kit.carModel != null)
             {
                 int side = c.rng.Next(2) == 0 ? -1 : 1;
-                Vector2 p = Center + d * Range(c, 16f, 44f) + perp * side * 6.4f;
+                Vector2 p = Center + d * Range(c, 16f, 44f) + perp * side * 6.2f; // longe dos postes
                 ParkedCar(c, new Vector3(p.x, 0.05f, p.y), d.x != 0f ? 0f : 90f);
             }
 
@@ -230,7 +234,7 @@ public static class BlockBuilder
             for (int i = 0; i < bins; i++)
             {
                 int side = c.rng.Next(2) == 0 ? -1 : 1;
-                Vector2 p = Center + d * Range(c, 17f, 47f) + perp * side * 7.4f;
+                Vector2 p = Center + d * Range(c, 17f, 47f) + perp * side * 7.6f;
                 if (c.rng.NextDouble() < 0.5)
                 {
                     Bin(c, new Vector3(p.x, WalkHeight + 0.55f, p.y));

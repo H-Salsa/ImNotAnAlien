@@ -1509,6 +1509,14 @@ MonoBehaviour:
   - {r: 0.2901961, g: 0.30980393, b: 0.34117648, a: 1}
   carSeatHips: {x: -0.34, y: 0.73, z: 0.02}
   carSeatPedals: {x: -0.34, y: 0.53, z: 0.66}
+  policeCarModel: {fileID: 919132149155446097, guid: 968c818c5b451524f82f89772e3271b3, type: 3}
+  policeModels: []
+  patrolPoliceCars: 1
+  dispatchRange: 300
+  dispatchSpawnMin: 70
+  dispatchSpawnMax: 180
+  passengerSeatHips: {x: 0.34, y: 0.73, z: 0.02}
+  passengerSeatPedals: {x: 0.34, y: 0.53, z: 0.66}
 --- !u!114 &1546027951
 MonoBehaviour:
   m_ObjectHideFlags: 0

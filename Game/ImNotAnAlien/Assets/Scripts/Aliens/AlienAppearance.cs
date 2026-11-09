@@ -62,7 +62,10 @@ public sealed class AlienAppearance : MonoBehaviour
 
     [Header("Polícia")]
     [Tooltip("A partir deste nível de procurado, os policiais que surgem vêm de capacete.")]
-    [SerializeField, Range(1, 5)] private int helmetFromStars = 3;
+    // Missão 19 (D27): capacete a partir de 4 estrelas, farda verde do exército com 5.
+    public const int HelmetFromStars = 4;
+    public const int ArmyFromStars = 5;
+    private static readonly Color ArmyGreen = new Color(0.294f, 0.353f, 0.165f); // #4B5A2A
 
     [Header("Cores das roupas dos civis")]
     [SerializeField] private Color[] topColors = (Color[])DefaultTops.Clone();
@@ -118,7 +121,8 @@ public sealed class AlienAppearance : MonoBehaviour
         }
 
         // Policiais que surgem com o nível de procurado alto vêm de capacete.
-        if (police && WantedSystem.Instance != null && WantedSystem.Instance.Stars >= helmetFromStars)
+        int stars = WantedSystem.Instance != null ? WantedSystem.Instance.Stars : 0;
+        if (police && stars >= HelmetFromStars)
         {
             SetPiece(model, "Pol_Bone", false);
             SetPiece(model, "Pol_Capacete", true);
@@ -129,6 +133,10 @@ public sealed class AlienAppearance : MonoBehaviour
         Color skin = police ? policeSkin : Jitter(Pick(civilSkins), skinJitter);
         PaintOldParts(skin);
         Paint(model, skin, stripeShade, Pick(topColors), Pick(bottomColors), Pick(shoeColors));
+        if (police && stars >= ArmyFromStars)
+        {
+            PaintArmy(model);
+        }
     }
 
     // ---------- Para outros scripts (motoristas do trânsito) ----------
@@ -138,6 +146,54 @@ public sealed class AlienAppearance : MonoBehaviour
     {
         Wear(target, Tops[Random.Range(0, Tops.Length)], Bottoms[Random.Range(0, Bottoms.Length)], "Tenis");
         Paint(target, Jitter(Pick(DefaultSkins), 0.06f), 0.7f, Pick(DefaultTops), Pick(DefaultBottoms), Pick(DefaultShoes));
+    }
+
+    // Veste um modelo de alien como policial (Missão 19: policiais sentados na viatura).
+    public static void DressPolice(Transform target, bool helmet, bool army = false)
+    {
+        Wear(target, PoliceUniform);
+        if (helmet)
+        {
+            SetPiece(target, "Pol_Bone", false);
+            SetPiece(target, "Pol_Capacete", true);
+        }
+
+        Paint(target, new Color(0.247f, 0.647f, 0.608f), 0.7f, Pick(DefaultTops), Pick(DefaultBottoms), Pick(DefaultShoes));
+        if (army)
+        {
+            PaintArmy(target);
+        }
+    }
+
+    // Nível 5: troca o azul da farda (macacão, boné, capacete...) por verde oliva, mantendo
+    // o claro/escuro de cada material. Pele, listras e peças escuras (cinto, botas) ficam iguais.
+    public static void PaintArmy(Transform target)
+    {
+        foreach (SkinnedMeshRenderer part in target.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+        {
+            if (!part.gameObject.name.StartsWith("Pol_"))
+            {
+                continue;
+            }
+
+            Material[] own = part.materials;
+            for (int i = 0; i < own.Length; i++)
+            {
+                if (own[i] == null || own[i].name.Contains("Pele") || own[i].name.Contains("Listra"))
+                {
+                    continue;
+                }
+
+                Color c = own[i].color;
+                if (c.b > c.r + 0.05f && c.b >= c.g) // azulado
+                {
+                    float light = Mathf.Clamp(c.grayscale / 0.2f, 0.45f, 1.6f);
+                    own[i].color = new Color(ArmyGreen.r * light, ArmyGreen.g * light, ArmyGreen.b * light, c.a);
+                }
+            }
+
+            part.materials = own;
+        }
     }
 
     // ---------- Ajudantes ----------

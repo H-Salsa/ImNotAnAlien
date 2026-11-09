@@ -8,6 +8,8 @@ using UnityEngine.AI;
 //   está atacando. Segurado pela telecinese: mexe braços e pernas devagar, procurando o chão.
 //   Arremessado ou morto: braços, pernas e cabeça ficam moles (AlienRagdoll).
 // - A arma antiga do policial passa a acompanhar a mão direita do modelo.
+// - Missão 19: golpes do policial no nível 1 (camada "Golpes" do Animator). Cada policial é "de soco"
+//   (alterna jab e direto) ou "de cassetete" (leva um bastão na mão direita). Na briga a pistola some.
 [DisallowMultipleComponent]
 public sealed class AlienAnimator : MonoBehaviour
 {
@@ -16,6 +18,9 @@ public sealed class AlienAnimator : MonoBehaviour
     private static readonly int DeadId = Animator.StringToHash("Dead");
     private static readonly int AimingId = Animator.StringToHash("Aiming");
     private static readonly int HeldId = Animator.StringToHash("Held");
+    private static readonly int PunchId = Animator.StringToHash("Soco");
+    private static readonly int JabId = Animator.StringToHash("Jab");
+    private static readonly int BatonId = Animator.StringToHash("Cassetete");
 
     [SerializeField] private Animator animator;
     [Tooltip("Posição da arma em relação à mão direita (para frente, para cima).")]
@@ -28,6 +33,14 @@ public sealed class AlienAnimator : MonoBehaviour
     private Transform weapon;
     private float smoothedSpeed;
     private AlienRagdoll ragdoll;
+
+    // Golpes (Missão 19).
+    private bool hasMeleeParams;
+    private int lastSwing;
+    private bool nextJab;
+    private Transform baton;
+    private Renderer[] weaponRenderers;
+    private bool weaponShown = true;
 
     // Expressões (blend shapes do rosto feitas no Blender).
     [Header("Expressões")]
@@ -107,6 +120,14 @@ public sealed class AlienAnimator : MonoBehaviour
         }
 
         weapon = transform.Find("Corpo/Arma");
+        weaponRenderers = weapon != null ? weapon.GetComponentsInChildren<Renderer>(true) : new Renderer[0];
+        foreach (AnimatorControllerParameter parameter in animator.parameters)
+        {
+            if (parameter.nameHash == BatonId)
+            {
+                hasMeleeParams = true;
+            }
+        }
         flailPhase = Random.Range(0f, 10f);
 
         // O rosto é a malha que tem as expressões (fica dentro de "Armature" no FBX, por isso a busca
@@ -167,7 +188,10 @@ public sealed class AlienAnimator : MonoBehaviour
             animator.SetBool(HeldId, held && !dead);
             animator.SetBool(DeadId, dead);
             animator.SetBool(AimingId, !dead && brain != null && brain.IsAttacking);
+            UpdateSwing(dead || tumbling);
         }
+
+        UpdateHeldItems(dead);
 
         lastDead = dead;
         lastTumbling = tumbling;
@@ -234,7 +258,7 @@ public sealed class AlienAnimator : MonoBehaviour
         bool police = brain != null && brain.AlienRole == AlienBrain.Role.Policial;
         bool fleeing = brain != null && brain.IsFleeing;
         float wantScared = tumbling || dead || (!police && fleeing) ? 100f : 0f;
-        float wantAngry = police && !tumbling && !dead ? (brain.IsAttacking ? 100f : policeIdleAnger) : 0f;
+        float wantAngry = police && !tumbling && !dead ? (brain.IsAttacking || brain.IsMelee ? 100f : policeIdleAnger) : 0f;
 
         if (expressionTest != ExpressionTest.Automatica)
         {
@@ -255,6 +279,121 @@ public sealed class AlienAnimator : MonoBehaviour
         {
             face.SetBlendShapeWeight(angryIndex, angry);
         }
+    }
+
+    // ---------- Golpes (Missão 19) ----------
+
+    private void UpdateSwing(bool busy)
+    {
+        if (brain == null || brain.SwingCount == lastSwing)
+        {
+            return;
+        }
+
+        lastSwing = brain.SwingCount;
+        if (busy || !hasMeleeParams)
+        {
+            return;
+        }
+
+        if (brain.UsesBaton)
+        {
+            animator.SetTrigger(BatonId);
+        }
+        else
+        {
+            animator.SetTrigger(nextJab ? JabId : PunchId);
+            nextJab = !nextJab;
+        }
+    }
+
+    // Cassetete na mão (policial "de cassetete", menos quando está atirando) e pistola escondida na briga.
+    private void UpdateHeldItems(bool dead)
+    {
+        if (brain == null || brain.AlienRole != AlienBrain.Role.Policial)
+        {
+            return;
+        }
+
+        bool showWeapon = !brain.IsMelee;
+        if (showWeapon != weaponShown)
+        {
+            weaponShown = showWeapon;
+            foreach (Renderer part in weaponRenderers)
+            {
+                if (part != null)
+                {
+                    part.enabled = showWeapon;
+                }
+            }
+        }
+
+        if (!brain.UsesBaton)
+        {
+            return;
+        }
+
+        if (baton == null)
+        {
+            baton = CreateBaton();
+            if (baton == null)
+            {
+                return;
+            }
+        }
+
+        bool showBaton = !brain.IsAttacking;
+        if (baton.gameObject.activeSelf != showBaton)
+        {
+            baton.gameObject.SetActive(showBaton);
+        }
+    }
+
+    // Cassetete simples feito de cilindros, preso ao osso da mão direita. O eixo do bastão atravessa
+    // o punho fechado (do dedo mínimo para o indicador) e a maior parte sai por cima, do lado do polegar.
+    private Transform CreateBaton()
+    {
+        if (rightHand == null || !animator.isHuman)
+        {
+            return null;
+        }
+
+        Transform index = animator.GetBoneTransform(HumanBodyBones.RightIndexProximal);
+        Transform little = animator.GetBoneTransform(HumanBodyBones.RightLittleProximal);
+        Transform middle = animator.GetBoneTransform(HumanBodyBones.RightMiddleProximal);
+        Vector3 axis = index != null && little != null ? (index.position - little.position).normalized : rightHand.up;
+        Vector3 fist = middle != null ? Vector3.Lerp(rightHand.position, middle.position, 0.75f) : rightHand.position;
+
+        GameObject root = new GameObject("Cassetete");
+        root.transform.SetParent(rightHand, false);
+        root.transform.position = fist;
+        root.transform.rotation = Quaternion.FromToRotation(Vector3.up, axis);
+
+        if (batonMaterial == null)
+        {
+            batonMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "Cassetete" };
+            batonMaterial.color = new Color(0.08f, 0.08f, 0.09f);
+            batonMaterial.SetFloat("_Smoothness", 0.35f);
+        }
+
+        // Para o tamanho ficar certo mesmo com o alien em escala diferente.
+        float scale = 1f / Mathf.Max(0.01f, rightHand.lossyScale.x);
+        // Bastão de ~56 cm (o cilindro do Unity tem 2 m de altura com escala 1) e uma pegada mais grossa.
+        MakeCylinder(root.transform, batonMaterial, new Vector3(0f, 0.18f, 0f), new Vector3(0.036f, 0.28f, 0.036f), scale);
+        MakeCylinder(root.transform, batonMaterial, new Vector3(0f, -0.02f, 0f), new Vector3(0.046f, 0.07f, 0.046f), scale);
+        return root.transform;
+    }
+
+    private static Material batonMaterial;
+
+    private static void MakeCylinder(Transform parent, Material material, Vector3 localPosition, Vector3 size, float scale)
+    {
+        GameObject part = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        Destroy(part.GetComponent<Collider>());
+        part.transform.SetParent(parent, false);
+        part.transform.localPosition = localPosition * scale;
+        part.transform.localScale = size * scale;
+        part.GetComponent<Renderer>().sharedMaterial = material;
     }
 
     private void UpdateLookBack()

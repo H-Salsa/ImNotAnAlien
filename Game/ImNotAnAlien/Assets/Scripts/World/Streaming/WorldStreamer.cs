@@ -300,8 +300,7 @@ public sealed class WorldStreamer : MonoBehaviour
         }
         else if (Layout != null && kit != null)
         {
-            go = BlockBuilder.Build(Layout.Get(coord), kit, coord);
-            go.transform.position = new Vector3(rect.xMin, 0f, rect.yMin);
+            go = BlockBuilder.Build(Layout.Get(coord), kit, coord, new Vector3(rect.xMin, 0f, rect.yMin));
         }
         else
         {

@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 // Um carro do trânsito (criado pelo TrafficSystem).
 // - Anda na faixa da direita de um nó da rede até o próximo; no cruzamento escolhe um caminho
@@ -8,6 +10,9 @@ using UnityEngine;
 //   se o jogador ficar na frente.
 // - Se a telecinese levantar o carro (ou a Onda de Impacto acertar), ele vira um carro comum
 //   com física e o motorista é ejetado (vira um alienígena civil de verdade).
+// - Missão 19: pode receber uma MISSÃO (viatura chamada a um crime): segue o caminho mais curto
+//   pela rede de ruas até um trecho e estaciona num ponto dele (Arrived). A viatura (PoliceCar)
+//   cuida do resto.
 [RequireComponent(typeof(Rigidbody))]
 public sealed class TrafficCar : MonoBehaviour
 {
@@ -31,7 +36,22 @@ public sealed class TrafficCar : MonoBehaviour
     private float nextHonk;
     private bool abandoned;
 
+    // Missão (viatura chamada a um crime).
+    private bool hasMission;
+    private int goalFrom;
+    private int goalTo;
+    private Vector3 goalStop;
+    private bool finalLeg;
+    private int legFrom;
+    private int legTo;
+
     public bool IsAbandoned => abandoned;
+    public bool IsParked { get; private set; }
+    public bool OnMission => hasMission;
+    public float SpeedFactor { get; set; } = 1f;
+
+    // Chegou ao ponto da missão e parou.
+    public event Action Arrived;
 
     private void OnEnable()
     {
@@ -50,6 +70,48 @@ public sealed class TrafficCar : MonoBehaviour
         {
             path[i] -= delta;
         }
+
+        goalStop -= delta;
+    }
+
+    // Vai até o trecho de rua goalA → goalB e para em "stop" (posição de MUNDO, na faixa da direita).
+    public void SetMission(int goalA, int goalB, Vector3 stop)
+    {
+        hasMission = true;
+        goalFrom = goalA;
+        goalTo = goalB;
+        goalStop = stop;
+        SpeedFactor = Mathf.Max(SpeedFactor, 1.5f);
+
+        // Já está nesse trecho, antes do ponto: para nele sem dar a volta.
+        if (pathIndex == 0 && legFrom == goalFrom && legTo == goalTo && body != null)
+        {
+            Vector3 along = system.Node(goalTo) - system.Node(goalFrom);
+            if (Vector3.Dot(goalStop - body.position, along) > 3f)
+            {
+                StartFinalLeg();
+            }
+        }
+    }
+
+    // Para já, no meio-fio, alguns metros à frente (viatura que viu o procurado passando).
+    public void StopNow()
+    {
+        if (abandoned || IsParked || body == null || system == null)
+        {
+            return;
+        }
+
+        Vector3 forward = body.rotation * Vector3.forward;
+        forward.y = 0f;
+        forward.Normalize();
+        Vector3 right = Vector3.Cross(Vector3.up, forward);
+        float distance = Mathf.Max(5f, speed * speed / 12f + 2f);
+
+        hasMission = true;
+        goalFrom = goalTo = -1;
+        goalStop = body.position + forward * distance + right * 1.2f;
+        StartFinalLeg();
     }
 
     public void SetDriver(GameObject driverVisual)
@@ -78,7 +140,7 @@ public sealed class TrafficCar : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (abandoned || system == null || pathIndex >= path.Count)
+        if (abandoned || IsParked || system == null || pathIndex >= path.Count)
         {
             return;
         }
@@ -89,11 +151,24 @@ public sealed class TrafficCar : MonoBehaviour
         target.y = position.y;
 
         // Velocidade desejada: a do trecho, ou parar se houver obstáculo.
-        float wanted = pathSpeeds[pathIndex];
+        float wanted = pathSpeeds[pathIndex] * SpeedFactor;
+        if (finalLeg)
+        {
+            // Freia para parar certinho no ponto.
+            wanted = Mathf.Min(wanted, Mathf.Sqrt(2f * 6f * Vector3.Distance(position, target)) + 0.5f);
+        }
+
         if (CheckObstacle(out bool isPlayer, out bool isCar))
         {
             wanted = 0f;
             blockedTime += dt;
+            // Viatura parando por causa do procurado: o jogador na frente = chegou, desce todo mundo.
+            if (finalLeg && isPlayer && hasMission && blockedTime > 0.6f && speed < 0.5f)
+            {
+                Park();
+                return;
+            }
+
             if (isPlayer && blockedTime > 1.2f && Time.time > nextHonk)
             {
                 nextHonk = Time.time + 2.5f;
@@ -120,6 +195,12 @@ public sealed class TrafficCar : MonoBehaviour
             pathIndex++;
             if (pathIndex >= path.Count)
             {
+                if (finalLeg)
+                {
+                    Park();
+                    return;
+                }
+
                 PlanLeg(target);
             }
 
@@ -137,9 +218,20 @@ public sealed class TrafficCar : MonoBehaviour
     // Monta o próximo trecho: reta até perto do cruzamento + curva para a próxima rua.
     private void PlanLeg(Vector3 start)
     {
+        // Missão: entrou no trecho do crime → só falta parar no ponto.
+        if (hasMission && fromNode == goalFrom && toNode == goalTo)
+        {
+            legFrom = fromNode;
+            legTo = toNode;
+            StartFinalLeg();
+            return;
+        }
+
         path.Clear();
         pathSpeeds.Clear();
         pathIndex = 0;
+        legFrom = fromNode;
+        legTo = toNode;
 
         Vector3 a = system.Node(fromNode);
         Vector3 b = system.Node(toNode);
@@ -164,6 +256,10 @@ public sealed class TrafficCar : MonoBehaviour
         }
 
         int next = choices.Count > 0 ? choices[Random.Range(0, choices.Count)] : fromNode;
+        if (hasMission)
+        {
+            next = toNode == goalFrom ? goalTo : system.NextHop(fromNode, toNode, goalFrom);
+        }
         Vector3 dirOut = (system.Node(next) - b).normalized;
         Vector3 rightOut = Vector3.Cross(Vector3.up, dirOut);
         Vector3 exit = b + dirOut * clearance + rightOut * lane;
@@ -201,6 +297,25 @@ public sealed class TrafficCar : MonoBehaviour
 
         fromNode = toNode;
         toNode = next;
+    }
+
+    private void StartFinalLeg()
+    {
+        path.Clear();
+        pathSpeeds.Clear();
+        pathIndex = 0;
+        path.Add(goalStop);
+        pathSpeeds.Add(system.CruiseSpeed);
+        finalLeg = true;
+    }
+
+    private void Park()
+    {
+        IsParked = true;
+        hasMission = false;
+        finalLeg = false;
+        speed = 0f;
+        Arrived?.Invoke();
     }
 
     // ---------- Obstáculos ----------
@@ -262,6 +377,13 @@ public sealed class TrafficCar : MonoBehaviour
         Vector3 velocity = transform.forward * speed;
         body.isKinematic = false;
         body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+
+        // Viatura: os dois policiais são ejetados (a PoliceCar cuida disso).
+        if (TryGetComponent(out PoliceCar police))
+        {
+            police.OnAbandoned(velocity);
+            return;
+        }
 
         if (driver != null)
         {

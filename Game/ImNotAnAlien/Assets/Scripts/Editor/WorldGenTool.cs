@@ -133,9 +133,8 @@ public static class WorldGenTool
 
         foreach (FixedBlock item in Vilarejo)
         {
-            GameObject block = BlockBuilder.Build(item.spec, kit, item.coord, "Vilarejo_" + item.name);
             Rect rect = BlockRect(item.coord);
-            block.transform.position = new Vector3(rect.xMin, 0f, rect.yMin);
+            GameObject block = BlockBuilder.Build(item.spec, kit, item.coord, new Vector3(rect.xMin, 0f, rect.yMin), "Vilarejo_" + item.name);
 
             if (item.spec.type == BlockType.Esquina)
             {

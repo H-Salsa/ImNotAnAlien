@@ -328,6 +328,55 @@ public sealed class PopulationSpawner : MonoBehaviour
         }
     }
 
+    // ---------- Policiais da viatura (Missão 19) ----------
+
+    // Um policial desce da viatura (ou é ejetado dela, se "throwVelocity" vier preenchido).
+    public void SpawnPoliceOfficer(Vector3 position, Quaternion rotation, Vector3? throwVelocity)
+    {
+        if (!enabled || tracker == null || policePrefab == null)
+        {
+            return;
+        }
+
+        StartCoroutine(OfficerRoutine(position, rotation, throwVelocity));
+    }
+
+    private IEnumerator OfficerRoutine(Vector3 position, Quaternion rotation, Vector3? throwVelocity)
+    {
+        int sector = tracker.SectorAt(position);
+        bool wantedNow = WantedSystem.Instance != null && WantedSystem.Instance.Stars > 0;
+        bool counts = sector >= 0 && !tracker.IsSectorCleared(sector) &&
+                      tracker.AliveCountingIn(sector) < tracker.Sectors[sector].Remaining &&
+                      (!wantedNow || ExtraPoliceCount);
+        Spawn(true, counts, position, sector);
+        AlienHealth officer = active[active.Count - 1];
+        officer.transform.rotation = rotation;
+
+        if (!throwVelocity.HasValue)
+        {
+            yield break;
+        }
+
+        yield return null; // espera o alienígena "acordar" antes de jogá-lo
+
+        if (officer == null)
+        {
+            yield break;
+        }
+
+        if (officer.TryGetComponent(out AlienBrain brain))
+        {
+            brain.OnTelekinesisGrab();
+            brain.OnTelekinesisRelease();
+        }
+
+        if (officer.TryGetComponent(out Rigidbody body))
+        {
+            body.linearVelocity = throwVelocity.Value;
+            body.angularVelocity = Random.insideUnitSphere * 8f;
+        }
+    }
+
     // ---------- Sumir ----------
 
     private void Despawn()

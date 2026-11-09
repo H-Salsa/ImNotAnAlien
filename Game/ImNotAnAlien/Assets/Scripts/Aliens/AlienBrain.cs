@@ -5,7 +5,10 @@ using UnityEngine.AI;
 // - Passeio: andam devagar até pontos aleatórios perto de "casa" e param um pouco.
 // - Ao ver o jogador (susto com pulinho + "!"):
 //     Civil    -> foge para longe.
-//     Policial -> se aproxima até a distância de tiro e atira (AlienPoliceWeapon).
+//     Policial -> depende do nível de procurado (Missão 19, D27):
+//                 0 estrelas: só observa (a suspeita é do WantedSystem);
+//                 1 estrela: corre até você, bate com cassetete/socos e tenta algemar (PoliceArrest);
+//                 2+ estrelas: mantém a distância de tiro e atira (AlienPoliceWeapon).
 // - Quando o jogador fica longe o bastante, se acalmam e voltam a passear.
 // - Telecinese: enquanto levantados ou voando, viram corpos físicos. Quando param
 //   no chão (e ainda estão vivos), se levantam e voltam a reagir ao jogador.
@@ -59,6 +62,16 @@ public sealed class AlienBrain : MonoBehaviour
     [SerializeField, Min(0.1f)] private float attackRepathInterval = 0.5f;
     [SerializeField, Min(1f)] private float turnSpeed = 8f;
 
+    [Header("Corpo a corpo (policial, nível 1)")]
+    [SerializeField, Min(0f)] private float meleeDamage = 6f;
+    [SerializeField, Min(0.1f)] private float meleeInterval = 1.1f;
+    [SerializeField, Min(0.5f)] private float meleeReach = 1.7f;
+    [Tooltip("Chance de o policial ser 'de cassetete' (sorteado ao nascer); o resto é 'de soco'.")]
+    [SerializeField, Range(0f, 1f)] private float batonChance = 0.5f;
+    [Tooltip("Segundos do início do golpe até o impacto (o dano sai aqui).")]
+    [SerializeField, Min(0f)] private float punchImpactDelay = 0.22f;
+    [SerializeField, Min(0f)] private float batonImpactDelay = 0.38f;
+
     [Header("Reação (visual)")]
     [Tooltip("Parte visual que dá o pulinho de susto.")]
     [SerializeField] private Transform body;
@@ -94,6 +107,11 @@ public sealed class AlienBrain : MonoBehaviour
     private float sightTimer;
     private float lostSightTime;
     private float searchTimer;
+    private float meleeTimer;
+    private bool meleeMode;
+    private float pendingHit = -1f;
+
+    private static int WantedStars => WantedSystem.Instance != null ? WantedSystem.Instance.Stars : 0;
 
     public Role AlienRole => role;
     public Transform Body => body;
@@ -106,7 +124,14 @@ public sealed class AlienBrain : MonoBehaviour
 
     // Usados pelas animações do modelo 3D (AlienAnimator).
     public bool IsTumbling => state == State.Tumbling;
-    public bool IsAttacking => enabled && state == State.Attacking;
+    public bool IsAttacking => enabled && state == State.Attacking && !meleeMode; // mirando a arma
+    public bool IsMelee => enabled && state == State.Attacking && meleeMode;
+
+    // Estilo de briga, sorteado por policial: cassetete ou soco (AlienAnimator toca a animação).
+    public bool UsesBaton { get; private set; }
+
+    // Sobe a cada golpe iniciado; o AlienAnimator dispara a animação quando muda.
+    public int SwingCount { get; private set; }
     public bool IsFleeing => enabled && state == State.Fleeing;
 
     private void Awake()
@@ -169,6 +194,8 @@ public sealed class AlienBrain : MonoBehaviour
 
     private void Start()
     {
+        UsesBaton = role == Role.Policial && Random.value < batonChance;
+
         PrototypeThirdPersonController controller = FindFirstObjectByType<PrototypeThirdPersonController>();
         if (controller != null)
         {
@@ -242,7 +269,23 @@ public sealed class AlienBrain : MonoBehaviour
         switch (state)
         {
             case State.Wandering:
-                if (distanceToPlayer < detectionRadius)
+                if (role == Role.Policial && WantedStars == 0)
+                {
+                    // Sem estrela: o policial só fica de olho em você quando chega perto.
+                    if (distanceToPlayer < 7f)
+                    {
+                        FacePlayer();
+                        if (agent.hasPath)
+                        {
+                            agent.ResetPath();
+                        }
+                    }
+                    else
+                    {
+                        UpdateWander();
+                    }
+                }
+                else if (distanceToPlayer < detectionRadius)
                 {
                     EnterAlert();
                 }
@@ -287,6 +330,12 @@ public sealed class AlienBrain : MonoBehaviour
                 break;
 
             case State.Attacking:
+                if (role == Role.Policial && WantedStars == 0)
+                {
+                    EnterWander(); // o procurado acabou
+                    break;
+                }
+
                 UpdateSight(distanceToPlayer);
                 lostSightTime = seesPlayer ? 0f : lostSightTime + Time.deltaTime;
 
@@ -332,7 +381,14 @@ public sealed class AlienBrain : MonoBehaviour
     {
         if (role == Role.Policial)
         {
-            EnterAttack();
+            if (WantedStars == 0)
+            {
+                EnterWander();
+            }
+            else
+            {
+                EnterAttack();
+            }
         }
         else
         {
@@ -488,7 +544,10 @@ public sealed class AlienBrain : MonoBehaviour
     private void EnterAttack()
     {
         state = State.Attacking;
-        agent.speed = attackMoveSpeed;
+        meleeMode = WantedStars == 1;
+        meleeTimer = 0.4f;
+        pendingHit = -1f;
+        agent.speed = meleeMode ? attackMoveSpeed * 1.25f : attackMoveSpeed;
         agent.updateRotation = false; // ele mesmo gira para encarar o jogador
         repathTimer = 0f;
         StartScare();
@@ -499,8 +558,98 @@ public sealed class AlienBrain : MonoBehaviour
         }
     }
 
+    private void FacePlayer()
+    {
+        Vector3 toPlayer = player.position - transform.position;
+        toPlayer.y = 0f;
+        if (toPlayer.sqrMagnitude > 0.01f)
+        {
+            Quaternion look = Quaternion.LookRotation(toPlayer, Vector3.up);
+            transform.rotation = Quaternion.Slerp(transform.rotation, look, turnSpeed * Time.deltaTime);
+        }
+    }
+
+    // Nível 1: corre até você, tenta algemar; se não der, cassetete e socos.
+    private void UpdateMelee(float distanceToPlayer)
+    {
+        if (weapon != null)
+        {
+            weapon.CancelCharge();
+        }
+
+        FacePlayer();
+        PoliceArrest arrest = PoliceArrest.Instance;
+        bool cuffed = arrest != null && arrest.IsCuffed;
+        bool iAmHolding = cuffed && arrest.Officer == this;
+
+        if (iAmHolding)
+        {
+            if (agent.hasPath)
+            {
+                agent.ResetPath();
+            }
+
+            return;
+        }
+
+        repathTimer -= Time.deltaTime;
+        if (repathTimer <= 0f)
+        {
+            repathTimer = 0.3f;
+            Vector3 target = cuffed
+                ? player.position - (player.position - transform.position).normalized * 2.5f // espera em volta
+                : player.position;
+            if (NavMesh.SamplePosition(target, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+            {
+                agent.SetDestination(hit.position);
+            }
+        }
+
+        // Golpe em andamento: o dano sai no impacto, se você ainda estiver ao alcance.
+        if (pendingHit >= 0f)
+        {
+            pendingHit -= Time.deltaTime;
+            if (pendingHit < 0f && !cuffed && distanceToPlayer <= meleeReach + 0.5f)
+            {
+                // A surra é para prender, não para matar: não passa de 10% da vida.
+                PlayerHealth health = PlayerHealth.Instance;
+                if (health != null)
+                {
+                    float damage = Mathf.Min(meleeDamage, health.CurrentHealth - health.MaxHealth * 0.1f);
+                    if (damage > 0f)
+                    {
+                        health.TakeDamage(damage, transform.position);
+                    }
+                }
+            }
+        }
+
+        meleeTimer -= Time.deltaTime;
+        if (cuffed || distanceToPlayer > meleeReach || meleeTimer > 0f)
+        {
+            return;
+        }
+
+        meleeTimer = meleeInterval;
+        if (arrest != null && arrest.TryCuff(this))
+        {
+            return;
+        }
+
+        // Golpe de cassetete / soco: começa a animação; o dano sai no impacto.
+        SwingCount++;
+        pendingHit = UsesBaton ? batonImpactDelay : punchImpactDelay;
+    }
+
     private void UpdateAttack(float distanceToPlayer)
     {
+        meleeMode = WantedStars == 1;
+        if (meleeMode)
+        {
+            UpdateMelee(distanceToPlayer);
+            return;
+        }
+
         // Sempre de frente para o jogador.
         Vector3 toPlayer = player.position - transform.position;
         toPlayer.y = 0f;

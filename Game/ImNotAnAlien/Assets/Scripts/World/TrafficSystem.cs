@@ -9,6 +9,9 @@ using UnityEngine;
 // - Cada carro (TrafficCar) anda na faixa da direita, faz curvas nos cruzamentos, faz retorno
 //   no fim da rua, freia diante de obstáculos e buzina.
 // - Carros: o modelo 3D flutuante (carModel) com pintura sorteada; sem modelo, caixas por código.
+// - Viaturas (Missão 19): sempre há viatura(s) patrulhando com dois policiais dentro. Quando você
+//   ganha estrela de procurado, a viatura livre mais perto (ou uma nova, fora da vista) vai pelo
+//   caminho mais curto até o lugar do crime, estaciona, abre as portas e os policiais descem.
 // - Mundo em blocos (Missão 16): as ruas são LÓGICAS (fixas no mapa); Node() devolve a posição
 //   de MUNDO. Carros só surgem sobre blocos carregados e somem com o bloco descarregado.
 [DisallowMultipleComponent]
@@ -81,6 +84,31 @@ public sealed class TrafficSystem : MonoBehaviour
     [Tooltip("Carro 3D: ponto entre os pedais (os pés do motorista vão para lá).")]
     [SerializeField] private Vector3 carSeatPedals = new Vector3(-0.34f, 0.53f, 0.66f);
 
+    [Header("Viaturas (Missão 19)")]
+    [Tooltip("Modelo da viatura (Viatura.fbx). Vazio = sem viaturas.")]
+    [SerializeField] private GameObject policeCarModel;
+    [Tooltip("Modelos de alien para os policiais sentados (os mesmos dos motoristas).")]
+    [SerializeField] private GameObject[] policeModels;
+    [Tooltip("Viaturas patrulhando por perto (sem estar procurado).")]
+    [SerializeField, Min(0)] private int patrolPoliceCars = 1;
+    [Tooltip("Uma viatura livre até esta distância do crime pode ser chamada.")]
+    [SerializeField, Min(20f)] private float dispatchRange = 300f;
+    [Tooltip("Viatura nova (chamada) surge a esta distância do crime, fora da vista.")]
+    [SerializeField, Min(20f)] private float dispatchSpawnMin = 70f;
+    [SerializeField, Min(30f)] private float dispatchSpawnMax = 180f;
+    [Tooltip("Procurado (1+ estrela): viatura patrulhando a esta distância de você para e os policiais descem.")]
+    [SerializeField, Min(5f)] private float noticeRadius = 28f;
+    [Tooltip("Viaturas vindo direto até você para 0, 1, 2, 3, 4 e 5 estrelas (D27: a partir do nível 3).")]
+    [SerializeField] private int[] respondingCarsPerStar = { 0, 0, 0, 1, 2, 3 };
+    [SerializeField, Min(1f)] private float dispatchCooldown = 6f;
+    [Tooltip("Cores da viatura: azul-marinho da farda, faixa de baixo e para-choques.")]
+    [SerializeField] private Color policePaint = Hex("1E2A4A");
+    [SerializeField] private Color policeDetail = Hex("F2F2F2");
+    [SerializeField] private Color policeBumper = Hex("3A3D44");
+    [Tooltip("Carona: quadril e pés (lado direito).")]
+    [SerializeField] private Vector3 passengerSeatHips = new Vector3(0.34f, 0.73f, 0.02f);
+    [SerializeField] private Vector3 passengerSeatPedals = new Vector3(0.34f, 0.53f, 0.66f);
+
     private readonly List<Vector3> nodes = new List<Vector3>();
     private readonly List<List<int>> neighbors = new List<List<int>>();
     private readonly List<(int a, int b)> edges = new List<(int a, int b)>();
@@ -89,7 +117,9 @@ public sealed class TrafficSystem : MonoBehaviour
     private Transform player;
     private Camera mainCamera;
     private float timer;
+    private float nextDispatch;
     private WorldStreamer streamer;
+    private WantedSystem wanted;
 
     public float LaneOffset => laneOffset;
     public float Clearance => intersectionClearance;
@@ -111,6 +141,11 @@ public sealed class TrafficSystem : MonoBehaviour
         if (streamer != null)
         {
             streamer.BlockUnloading -= OnBlockUnloading;
+        }
+
+        if (wanted != null)
+        {
+            wanted.StarsChanged -= OnStarsChanged;
         }
     }
 
@@ -140,6 +175,13 @@ public sealed class TrafficSystem : MonoBehaviour
         {
             Debug.LogWarning("TrafficSystem: sem jogador ou sem ruas configuradas. Rode 'Preparar Transito'.", this);
             enabled = false;
+            return;
+        }
+
+        wanted = WantedSystem.Instance;
+        if (wanted != null)
+        {
+            wanted.StarsChanged += OnStarsChanged;
         }
     }
 
@@ -153,9 +195,14 @@ public sealed class TrafficSystem : MonoBehaviour
 
         timer = 0.5f;
         Despawn();
-        if (CountActiveNearby() < targetCars)
+        UpdatePoliceResponse();
+        if (policeCarModel != null && CountPoliceCars() < patrolPoliceCars)
         {
-            TrySpawn();
+            TrySpawn(true);
+        }
+        else if (CountActiveNearby() < targetCars)
+        {
+            TrySpawn(false);
         }
     }
 
@@ -254,7 +301,8 @@ public sealed class TrafficSystem : MonoBehaviour
         float range = despawnDistance * despawnDistance;
         foreach (TrafficCar car in cars)
         {
-            if (car != null && !car.IsAbandoned && (car.transform.position - player.position).sqrMagnitude < range)
+            if (car != null && !car.IsAbandoned && !car.IsParked && !IsPolice(car) &&
+                (car.transform.position - player.position).sqrMagnitude < range)
             {
                 count++;
             }
@@ -263,7 +311,25 @@ public sealed class TrafficSystem : MonoBehaviour
         return count;
     }
 
-    private void TrySpawn()
+    private int CountPoliceCars()
+    {
+        int count = 0;
+        float range = despawnDistance * despawnDistance;
+        foreach (TrafficCar car in cars)
+        {
+            if (car != null && IsPolice(car) && !car.IsAbandoned && !car.IsParked &&
+                (car.transform.position - player.position).sqrMagnitude < range)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static bool IsPolice(TrafficCar car) => car.TryGetComponent(out PoliceCar _);
+
+    private void TrySpawn(bool police)
     {
         for (int attempt = 0; attempt < 10; attempt++)
         {
@@ -302,7 +368,7 @@ public sealed class TrafficSystem : MonoBehaviour
                 continue; // já tem algo ali
             }
 
-            TrafficCar car = BuildCar(position, direction);
+            TrafficCar car = BuildCar(position, direction, police);
             car.Init(this, from, to);
             cars.Add(car);
             return;
@@ -335,7 +401,9 @@ public sealed class TrafficSystem : MonoBehaviour
                 continue;
             }
 
-            bool far = (car.transform.position - player.position).sqrMagnitude > range;
+            // Viatura a caminho do crime só some se ficar bem longe.
+            float limit = car.OnMission ? range * 4f : range;
+            bool far = (car.transform.position - player.position).sqrMagnitude > limit;
             bool offMap = streamer != null && !streamer.IsLoaded(car.transform.position);
             if ((far || offMap) && !IsVisible(car.transform.position + Vector3.up, car.transform))
             {
@@ -394,11 +462,16 @@ public sealed class TrafficSystem : MonoBehaviour
 
     // ---------- Montagem do carro (conversível com motorista) ----------
 
-    private TrafficCar BuildCar(Vector3 position, Vector3 direction)
+    private TrafficCar BuildCar(Vector3 position, Vector3 direction, bool police = false)
     {
-        GameObject car = new GameObject("Carro_Transito");
+        GameObject car = new GameObject(police ? "Viatura" : "Carro_Transito");
         car.transform.SetPositionAndRotation(position, Quaternion.LookRotation(direction));
         car.transform.SetParent(transform, true);
+
+        if (police)
+        {
+            return BuildPoliceCar(car);
+        }
 
         if (carModel != null)
         {
@@ -437,6 +510,348 @@ public sealed class TrafficSystem : MonoBehaviour
         TrafficCar trafficCar = car.AddComponent<TrafficCar>();
         trafficCar.SetDriver(driver.gameObject);
         return trafficCar;
+    }
+
+    // ---------- Viaturas (Missão 19) ----------
+
+    private TrafficCar BuildPoliceCar(GameObject car)
+    {
+        AddModelColliders(car.transform);
+        GameObject visual = Instantiate(policeCarModel, car.transform);
+        visual.name = "Visual";
+        visual.transform.localPosition = Vector3.zero;
+        visual.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        foreach (Collider extra in visual.GetComponentsInChildren<Collider>())
+        {
+            Destroy(extra);
+        }
+
+        PaintPoliceCar(visual);
+
+        Transform driver = BuildSeatedPolice(car.transform, "Policial_Motorista", carSeatHips, carSeatPedals);
+        Transform passenger = BuildSeatedPolice(car.transform, "Policial_Carona", passengerSeatHips, passengerSeatPedals);
+
+        Rigidbody body = car.AddComponent<Rigidbody>();
+        body.mass = 900f;
+        body.isKinematic = true;
+        body.interpolation = RigidbodyInterpolation.Interpolate;
+        car.AddComponent<TelekinesisTarget>();
+        car.AddComponent<ExplosiveVehicle>();
+        car.AddComponent<HoverCar>();
+
+        PoliceCar police = car.AddComponent<PoliceCar>();
+        police.Setup(driver != null ? driver.gameObject : null, passenger != null ? passenger.gameObject : null);
+        TrafficCar trafficCar = car.AddComponent<TrafficCar>();
+        trafficCar.SetDriver(driver != null ? driver.gameObject : null);
+        return trafficCar;
+    }
+
+    // O FBX da viatura usa os mesmos nomes de material do carro civil: pinta aqui com as cores da polícia.
+    private void PaintPoliceCar(GameObject visual)
+    {
+        Material paint = null, detail = null, bumper = null;
+        foreach (Renderer r in visual.GetComponentsInChildren<Renderer>())
+        {
+            Material[] mats = r.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++)
+            {
+                if (mats[i] == null)
+                {
+                    continue;
+                }
+
+                string n = mats[i].name;
+                if (n.Contains("Pintura"))
+                {
+                    paint ??= new Material(mats[i]) { color = policePaint };
+                    mats[i] = paint;
+                }
+                else if (n.Contains("Detalhe"))
+                {
+                    detail ??= new Material(mats[i]) { color = policeDetail };
+                    mats[i] = detail;
+                }
+                else if (n.Contains("Parachoque"))
+                {
+                    bumper ??= new Material(mats[i]) { color = policeBumper };
+                    mats[i] = bumper;
+                }
+            }
+
+            r.sharedMaterials = mats;
+        }
+    }
+
+    private Transform BuildSeatedPolice(Transform car, string name, Vector3 hips, Vector3 pedals)
+    {
+        GameObject[] models = policeModels != null && policeModels.Length > 0 ? policeModels : driverModels;
+        if (models == null || models.Length == 0 || driverController == null)
+        {
+            return null;
+        }
+
+        GameObject source = models[UnityEngine.Random.Range(0, models.Length)];
+        if (source == null)
+        {
+            return null;
+        }
+
+        GameObject model = Instantiate(source, car);
+        model.name = name;
+        model.transform.localPosition = new Vector3(hips.x, 0.3f, hips.z);
+        model.transform.localRotation = Quaternion.identity;
+        model.transform.localScale = Vector3.one * driverScale;
+        if (model.TryGetComponent(out Animator animator))
+        {
+            animator.runtimeAnimatorController = driverController;
+            animator.applyRootMotion = false;
+            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+        }
+
+        int stars = wanted != null ? wanted.Stars : 0;
+        AlienAppearance.DressPolice(model.transform, stars >= AlienAppearance.HelmetFromStars, stars >= AlienAppearance.ArmyFromStars);
+        model.AddComponent<SeatedDriver>().Init(hips, pedals);
+        return model.transform;
+    }
+
+    // Missão 19 (D27). Antes a viatura só era chamada no instante em que a estrela subia, para o lugar
+    // do crime — e passava reto por você. Agora, a cada meio segundo:
+    // - 1+ estrela: viatura patrulhando perto de você para e os policiais descem;
+    // - 3+ estrelas: mantém algumas viaturas vindo direto até onde você foi visto.
+    private void OnStarsChanged(int before, int now)
+    {
+        if (now > before)
+        {
+            nextDispatch = 0f; // subiu de nível: reforço já
+        }
+    }
+
+    private void UpdatePoliceResponse()
+    {
+        int stars = wanted != null ? wanted.Stars : 0;
+        if (stars <= 0 || policeCarModel == null || player == null)
+        {
+            return;
+        }
+
+        float notice = noticeRadius * noticeRadius;
+        int responding = 0;
+        foreach (TrafficCar car in cars)
+        {
+            if (car == null || !IsPolice(car) || car.IsAbandoned)
+            {
+                continue;
+            }
+
+            float d = (car.transform.position - player.position).sqrMagnitude;
+            if (car.OnMission || car.IsParked && d < 45f * 45f)
+            {
+                responding++;
+            }
+            else if (!car.IsParked && d < notice)
+            {
+                car.StopNow();
+                car.GetComponent<PoliceCar>().OnDispatched();
+                responding++;
+            }
+        }
+
+        int wantedCars = respondingCarsPerStar[Mathf.Clamp(stars, 0, respondingCarsPerStar.Length - 1)];
+        if (responding < wantedCars && Time.time >= nextDispatch)
+        {
+            nextDispatch = Time.time + dispatchCooldown;
+            Dispatch(wanted.LastKnownPosition);
+        }
+    }
+
+    public void Dispatch(Vector3 crime)
+    {
+        if (!FindStop(crime, out int a, out int b, out Vector3 stop))
+        {
+            return;
+        }
+
+        int[] distance = Distances(a);
+
+        // Viatura livre mais perto que consiga chegar lá.
+        TrafficCar best = null;
+        float bestDistance = dispatchRange;
+        foreach (TrafficCar car in cars)
+        {
+            if (car == null || !IsPolice(car) || car.IsAbandoned || car.IsParked || car.OnMission)
+            {
+                continue;
+            }
+
+            float d = Vector3.Distance(car.transform.position, crime);
+            if (d < bestDistance)
+            {
+                best = car;
+                bestDistance = d;
+            }
+        }
+
+        if (best == null)
+        {
+            best = SpawnDispatchedCar(crime, distance);
+        }
+
+        if (best == null)
+        {
+            Debug.Log("Viatura: nenhuma consegue chegar ao crime agora.");
+            return;
+        }
+
+        best.SetMission(a, b, stop);
+        best.GetComponent<PoliceCar>().OnDispatched();
+    }
+
+    // Trecho de rua mais perto do crime, no sentido em que a faixa da direita fica do lado do crime.
+    private bool FindStop(Vector3 crime, out int a, out int b, out Vector3 stop)
+    {
+        a = b = -1;
+        stop = Vector3.zero;
+        float best = float.MaxValue;
+        foreach ((int x, int y) in edges)
+        {
+            Vector3 p = Node(x);
+            Vector3 q = Node(y);
+            Vector3 segment = q - p;
+            float length = segment.magnitude;
+            if (length < intersectionClearance * 2f + 8f)
+            {
+                continue;
+            }
+
+            float t = Mathf.Clamp(Vector3.Dot(crime - p, segment / length), intersectionClearance + 4f, length - intersectionClearance - 4f);
+            Vector3 point = p + segment / length * t;
+            float d = (new Vector3(crime.x, point.y, crime.z) - point).sqrMagnitude;
+            if (d >= best)
+            {
+                continue;
+            }
+
+            best = d;
+            Vector3 right = Vector3.Cross(Vector3.up, segment / length);
+            bool crimeOnRight = Vector3.Dot(crime - point, right) >= 0f;
+            a = crimeOnRight ? x : y;
+            b = crimeOnRight ? y : x;
+            Vector3 dir = (Node(b) - Node(a)).normalized;
+            stop = point + Vector3.Cross(Vector3.up, dir) * (laneOffset + 1.6f);
+        }
+
+        return a >= 0;
+    }
+
+    // Viatura nova, fora da vista, num trecho ligado ao do crime.
+    private TrafficCar SpawnDispatchedCar(Vector3 crime, int[] distance)
+    {
+        for (int attempt = 0; attempt < 30; attempt++)
+        {
+            (int x, int y) = edges[UnityEngine.Random.Range(0, edges.Count)];
+            if (distance[x] < 0 || distance[y] < 0)
+            {
+                continue; // sem caminho até o crime
+            }
+
+            int from = distance[x] >= distance[y] ? x : y; // anda em direção ao crime
+            int to = from == x ? y : x;
+            Vector3 start = Node(from);
+            Vector3 end = Node(to);
+            Vector3 direction = (end - start).normalized;
+            float length = Vector3.Distance(start, end);
+            if (length < intersectionClearance * 2f + 4f)
+            {
+                continue;
+            }
+
+            Vector3 position = start + direction * (intersectionClearance + 2f) + Vector3.Cross(Vector3.up, direction) * laneOffset;
+            float d = Vector3.Distance(position, crime);
+            if (d < dispatchSpawnMin || d > dispatchSpawnMax || IsVisible(position + Vector3.up) ||
+                streamer != null && !streamer.IsLoaded(position, 15f))
+            {
+                continue;
+            }
+
+            TrafficCar car = BuildCar(position, direction, true);
+            car.Init(this, from, to);
+            cars.Add(car);
+            return car;
+        }
+
+        return null;
+    }
+
+    // Próximo cruzamento no caminho mais curto de "at" até "goal" (evita voltar para "from" se der).
+    public int NextHop(int from, int at, int goal)
+    {
+        int[] distance = Distances(goal);
+        int best = -1;
+        int bestDistance = int.MaxValue;
+        foreach (int option in neighbors[at])
+        {
+            int d = distance[option];
+            if (d < 0)
+            {
+                continue;
+            }
+
+            if (option == from)
+            {
+                d += 1000; // só volta se não houver outro jeito
+            }
+
+            if (d < bestDistance)
+            {
+                bestDistance = d;
+                best = option;
+            }
+        }
+
+        if (best >= 0)
+        {
+            return best;
+        }
+
+        return neighbors[at].Count > 0 ? neighbors[at][UnityEngine.Random.Range(0, neighbors[at].Count)] : from;
+    }
+
+    // Distância (em trechos) de cada cruzamento até "goal"; -1 = sem caminho.
+    private int[] Distances(int goal)
+    {
+        int[] distance = new int[nodes.Count];
+        for (int i = 0; i < distance.Length; i++)
+        {
+            distance[i] = -1;
+        }
+
+        Queue<int> queue = new Queue<int>();
+        distance[goal] = 0;
+        queue.Enqueue(goal);
+        while (queue.Count > 0)
+        {
+            int n = queue.Dequeue();
+            foreach (int m in neighbors[n])
+            {
+                if (distance[m] < 0)
+                {
+                    distance[m] = distance[n] + 1;
+                    queue.Enqueue(m);
+                }
+            }
+        }
+
+        return distance;
+    }
+
+    private static void AddModelColliders(Transform car)
+    {
+        BoxCollider hull = car.gameObject.AddComponent<BoxCollider>();
+        hull.center = new Vector3(0f, 0.615f, 0f);
+        hull.size = new Vector3(1.76f, 0.89f, 3.2f);
+        BoxCollider cabin = car.gameObject.AddComponent<BoxCollider>();
+        cabin.center = new Vector3(0f, 1.38f, -0.2f);
+        cabin.size = new Vector3(1.56f, 0.72f, 2.35f);
     }
 
     // Carro 3D flutuante (Missão 15): modelo + colisores do tamanho dele + pintura sorteada.

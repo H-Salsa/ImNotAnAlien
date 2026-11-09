@@ -262,10 +262,10 @@ Cortar o Vilarejo do Bilu em blocos (posições fixas, sem sorteio ainda). Carre
 - Teclas de teste: **F8** modo teste (raio 25/40 m, sem névoa, informações na tela) e **F9** recentraliza na hora.
 - Começam carregados 8 dos 9 blocos (o canto sudeste fica a mais de 170 m do início).
 
-### Missão 17 — Estado permanente por região e salvamento
+### Missão 17 — Estado permanente por região e salvamento ✅
 Cada região guarda semente, cota total, quantos alienígenas restam e se está limpa. Região limpa continua limpa ao voltar. Salvar e carregar o jogo (DNA, evoluções, regiões).
 
-**Em andamento (8/11/2026).** Escolhas do autor ([D25](DECISOES.md)): salvamento automático **e** tecla, **três espaços** de jogo e **menu inicial** simples. Ferramenta `ImNotAnAlien > Preparar Salvamento (Missao 17)`.
+**Concluída em 8/11/2026; testada e aprovada pelo autor.** Escolhas do autor ([D25](DECISOES.md)): salvamento automático **e** tecla, **três espaços** de jogo e **menu inicial** simples. Ferramenta `ImNotAnAlien > Preparar Salvamento (Missao 17)`.
 
 - Guarda: semente do mundo, DNA, nível de cada evolução, posição do jogador e, por região, semente, cota, consumidos e setores limpos. Não guarda nível de procurado, casas, carros nem alienígenas soltos (D23).
 - Salva sozinho ao limpar setor ou região, a cada 3 min e ao fechar o jogo; **F5** salva na mão; Tab > "Salvar e voltar ao menu".

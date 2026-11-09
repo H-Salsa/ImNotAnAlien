@@ -191,7 +191,7 @@ public sealed class AlienPoliceWeapon : MonoBehaviour
         Vector3 direction = (target - muzzle.position).normalized;
         direction = Quaternion.Euler(Random.Range(-spreadDegrees, spreadDegrees), Random.Range(-spreadDegrees, spreadDegrees), 0f) * direction;
 
-        AlienProjectile.Spawn(projectileMaterial, muzzle.position, direction * shotSpeed, damage, transform, friendlyFire);
+        AlienProjectile.Spawn(projectileMaterial, muzzle.position, direction * shotSpeed, damage * WantedSystem.DamageMultiplier, transform, friendlyFire);
         GameFeel.PoliceShot(muzzle.position);
     }
 }

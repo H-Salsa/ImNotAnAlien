@@ -32,6 +32,9 @@ public sealed class PlayerHealth : MonoBehaviour
     public event Action<Vector3> Damaged; // posição de onde veio o dano
     public event Action Died;
     public event Action Respawned;
+    public event Action Arrested; // Missão 19: preso pela polícia
+
+    public bool IsArrested { get; private set; }
 
     private void Awake()
     {
@@ -139,6 +142,59 @@ public sealed class PlayerHealth : MonoBehaviour
         CurrentHealth = maxHealth;
         IsDead = false;
         invulnerableUntil = Time.time + respawnInvulnerability;
+        SetControlsEnabled(true);
+        Respawned?.Invoke();
+        Changed?.Invoke();
+    }
+
+    // Algemado (Missão 19): trava movimento e poderes sem "morrer".
+    public void SetControlsLocked(bool locked)
+    {
+        if (!IsDead)
+        {
+            SetControlsEnabled(!locked);
+        }
+    }
+
+    // Preso: perde parte do DNA, volta ao ponto inicial com a vida cheia e o procurado zera.
+    public void Arrest(float dnaLossFraction)
+    {
+        if (IsDead || IsArrested)
+        {
+            return;
+        }
+
+        StartCoroutine(ArrestRoutine(dnaLossFraction));
+    }
+
+    private IEnumerator ArrestRoutine(float dnaLossFraction)
+    {
+        IsArrested = true;
+        SetControlsEnabled(false);
+        if (DnaInventory.Instance != null)
+        {
+            int total = DnaInventory.Instance.Total;
+            DnaInventory.Instance.SetTotal(total - Mathf.RoundToInt(total * Mathf.Clamp01(dnaLossFraction)));
+        }
+
+        Arrested?.Invoke();
+        yield return new WaitForSeconds(respawnDelay);
+
+        CharacterController controller = GetComponent<CharacterController>();
+        if (controller != null)
+        {
+            controller.enabled = false;
+        }
+
+        transform.SetPositionAndRotation(spawnPosition, spawnRotation);
+        if (controller != null)
+        {
+            controller.enabled = true;
+        }
+
+        CurrentHealth = maxHealth;
+        invulnerableUntil = Time.time + respawnInvulnerability;
+        IsArrested = false;
         SetControlsEnabled(true);
         Respawned?.Invoke();
         Changed?.Invoke();

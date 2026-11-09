@@ -262,6 +262,9 @@ public static class AlienModelSetupTool
         Link(aim, empty, 0.25f).AddCondition(AnimatorConditionMode.IfNot, 0f, "Aiming");
         Link(aim, empty, 0.1f).AddCondition(AnimatorConditionMode.If, 0f, "Tumbling");
 
+        // Golpes do policial (Missão 19): soco, jab e cassetete.
+        missing.AddRange(PoliceMeleeSetupTool.AddMeleeLayer(controller));
+
         EditorUtility.SetDirty(controller);
         return controller;
     }
