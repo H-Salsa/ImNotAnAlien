@@ -273,11 +273,36 @@ Cada região guarda semente, cota total, quantos alienígenas restam e se está 
 - Arquivos `jogo_1.json` a `jogo_3.json` em `Application.persistentDataPath/Saves`, com cópia de segurança `.bak`.
 - Renascer continua no ponto inicial da região (as bases chegam na Missão 19).
 
-### Missão 18 — Blocos sorteados pela semente
+### Missão 18 — Blocos sorteados pela semente ✅
 Peças de bloco feitas à mão com "conexões" nas bordas (rua, calçada, rio, mato). O jogo encaixa as peças a partir da semente, sem erros de ligação. Além de quarteirões com ruas, entram parques, florestas e outras áreas abertas para quebrar a sequência de ruas. Novo jogo sorteia uma semente nova.
+
+**Concluída em 8/11/2026; testada e aprovada pelo autor.** Ferramenta `ImNotAnAlien > Gerar Mundo Sorteado (Missao 18)` ([D26](DECISOES.md)).
+
+- Padrão das bordas: cada lado do bloco tem mato, rua (10 m, no meio do lado, com calçadas de 3 m) ou rio (25 m, no meio do lado).
+- Cena `Mundo_Sorteado` (a do jogo no menu): grade 9 × 9 (900 m, canto sudoeste em x = −350, z = −550), paredes em volta. O Vilarejo fica fixo no meio (blocos 3..5 × 3..5).
+- Vilarejo refeito no padrão novo e melhorado (9 prefabs em `Assets/Prefabs/Blocos/Vilarejo_Padrao`): ruas em x = 0 e 200, z = 0 e −200; rio em z = −100 com pontes; calçadas em todas as ruas, casas variadas (sobrados, chaminés), parquinho, cais e galpões com contêineres. A esquina feita à mão foi mantida.
+- Sorteio (`WorldLayout`): colapso de função de onda com pesos; mesma semente = mesmo mapa. Simulado em 200 sementes sem falha.
+- Tipos: Bairro, Parque, Rio (com ponte quando há rua), Galpões e os 6 novos — Floresta, Fazenda (celeiro destrutível, silo, plantações, fardos de 300 kg), Praça (chafariz e lojas), Prédios, Lago (píer e barco) e Campo.
+- Blocos sorteados são montados por código ao carregar (`BlockBuilder` + `Assets/Art/BlockKit.asset` com os materiais e o carro).
+- Trânsito segue a rede sorteada (curvas, ruas sem saída, pontes).
+- Setor provisório **Arredores** (cota 150) fora do Vilarejo; cota da região passa a 400 até as regiões da Missão 19.
+- Correções no teste: o kit precisa ser recarregado pela ferramenta depois de trocar de cena; posição salva abaixo de −10 m é ignorada.
 
 ### Missão 19 — Planeta que dá a volta, quatro bases e mapa
 Grade com coordenadas de latitude/longitude que dá a volta. Bases fixas no norte, sul, leste e oeste (pontos de referência, descanso e recursos a definir). Mapa do planeta mostrando regiões limpas e o progresso até o teletransporte.
+
+O autor começou a Missão 19 pela **polícia** (8–9/11/2026). O planeta que dá a volta, as bases e o mapa seguem previstos.
+
+**Polícia — viatura e níveis de procurado ([D27](DECISOES.md)). Testado e aprovado pelo autor em 9/11/2026.** Ferramentas `ImNotAnAlien > Preparar Viaturas (Missao 19)` (rodar de novo depois de `Gerar Mundo Sorteado`) e `ImNotAnAlien > Preparar Golpes da Policia (Missao 19)`.
+
+- Viatura (`PoliceCar`, `TrafficCar`, `TrafficSystem`): azul-marinho #1E2A4A com faixa branca e para-choques #3A3D44 (pintada no código, porque o FBX divide nomes de material com o carro civil), giroflex, motorista e carona fardados. Ao parar, as portas da frente abrem e os dois policiais descem; telecinese na viatura ejeta os dois.
+- Desconfiança: sem estrela, ficar 4 s a menos de 6 m de um policial que te vê mostra "?" com barra sobre ele e sobe para o nível 1.
+- Nível 1: o policial corre até você e bate (soco ou cassetete, sorteado por policial; 6 de dano, a surra não passa de 10% da vida). Com 30% de vida ou menos ele algema: apertar ESPAÇO várias vezes em 4,5 s para se soltar (o policial voa longe, 6 s sem poder ser algemado, resistir à prisão gera calor). Não soltou: **PRESO** — perde 25% do DNA, volta ao início e o procurado zera (`PoliceArrest`).
+- Nível 2: tiro, como antes. Nível 3+: viaturas vêm direto até onde você foi visto (1, 2 e 3 nos níveis 3, 4 e 5). A partir de 1 estrela, viatura patrulhando a menos de 28 m liga a sirene, encosta e os policiais descem.
+- Nível 4: capacete. Nível 5: farda verde oliva do exército e tiro com 1,6× de dano (armas e tropas novas ficam para depois).
+- Progressão mais lenta: mais calor por estrela (10/70/160/280/450) e no máximo uma estrela a cada 25 s (a primeira sobe na hora).
+- Golpes: camada "Golpes" no `Alien.controller` (tronco, braços e cabeça) com Punch_Cross, Punch_Jab e Sword_Attack da Quaternius; cassetete feito em código na mão direita; dano no impacto do golpe.
+- Correção junto: blocos sorteados nascem já no lugar (carros estacionados eram arremessados); poste, carro e lixeira espaçados na calçada.
 
 ### Missão 20 — Ambientes e enfeites procedurais
 Tipos de região (subúrbio, zona industrial, fazendas, deserto, laboratórios…) e enfeites colocados por regras dentro dos blocos. Dificuldade subindo com a distância do ponto inicial.
