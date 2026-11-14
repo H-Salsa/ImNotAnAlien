@@ -18,6 +18,22 @@ public static partial class BlockBuilder
 
     private static NatureKit Nature(Ctx c) => c.kit != null ? c.kit.nature : null;
 
+    // Missão 20 — troca de bioma gradual: cada árvore/planta/pedra usa o bioma de um ponto sorteado
+    // até 45 m em volta dela. Longe da divisa dá sempre o próprio bioma; perto dela, às vezes o vizinho
+    // (metade das vezes bem na divisa) — as duas vegetações se misturam numa faixa, sem corte reto.
+    private static Planet.Biome LocalBiome(Ctx c, Vector3 localPosition)
+    {
+        if (!c.terrain)
+        {
+            return NatureBiome(c);
+        }
+
+        float x = c.coord.x * 100f + localPosition.x + Range(c, -45f, 45f);
+        float z = c.coord.y * 100f + localPosition.z + Range(c, -45f, 45f);
+        Vector2Int cell = new Vector2Int(Planet.WrapX(Mathf.FloorToInt(x / 100f)), Mathf.Clamp(Mathf.FloorToInt(z / 100f), 0, Planet.Height - 1));
+        return Planet.RegionBiome(Planet.RegionAt(cell));
+    }
+
     // Fora do planeta (Vilarejo original) o mundo é "Vale": verde comum, sem pintar.
     private static Planet.Biome NatureBiome(Ctx c) => c.terrain ? c.biome : Planet.Biome.Vale;
 
@@ -53,54 +69,70 @@ public static partial class BlockBuilder
     // Árvore do kit no lugar da de blockout. "scale" é o mesmo fator de antes (≈ 0,8–1,6).
     private static bool NatureTree(Ctx c, Transform tree, float scale)
     {
+        Planet.Biome own = c.biome;
+        c.biome = LocalBiome(c, tree.localPosition + (tree.parent != null ? tree.parent.localPosition : Vector3.zero));
+        try
+        {
+            return NatureTreeIn(c, tree, scale);
+        }
+        finally
+        {
+            c.biome = own;
+        }
+    }
+
+    private static bool NatureTreeIn(Ctx c, Transform tree, float scale)
+    {
         NatureKit k = Nature(c);
         if (k == null)
         {
             return false;
         }
 
+        // Missão 20: cada bioma mistura árvores "da Terra" (Nature Kit) com árvores alienígenas
+        // (Ultimate Space Kit) — sem o Space Kit preparado, as alienígenas ficam de fora sozinhas.
         GameObject[] pool;
         switch (NatureBiome(c))
         {
             case Planet.Biome.Gelo:
             case Planet.Biome.Geleira:
-                pool = Weighted(c, (k.pines, 0.75f), (k.deadBirches, 0.25f));
+                pool = Weighted(c, (k.pines, 0.45f), (k.deadBirches, 0.15f), (k.alienLight, 0.4f));
                 break;
             case Planet.Biome.Dunas:
-                pool = Weighted(c, (k.deadTrees, 1f));
+                pool = Weighted(c, (k.deadTrees, 0.35f), (k.alienLava, 0.4f), (k.alienSpikes, 0.25f));
                 break;
             case Planet.Biome.Pantano:
-                pool = Weighted(c, (k.twistedTrees, 0.5f), (k.deadBirches, 0.25f), (k.commonTrees, 0.25f));
+                pool = Weighted(c, (k.twistedTrees, 0.35f), (k.deadBirches, 0.2f), (k.alienSpiral, 0.45f));
                 break;
             case Planet.Biome.Cratera:
             case Planet.Biome.Antenas:
-                pool = Weighted(c, (k.deadTrees, 0.6f), (k.roundTrees, 0.4f));
+                pool = Weighted(c, (k.deadTrees, 0.3f), (k.alienLava, 0.35f), (k.alienSpikes, 0.35f));
                 break;
             case Planet.Biome.Campos:
             case Planet.Biome.Colinas:
-                pool = Weighted(c, (k.commonTrees, 0.5f), (k.roundTrees, 0.5f));
+                pool = Weighted(c, (k.commonTrees, 0.35f), (k.roundTrees, 0.35f), (k.alienFloating, 0.3f));
                 break;
             case Planet.Biome.Baia:
-                pool = Weighted(c, (k.roundTrees, 0.5f), (k.birches, 0.5f));
+                pool = Weighted(c, (k.roundTrees, 0.3f), (k.birches, 0.25f), (k.alienFloating, 0.3f), (k.alienSwirl, 0.15f));
                 break;
             case Planet.Biome.Planicie:
             case Planet.Biome.Cidade:
-                pool = Weighted(c, (k.roundTrees, 0.8f), (k.commonTrees, 0.2f));
+                pool = Weighted(c, (k.roundTrees, 0.55f), (k.commonTrees, 0.15f), (k.alienFloating, 0.3f));
                 break;
             case Planet.Biome.Floresta:
-                pool = Weighted(c, (k.twistedTrees, 0.6f), (k.commonTrees, 0.4f));
+                pool = Weighted(c, (k.twistedTrees, 0.35f), (k.commonTrees, 0.2f), (k.alienSwirl, 0.45f));
                 break;
             case Planet.Biome.Tundra:
-                pool = Weighted(c, (k.pines, 0.7f), (k.birches, 0.3f));
+                pool = Weighted(c, (k.pines, 0.45f), (k.birches, 0.2f), (k.alienLight, 0.35f));
                 break;
             case Planet.Biome.Picos:
-                pool = Weighted(c, (k.pines, 1f));
+                pool = Weighted(c, (k.pines, 0.65f), (k.alienSpikes, 0.35f));
                 break;
             case Planet.Biome.Estepe:
-                pool = Weighted(c, (k.deadBirches, 0.4f), (k.roundTrees, 0.3f), (k.deadTrees, 0.3f));
+                pool = Weighted(c, (k.deadBirches, 0.25f), (k.roundTrees, 0.2f), (k.deadTrees, 0.2f), (k.alienSpikes, 0.35f));
                 break;
             default: // Vale
-                pool = Weighted(c, (k.commonTrees, 0.4f), (k.birches, 0.3f), (k.pines, 0.3f));
+                pool = Weighted(c, (k.commonTrees, 0.3f), (k.birches, 0.2f), (k.pines, 0.15f), (k.alienFloating, 0.2f), (k.alienSwirl, 0.15f));
                 break;
         }
 
@@ -111,7 +143,13 @@ public static partial class BlockBuilder
         }
 
         // Altura de cada família (m), multiplicada pelo fator do bloco.
-        Vector2 height = pool == k.pines ? new Vector2(8f, 11f)
+        Vector2 height = pool == k.alienFloating ? new Vector2(7f, 10f)
+            : pool == k.alienLava ? new Vector2(4.5f, 6.5f)
+            : pool == k.alienLight ? new Vector2(5f, 7.5f)
+            : pool == k.alienSpikes ? new Vector2(6f, 9f)
+            : pool == k.alienSpiral ? new Vector2(6.5f, 9.5f)
+            : pool == k.alienSwirl ? new Vector2(8f, 11f)
+            : pool == k.pines ? new Vector2(8f, 11f)
             : pool == k.twistedTrees ? new Vector2(7f, 10f)
             : pool == k.deadTrees || pool == k.deadBirches ? new Vector2(5.5f, 8f)
             : pool == k.birches ? new Vector2(7f, 10f)
@@ -133,6 +171,20 @@ public static partial class BlockBuilder
 
     private static Transform NatureBush(Ctx c, Transform parent, Vector2 p)
     {
+        Planet.Biome own = c.biome;
+        c.biome = LocalBiome(c, new Vector3(p.x, 0f, p.y));
+        try
+        {
+            return NatureBushIn(c, parent, p);
+        }
+        finally
+        {
+            c.biome = own;
+        }
+    }
+
+    private static Transform NatureBushIn(Ctx c, Transform parent, Vector2 p)
+    {
         NatureKit k = Nature(c);
         if (k == null || !Has(k.bushes) && !Has(k.flowerBushes))
         {
@@ -142,7 +194,7 @@ public static partial class BlockBuilder
         Planet.Biome b = NatureBiome(c);
         bool flowery = b == Planet.Biome.Campos || b == Planet.Biome.Vale || b == Planet.Biome.Baia || b == Planet.Biome.Floresta
             || b == Planet.Biome.Colinas || b == Planet.Biome.Planicie;
-        GameObject[] pool = Weighted(c, (k.bushes, 1f), (k.flowerBushes, flowery ? 0.6f : 0f));
+        GameObject[] pool = Weighted(c, (k.bushes, 1f), (k.flowerBushes, flowery ? 0.6f : 0f), (k.alienPlants, 0.7f));
         GameObject model = Pick(c, pool);
         if (model == null)
         {
@@ -158,8 +210,25 @@ public static partial class BlockBuilder
 
     private static Transform NatureRock(Ctx c, Transform parent, Vector2 p, float s)
     {
+        Planet.Biome own = c.biome;
+        c.biome = LocalBiome(c, new Vector3(p.x, 0f, p.y));
+        try
+        {
+            return NatureRockIn(c, parent, p, s);
+        }
+        finally
+        {
+            c.biome = own;
+        }
+    }
+
+    private static Transform NatureRockIn(Ctx c, Transform parent, Vector2 p, float s)
+    {
         NatureKit k = Nature(c);
-        GameObject model = k != null ? Pick(c, k.rocks) : null;
+        Planet.Biome rb = NatureBiome(c);
+        bool alienGround = rb == Planet.Biome.Cratera || rb == Planet.Biome.Dunas || rb == Planet.Biome.Antenas
+            || rb == Planet.Biome.Picos || rb == Planet.Biome.Estepe || rb == Planet.Biome.Gelo || rb == Planet.Biome.Geleira;
+        GameObject model = k != null ? Pick(c, Weighted(c, (k.rocks, 1f), (k.alienRocks, alienGround ? 0.8f : 0.3f))) : null;
         if (model == null)
         {
             return null;
@@ -257,6 +326,22 @@ public static partial class BlockBuilder
             flowers = Mathf.Max(flowers * 2, 30); // o campo é florido (substitui as caixinhas "Flor")
         }
 
+        // Alienígenas: mais nos biomas "estranhos", menos nos verdes comuns.
+        int alienPlants = 5, alienTufts = 8;
+        switch (NatureBiome(c))
+        {
+            case Planet.Biome.Floresta:
+            case Planet.Biome.Pantano:
+            case Planet.Biome.Cratera:
+            case Planet.Biome.Antenas:
+            case Planet.Biome.Dunas:
+                alienPlants = 10; alienTufts = 14; break;
+            case Planet.Biome.Gelo:
+            case Planet.Biome.Geleira:
+            case Planet.Biome.Picos:
+                alienPlants = 2; alienTufts = 3; break;
+        }
+
         c.blocked = BlockedMap(c);
         if (GrassBlades(c))
         {
@@ -269,6 +354,9 @@ public static partial class BlockBuilder
         Cover(c, cover, k.ferns, Mathf.RoundToInt(ferns * density), 0.5f, 1f, true);
         Cover(c, cover, k.mushrooms, Mathf.RoundToInt(mushrooms * density), 0.25f, 0.45f, true);
         Cover(c, cover, k.pebbles, Mathf.RoundToInt(pebbles * density), 0.35f, 0.9f, false);
+        // Missão 20: plantas e tufos alienígenas no meio da vegetação.
+        Cover(c, cover, k.alienPlants, Mathf.RoundToInt(alienPlants * density), 0.7f, 1.5f, true);
+        Cover(c, cover, k.alienGrass, Mathf.RoundToInt(alienTufts * density), 0.4f, 0.8f, true);
     }
 
     // Grama de triângulos ao vento (GrassField + shader "ImNotAnAlien/Grass Wind"). Falso = sem grama
@@ -349,6 +437,12 @@ public static partial class BlockBuilder
         GrassField field = c.root.gameObject.AddComponent<GrassField>();
         field.Setup(k.grassBlades, c.blocked, groundFilter != null ? groundFilter.sharedMesh : null, density, tall,
             c.terrain ? PlanetTerrain.WaterLevel + 0.1f : -999f, pe, ponta, c.spec.seed ^ 0x3c6ef372);
+        if (c.terrain)
+        {
+            // Missão 20: cor da grama misturada com o bioma vizinho perto da divisa.
+            field.BlendBiomes(new Vector2(Planet.GridOrigin.x + c.coord.x * 100f, Planet.GridOrigin.y + c.coord.y * 100f),
+                QualitySettings.activeColorSpace == ColorSpace.Linear);
+        }
         return true;
     }
 
@@ -370,7 +464,10 @@ public static partial class BlockBuilder
             Transform item = Child(parent, "Planta");
             item.localPosition = new Vector3(p.x, 0f, p.y);
             item.localRotation = Quaternion.Euler(0f, Range(c, 0f, 360f), 0f);
+            Planet.Biome own = c.biome;
+            c.biome = LocalBiome(c, item.localPosition); // cor do bioma vizinho perto da divisa
             NatureModel(c, Pick(c, pool), item, Range(c, min, max), byHeight, ShadowCastingMode.Off);
+            c.biome = own;
         }
     }
 
@@ -853,6 +950,11 @@ public static partial class BlockBuilder
                     materials[m] = k.desertRock;
                     changed = true;
                 }
+                else if (c.terrain && k.alienMaterial != null && original == k.alienMaterial)
+                {
+                    materials[m] = AlienTinted(original, biome); // Missão 20: cores do bioma no Space Kit
+                    changed = true;
+                }
                 else if (c.terrain && IsTintable(k, original))
                 {
                     materials[m] = Tinted(original, biome, shade);
@@ -867,6 +969,61 @@ public static partial class BlockBuilder
         }
 
         return holder;
+    }
+
+    // Árvores, plantas e pedras do Ultimate Space Kit (paleta de cores numa textura só) recoloridas
+    // para combinar com o bioma: as cores escuras (troncos) puxam para o chão escuro do bioma e as
+    // claras (copas, bulbos) para a cor das copas do bioma, guardando 30% da cor original (continuam
+    // "estranhas", mas no tom da região). Uma cópia da paleta por bioma, feita uma vez.
+    private static readonly Dictionary<int, Material> alienTint = new Dictionary<int, Material>();
+
+    private static Material AlienTinted(Material source, Planet.Biome biome)
+    {
+        if (alienTint.TryGetValue((int)biome, out Material made) && made != null)
+        {
+            return made;
+        }
+
+        Texture2D palette = source.mainTexture as Texture2D;
+        if (palette == null || !palette.isReadable)
+        {
+            return source; // rode de novo "Preparar Space Kit": a paleta precisa ficar legível
+        }
+
+        PlanetTerrain.BiomeStyle style = PlanetTerrain.StyleOf(biome);
+        Color dark = style.low * 0.42f;
+        Color mid = Color.Lerp(style.low, style.foliage, 0.55f);
+        Color bright = Color.Lerp(style.foliage, Color.white, 0.12f);
+        Color[] pixels = palette.GetPixels();
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            Color c = pixels[i];
+            float lum = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
+            float t = Mathf.InverseLerp(0.06f, 0.62f, lum);
+            Color target = t < 0.5f ? Color.Lerp(dark, mid, t * 2f) : Color.Lerp(mid, bright, (t - 0.5f) * 2f);
+            Color result = Color.Lerp(target, c, 0.3f);
+            result.a = c.a;
+            pixels[i] = result;
+        }
+
+        Texture2D texture = new Texture2D(palette.width, palette.height, TextureFormat.RGBA32, false)
+        {
+            name = palette.name + "_" + biome,
+            filterMode = FilterMode.Point,
+            wrapMode = TextureWrapMode.Clamp,
+        };
+        texture.SetPixels(pixels);
+        texture.Apply(false, true);
+
+        made = new Material(source) { name = source.name + "_" + biome };
+        made.mainTexture = texture;
+        if (made.HasProperty("_BaseMap"))
+        {
+            made.SetTexture("_BaseMap", texture);
+        }
+
+        alienTint[(int)biome] = made;
+        return made;
     }
 
     private static bool IsTintable(NatureKit k, Material material)

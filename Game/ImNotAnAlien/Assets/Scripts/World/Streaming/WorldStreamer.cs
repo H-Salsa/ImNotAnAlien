@@ -242,6 +242,7 @@ public sealed class WorldStreamer : MonoBehaviour
 
         Layout = WorldLayout.GeneratePlanet(Planet.Width, Planet.Height, gridOrigin, blockSize, seed, fixedSpecs);
         PlanetTerrain.Configure(Layout, seed); // Missão 20: relevo e biomas
+        SkyPlanets.Create(kit != null ? kit.nature : null, seed); // Missão 20: planetas no céu
         if (kit == null)
         {
             Debug.LogError("WorldStreamer: falta o Kit de Blocos (campo Kit no objeto Mundo). Rode 'Preparar Planeta (Missao 19)'.", this);

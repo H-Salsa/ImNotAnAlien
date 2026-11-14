@@ -183,8 +183,9 @@ public sealed class WorldLayout
             case BlockType.Praca:
                 return roads == 4;
             case BlockType.Fazenda:
-            case BlockType.Lago:
                 return rivers == 0 && roads <= 1;
+            case BlockType.Lago:
+                return rivers == 0 && roads == 0; // Missão 20: lagoa natural no meio do mato (rua não termina na água)
             case BlockType.Campo:
                 return rivers == 0 && roads <= 2;
             case BlockType.Parque:

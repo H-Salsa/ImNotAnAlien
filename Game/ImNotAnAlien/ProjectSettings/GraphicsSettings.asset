@@ -34,6 +34,14 @@ GraphicsSettings:
   - {fileID: 10753, guid: 0000000000000000f000000000000000, type: 0}
   - {fileID: 10770, guid: 0000000000000000f000000000000000, type: 0}
   - {fileID: 10783, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 4800000, guid: ea6f858fd857dc44084e31b1dc52ddc6, type: 3}
+  - {fileID: 4800000, guid: fe317a8e94c8b8949820cdaad3e9ce41, type: 3}
+  - {fileID: 4800000, guid: 1365d0b02499e1b47bf0ee9249cb2acd, type: 3}
+  - {fileID: 4800000, guid: 25258349af3a514499418a2c6d8b7828, type: 3}
+  - {fileID: 4800000, guid: eb6914a4aca54254fb9947fa7826597e, type: 3}
+  - {fileID: 4800000, guid: c313250021e5dca4b865d2e4185d9838, type: 3}
+  - {fileID: 4800000, guid: 0406db5a14f94604a8c57ccfbc9f3b46, type: 3}
+  - {fileID: 4800000, guid: 434a6700241c9c844882a309616dcd53, type: 3}
   m_PreloadedShaders: []
   m_PreloadShadersBatchTimeLimit: -1
   m_SpritesDefaultMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
@@ -66,4 +74,4 @@ GraphicsSettings:
   m_LogWhenShaderIsCompiled: 0
   m_LightProbeOutsideHullStrategy: 0
   m_CameraRelativeLightCulling: 0
-  m_CameraRelativeShadowCulling: 0
+  m_CameraRelativeShadowCulling: 1

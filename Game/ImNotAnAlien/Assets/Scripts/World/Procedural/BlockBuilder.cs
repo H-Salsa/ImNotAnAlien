@@ -140,7 +140,7 @@ public static partial class BlockBuilder
             case BlockType.Fazenda: Fazenda(c); break;
             case BlockType.Praca: Praca(c); break;
             case BlockType.Predios: Predios(c); break;
-            case BlockType.Lago: Lago(c); break;
+            case BlockType.Lago: if (c.terrain) Lagoa(c); else Lago(c); break; // Missão 20: no planeta é lagoa natural (relevo)
             case BlockType.Campo: Campo(c); break;
             case BlockType.Lagoa: Lagoa(c); break;
             case BlockType.Base: BaseBlock(c); break;

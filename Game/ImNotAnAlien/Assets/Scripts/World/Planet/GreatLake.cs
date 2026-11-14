@@ -146,9 +146,9 @@ public static class GreatLake
             }
 
             bool eastWest = pair.Value.east == Socket.Rio || pair.Value.west == Socket.Rio;
-            Vector2 center = CellCenter(Planet.Wrap(pair.Key));
+            Vector2 middle = CellCenter(Planet.Wrap(pair.Key));
             Vector2 axis = eastWest ? Vector2.right : Vector2.up;
-            AddSegment(center - axis * 50f, center + axis * 50f, VillageHalf, VillageHalf, VillageBed, VillageBed, 0f, 0f);
+            AddSegment(middle - axis * 50f, middle + axis * 50f, VillageHalf, VillageHalf, VillageBed, VillageBed, 0f, 0f);
             waterCells.Add(Planet.Wrap(pair.Key));
         }
 

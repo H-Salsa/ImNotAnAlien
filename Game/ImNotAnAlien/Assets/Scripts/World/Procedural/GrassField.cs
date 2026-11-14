@@ -32,6 +32,9 @@ public sealed class GrassField : MonoBehaviour
     private Color baseColor;
     private Color tipColor;
     private int seed;
+    private bool blendBiomes;    // Missão 20: cor pela posição (mistura com o bioma vizinho)
+    private Vector2 logicalOrigin;
+    private bool linearColors;
 
     private Transform holder;
     private readonly List<Mesh> meshes = new List<Mesh>();
@@ -61,6 +64,14 @@ public sealed class GrassField : MonoBehaviour
                 step = BlockSize / (n - 1);
             }
         }
+    }
+
+    // Cor de cada folha pela posição no planeta (mistura gradual entre biomas vizinhos).
+    public void BlendBiomes(Vector2 blockLogicalOrigin, bool linear)
+    {
+        blendBiomes = true;
+        logicalOrigin = blockLogicalOrigin;
+        linearColors = linear;
     }
 
     private void Update()
@@ -118,6 +129,27 @@ public sealed class GrassField : MonoBehaviour
         List<Vector3> vertices = new List<Vector3>(attempts * 3);
         List<Color32> colors = new List<Color32>(attempts * 3);
         List<Vector2> uvs = new List<Vector2>(attempts * 3);
+
+        // Cores do bioma numa grade de 5 m sobre o pedaço (6 × 6 pontos), misturadas por folha.
+        const int Grid = 6;
+        const float GridStep = ChunkSize / (Grid - 1);
+        Color[] gridPe = null, gridPonta = null;
+        if (blendBiomes)
+        {
+            gridPe = new Color[Grid * Grid];
+            gridPonta = new Color[Grid * Grid];
+            for (int gz = 0; gz < Grid; gz++)
+            {
+                for (int gx = 0; gx < Grid; gx++)
+                {
+                    PlanetTerrain.GrassColors(logicalOrigin.x + cx * ChunkSize + gx * GridStep, logicalOrigin.y + cz * ChunkSize + gz * GridStep,
+                        out Color pe, out Color ponta);
+                    gridPe[gz * Grid + gx] = linearColors ? pe.linear : pe;
+                    gridPonta[gz * Grid + gx] = linearColors ? ponta.linear : ponta;
+                }
+            }
+        }
+
         for (int i = 0; i < attempts; i++)
         {
             float x = (cx + (float)rng.NextDouble()) * ChunkSize;
@@ -142,8 +174,19 @@ public sealed class GrassField : MonoBehaviour
             Vector3 root = new Vector3(x, h - 0.03f, z);
 
             float shade = 0.82f + (float)rng.NextDouble() * 0.3f;
-            Color32 pe = baseColor * shade;
-            Color32 ponta = tipColor * shade;
+            Color basePe = baseColor, baseTip = tipColor;
+            if (gridPe != null)
+            {
+                float fx = (x - cx * ChunkSize) / GridStep, fz = (z - cz * ChunkSize) / GridStep;
+                int ix = Mathf.Min((int)fx, Grid - 2), iz = Mathf.Min((int)fz, Grid - 2);
+                float tx = fx - ix, tz = fz - iz;
+                int a = iz * Grid + ix;
+                basePe = Color.Lerp(Color.Lerp(gridPe[a], gridPe[a + 1], tx), Color.Lerp(gridPe[a + Grid], gridPe[a + Grid + 1], tx), tz);
+                baseTip = Color.Lerp(Color.Lerp(gridPonta[a], gridPonta[a + 1], tx), Color.Lerp(gridPonta[a + Grid], gridPonta[a + Grid + 1], tx), tz);
+            }
+
+            Color32 pe = basePe * shade;
+            Color32 ponta = baseTip * shade;
             float phase = (float)rng.NextDouble();
 
             vertices.Add(root - side);

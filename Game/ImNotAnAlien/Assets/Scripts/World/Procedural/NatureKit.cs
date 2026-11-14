@@ -38,6 +38,26 @@ public sealed class NatureKit : ScriptableObject
     [Tooltip("Material da grama de triângulos (shader ImNotAnAlien/Grass Wind). Vazio = grama de modelos.")]
     public Material grassBlades;
 
+    [Header("Alienígenas (Ultimate Space Kit, Missão 20)")]
+    public GameObject[] alienBlob;      // Tree_Blob_ (copa de bolhas) — removida a pedido do autor: fica vazio
+    public GameObject[] alienFloating;  // Tree_Floating_ (copas soltas no ar)
+    public GameObject[] alienLava;      // Tree_Lava_
+    public GameObject[] alienLight;     // Tree_Light_ (bulbos de luz)
+    public GameObject[] alienSpikes;    // Tree_Spikes_
+    public GameObject[] alienSpiral;    // Tree_Spiral_
+    public GameObject[] alienSwirl;     // Tree_Swirl_
+    public GameObject[] alienPlants;    // Plant_ e Bush_ (plantas e arbustos estranhos)
+    public GameObject[] alienGrass;     // Grass_ (tufos)
+    public GameObject[] alienRocks;     // Rock_ e Rock_Large_
+
+    [Tooltip("Material da paleta do Space Kit (SK_Atlas): recolorido pela cor de cada bioma.")]
+    public Material alienMaterial;
+
+    [Header("Céu (planetas)")]
+    public GameObject[] skyPlanets;     // Planet_1..11
+    [Tooltip("Material dos planetas no céu (shader ImNotAnAlien/Sky Planet).")]
+    public Material skyPlanetMaterial;
+
     [Header("Cor do bioma")]
     [Tooltip("Materiais de folha e grama que recebem a cor do bioma.")]
     public Material[] tintable;

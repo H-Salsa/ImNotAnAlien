@@ -110,6 +110,7 @@ public static class PlanetTerrain
         layout = planetLayout;
         noiseSeed = seed * 7919 + 13;
         cellInfo = new byte[Planet.Width * Planet.Height];
+        ponds.Clear();
         for (int z = 0; z < Planet.Height; z++)
         {
             for (int x = 0; x < Planet.Width; x++)
@@ -129,6 +130,14 @@ public static class PlanetTerrain
                 }
 
                 cellInfo[z * Planet.Width + x] = info;
+                if (spec.type == BlockType.Lago)
+                {
+                    // Lagoa: centro, raios e fase da margem sorteados pelo bloco.
+                    System.Random r = new System.Random(seed * 31 + x * 977 + z * 131);
+                    ponds[new Vector2Int(x, z)] = new Vector4(
+                        50f + (float)(r.NextDouble() * 12.0 - 6.0), 50f + (float)(r.NextDouble() * 12.0 - 6.0),
+                        24f + (float)r.NextDouble() * 6f, (float)r.NextDouble() * 6.283f);
+                }
             }
         }
 
@@ -136,10 +145,45 @@ public static class PlanetTerrain
         tintCache.Clear();
     }
 
+    // Missão 20: lagoas naturais (blocos "Lago"): x, z = centro no bloco, w = raio médio, ww = fase.
+    private static readonly Dictionary<Vector2Int, Vector4> ponds = new Dictionary<Vector2Int, Vector4>();
+    private const float PondBottom = -3f;
+    private const float PondShore = 14f;
+
+    // Afunda o chão na lagoa do bloco (margem irregular; tudo dentro do próprio bloco: na borda dele
+    // não muda nada, então os blocos vizinhos casam).
+    private static float Pond(float mx, float mz, float h, float flat)
+    {
+        if (ponds.Count == 0)
+        {
+            return h;
+        }
+
+        int bx = Mathf.FloorToInt(mx / BlockSize), bz = Mathf.FloorToInt(mz / BlockSize);
+        if (!ponds.TryGetValue(new Vector2Int(Planet.WrapX(bx), bz), out Vector4 pond))
+        {
+            return h;
+        }
+
+        float fx = mx - bx * BlockSize, fz = mz - bz * BlockSize;
+        float edge = Mathf.Clamp01(Mathf.Min(Mathf.Min(fx, BlockSize - fx), Mathf.Min(fz, BlockSize - fz)) / 10f); // 0 na borda do bloco
+        float dx = fx - pond.x, dz = fz - pond.y;
+        float d = Mathf.Sqrt(dx * dx + dz * dz);
+        float angle = Mathf.Atan2(dz, dx);
+        float radius = pond.z * (1f + 0.14f * Mathf.Sin(2f * angle + pond.w) + 0.08f * Mathf.Sin(3f * angle + pond.w * 1.7f)
+                                    + 0.05f * Mathf.Sin(5f * angle + pond.w * 2.3f));
+        float k = Mathf.Clamp01((radius + PondShore * 0.3f - d) / PondShore);
+        k = k * k * (3f - 2f * k);
+        float floor = PondBottom + 0.8f * Mathf.Clamp01(d / Mathf.Max(radius, 1f)); // mais fundo no meio
+        h *= 1f - 0.5f * edge * Mathf.Clamp01((radius + PondShore * 1.5f - d) / PondShore); // margem mais mansa
+        return Mathf.Lerp(h, floor, k * flat * edge);
+    }
+
     public static void Clear()
     {
         layout = null;
         cellInfo = null;
+        ponds.Clear();
         GreatLake.Clear();
         macroMask = null;
         cellKind = null;
@@ -162,12 +206,12 @@ public static class PlanetTerrain
             case BlockType.Base:
             case BlockType.Polo:
                 return 2;
-            case BlockType.Lago:
             case BlockType.Parque:
                 return 3;
             case BlockType.Floresta:
             case BlockType.Campo:
             case BlockType.Lagoa:
+            case BlockType.Lago: // Missão 20: lagoa natural (relevo), não mais o lago de enfeite plano
                 return 1;
             default:
                 return 0;
@@ -279,7 +323,7 @@ public static class PlanetTerrain
         return Mathf.Clamp01(n / 1.5f * 1.3f + 0.5f);
     }
 
-    public static bool IsWild(BlockType type) => type == BlockType.Floresta || type == BlockType.Campo || type == BlockType.Lagoa;
+    public static bool IsWild(BlockType type) => type == BlockType.Floresta || type == BlockType.Campo || type == BlockType.Lagoa || type == BlockType.Lago;
 
     // Peso extra do sorteio de um bloco do planeta (usado pelo WorldLayout.GeneratePlanet).
     public static float LayoutBias(int x, int y, BlockType type)
@@ -345,7 +389,8 @@ public static class PlanetTerrain
         }
 
         // Missão 20: Grande Lago e rios (podem passar do fundo do mar raso: dá para mergulhar).
-        return GreatLake.Shape(mx, mz, Mathf.Max(h, SeaFloor), flat);
+        h = Pond(mx, mz, Mathf.Max(h, SeaFloor), flat); // Missão 20: lagoas naturais
+        return GreatLake.Shape(mx, mz, h, flat);
     }
 
     // 0 = tem que ficar plano (rua, cidade, rio...), 1 = relevo livre.
@@ -468,6 +513,37 @@ public static class PlanetTerrain
     }
 
     private static float Smooth(float t) => t * t * (3f - 2f * t);
+
+    // Missão 20: cor da grama misturada entre os biomas vizinhos (mesma mistura do chão), para a troca
+    // de bioma ser gradual e não um "corte" na borda do bloco. Mesma fórmula do BlockBuilder.GrassBlades.
+    public static void GrassColors(float logicalX, float logicalZ, out Color pe, out Color ponta)
+    {
+        float mx = Mod(logicalX - Planet.GridOrigin.x, Planet.Width * BlockSize);
+        float mz = logicalZ - Planet.GridOrigin.y;
+        float wx = mx + 35f * Perlin(mx / 210f, mz / 210f, 61, 101);
+        float wz = mz + 35f * Perlin(mx / 210f + 17.3f, mz / 210f + 4.1f, 61, 202);
+        float u = wx / BlockSize - 0.5f;
+        float v = wz / BlockSize - 0.5f;
+        int x0 = Mathf.FloorToInt(u);
+        int z0 = Mathf.FloorToInt(v);
+        float tx = Smooth(u - x0);
+        float tz = Smooth(v - z0);
+        Color low = Color.clear, foliage = Color.clear;
+        for (int k = 0; k < 4; k++)
+        {
+            int ox = k & 1;
+            int oz = k >> 1;
+            float w = (ox == 1 ? tx : 1f - tx) * (oz == 1 ? tz : 1f - tz);
+            int cz = Mathf.Clamp(z0 + oz, 0, Planet.Height - 1);
+            BiomeStyle s = StyleOf(Planet.RegionBiome(Planet.RegionAt(new Vector2Int(Planet.WrapX(x0 + ox), cz))));
+            low += s.low * w;
+            foliage += s.foliage * w;
+        }
+
+        pe = Color.Lerp(low, foliage, 0.35f) * 0.62f;
+        ponta = Color.Lerp(Color.Lerp(low, foliage, 0.65f), Color.white, 0.12f);
+        pe.a = ponta.a = 1f;
+    }
 
     // Forma 0..1: morros (fBm) misturados com cristas (ridged).
     private static float Shape(float mx, float mz, float ridge, float sharp)

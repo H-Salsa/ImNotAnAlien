@@ -139,6 +139,61 @@ MonoBehaviour:
   desertRock: {fileID: 2100000, guid: 0959eb709f6b70a4e995e20ee3e556f6, type: 2}
   normalRock: {fileID: 2100000, guid: 90f030ed47df68349804df05c2eb5826, type: 2}
   grassBlades: {fileID: 2100000, guid: da2d7c027bf74a5459fb955a81560330, type: 2}
+  alienBlob: []
+  alienFloating:
+  - {fileID: 919132149155446097, guid: 7234de9b3d8327b4fa8625f2f88da1ad, type: 3}
+  - {fileID: 919132149155446097, guid: 81b19e5ca06f4d34fb943de528c91565, type: 3}
+  - {fileID: 919132149155446097, guid: 9e1fa82149d874849a41a533945b8f39, type: 3}
+  alienLava:
+  - {fileID: 919132149155446097, guid: d343e24818557ce44952c6e2de424a14, type: 3}
+  - {fileID: 919132149155446097, guid: ab2c8aa1b0fe62149b5ba65bab8e4962, type: 3}
+  - {fileID: 919132149155446097, guid: 81fa0149e7f8b7e468bf87c5b47ab767, type: 3}
+  alienLight:
+  - {fileID: 919132149155446097, guid: 558c569e11505d540bb05f774431b14c, type: 3}
+  - {fileID: 919132149155446097, guid: b939318b590c19f4a951d2a8f076456b, type: 3}
+  alienSpikes:
+  - {fileID: 919132149155446097, guid: 6613983b5e193a142bd6de51fc018f93, type: 3}
+  - {fileID: 919132149155446097, guid: 3d7e66b73a076bc4591e25979c295aae, type: 3}
+  alienSpiral:
+  - {fileID: 919132149155446097, guid: 6c39841215455694c8f436abca490d2a, type: 3}
+  - {fileID: 919132149155446097, guid: 4854b5b6d2738094fa14ebb1fa36a4ad, type: 3}
+  - {fileID: 919132149155446097, guid: 2ef7cc8d613d488409bcbc120c425c34, type: 3}
+  alienSwirl:
+  - {fileID: 919132149155446097, guid: 0904bb257fb889343a9042f119d06990, type: 3}
+  - {fileID: 919132149155446097, guid: 577b1f2f7fccab8439ad0624c1f3966c, type: 3}
+  alienPlants:
+  - {fileID: 919132149155446097, guid: ff6c09ebccb866c488476562bb6cc7fc, type: 3}
+  - {fileID: 919132149155446097, guid: ce000d56d9d913d4a8c2f83edc39f9a4, type: 3}
+  - {fileID: 919132149155446097, guid: 103706bd23503e543ad9d0da3c18a220, type: 3}
+  - {fileID: 919132149155446097, guid: b0c79f4448b31c346a892178338ef1f3, type: 3}
+  - {fileID: 919132149155446097, guid: 90cc424c9fba05e4ba83529e1a7863ca, type: 3}
+  - {fileID: 919132149155446097, guid: c45f53760a4c4b44aae0db54c1dc179d, type: 3}
+  alienGrass:
+  - {fileID: 919132149155446097, guid: 005bd256e5259504fa2cfd6f781ee49a, type: 3}
+  - {fileID: 919132149155446097, guid: e04c4fcee1c43ef4e85aac615da55def, type: 3}
+  - {fileID: 919132149155446097, guid: 0c9d04115867a3a4cb0e5527c1e6966b, type: 3}
+  alienRocks:
+  - {fileID: 919132149155446097, guid: 053d96deb72ad014fa47ead21c662d26, type: 3}
+  - {fileID: 919132149155446097, guid: b4be2b5f8fc7ec040bb904fb3be25418, type: 3}
+  - {fileID: 919132149155446097, guid: 570c1d6acc279da4fa71ad696367da1d, type: 3}
+  - {fileID: 919132149155446097, guid: 50c602d61707d97438fbed1648263986, type: 3}
+  - {fileID: 919132149155446097, guid: 0c43a8ad351ec9d468cb310ed634b980, type: 3}
+  - {fileID: 919132149155446097, guid: e07a662edf6ec364c8183a403559c3ca, type: 3}
+  - {fileID: 919132149155446097, guid: 27ad6407b717d264c9aab06e105f6b4a, type: 3}
+  alienMaterial: {fileID: 2100000, guid: 30ad54bd4ccbdf24b937215b81bff427, type: 2}
+  skyPlanets:
+  - {fileID: 919132149155446097, guid: 6d31699fa43792740b1222bb972a21df, type: 3}
+  - {fileID: 919132149155446097, guid: 2249c6fcdcd5b88458f2a676abc020bf, type: 3}
+  - {fileID: 919132149155446097, guid: 0812b1bcae8c7e64badb287e147c60fa, type: 3}
+  - {fileID: 919132149155446097, guid: 40a66f2afb70ef049a5a64496fb223e6, type: 3}
+  - {fileID: 919132149155446097, guid: f173f322ab73fe04bb7a233e6ebc69ca, type: 3}
+  - {fileID: 919132149155446097, guid: dfb5fc3fc38432b4297ee30f04909bea, type: 3}
+  - {fileID: 919132149155446097, guid: b0135b6ab155b4348a478c1e86d98d69, type: 3}
+  - {fileID: 919132149155446097, guid: d6c6e0b4b28fd1b4cb287060b649f2dc, type: 3}
+  - {fileID: 919132149155446097, guid: 2f2d39ea8376ba14ba90c066c0969c17, type: 3}
+  - {fileID: 919132149155446097, guid: 9d0a352ba573d62459def868ffbadef0, type: 3}
+  - {fileID: 919132149155446097, guid: 38ad768f480e8d04f98964d295da46c1, type: 3}
+  skyPlanetMaterial: {fileID: 2100000, guid: 8260f6859055e304387de0d3edaf5ca9, type: 2}
   tintable:
   - {fileID: 2100000, guid: e263b3233fdfec04fa546e568cdc9fcb, type: 2}
   - {fileID: 2100000, guid: e06be0b5d0d604e49bdf3ace4a94aa46, type: 2}
