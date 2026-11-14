@@ -291,7 +291,20 @@ Peças de bloco feitas à mão com "conexões" nas bordas (rua, calçada, rio, m
 ### Missão 19 — Planeta que dá a volta, quatro bases e mapa
 Grade com coordenadas de latitude/longitude que dá a volta. Bases fixas no norte, sul, leste e oeste (pontos de referência, descanso e recursos a definir). Mapa do planeta mostrando regiões limpas e o progresso até o teletransporte.
 
-O autor começou a Missão 19 pela **polícia** (8–9/11/2026). O planeta que dá a volta, as bases e o mapa seguem previstos.
+O autor começou a Missão 19 pela **polícia** (8–9/11/2026) e depois fez o planeta, as bases e o globo (9–10/11/2026).
+
+**Planeta, bases e globo ([D28](DECISOES.md)).** Feito em 9–10/11/2026; o autor testou o globo e a seta; o horizonte curvo foi testado e aprovado bem sutil (raio 100000). Ferramentas `ImNotAnAlien > Preparar Planeta (Missao 19)` (rodar de novo depois de `Gerar Mundo Sorteado`) e `ImNotAnAlien > Horizonte Curvo (Missao 19)` (com `Desfazer Horizonte Curvo` para voltar).
+
+- Regiões orgânicas (10/11/2026): `Planet.BuildRegions` sorteia o formato das 16 regiões por jogo (centros perto do lugar de sempre, divisas entortadas com ruído, tamanhos variados, pedaços soltos juntados ao vizinho) e os 16 setores de cada região (Lloyd); a cota de cada setor acompanha o tamanho.
+- `World/Planet/Planet.cs`: grade 128 × 128 (o Vilarejo nos blocos 59..61, sem sair do lugar: só a origem da grade mudou para x = −5950, z = −6150), 16 regiões × 16 setores, bases, latitude/longitude.
+- Sorteio do planeta inteiro em `WorldLayout.GeneratePlanet` (conjuntos de bits, linha por linha, conserto local quando algo não encaixa): simulado em 60 sementes sem nenhum conserto.
+- `WorldStreamer` no modo planeta: só olha os blocos em volta do jogador, carrega pelo número "sem volta" (dá a volta sem emenda), monta os polos (neve, nevasca, mastro "POLO NORTE/SUL") e faz a passagem pelo polo. O trânsito monta a rede de ruas aos poucos em volta do jogador.
+- `SectorTracker` no modo planeta (256 setores; o HUD mostra a região onde você está). O jogo salvo (versão 2) guarda as 16 regiões, as bases visitadas, a última base e o marcador; a posição é salva dentro da primeira volta.
+- Bases (`BaseSite` + blocos montados pelo `BlockBuilder`): esconderijo diferente em cada uma, placa "LAR DOCE LAR", cama, foto da Terra, fogueira, farol e o anel da zona segura. Entrar: vida cheia, procurado zerado, salva e vira o ponto de renascer; ninguém surge lá dentro.
+- `PlanetGlobe` (tecla M): globo 3D com o mapa sorteado, regiões pelo progresso, seta do jogador, bases (douradas se visitadas), marcador por clique (botão direito tira), marcador na tela com a distância e viagem rápida dentro das bases.
+- Horizonte curvo: `Assets/Shaders/CurvedLit.shader` (cópia do URP Lit 17.3) + `CurvedWorld.hlsl` + `CurvedHorizon` (raio visual 100000 m, bem sutil, escolhido pelo autor; peças compridas de cubo são picadas em pedaços de ~5 m ao carregar o bloco).
+- Teste: com F8 ligado, F10 leva de base em base e F7 liga/desliga a curva.
+- Pendente das bases (D22): máquina de teletransporte, laboratório genético e mural de troféus. Ideia anotada: ambientes por região (hoje os tipos de bloco ficam misturados por igual em todas as regiões) — Missão 20.
 
 **Polícia — viatura e níveis de procurado ([D27](DECISOES.md)). Testado e aprovado pelo autor em 9/11/2026.** Ferramentas `ImNotAnAlien > Preparar Viaturas (Missao 19)` (rodar de novo depois de `Gerar Mundo Sorteado`) e `ImNotAnAlien > Preparar Golpes da Policia (Missao 19)`.
 
@@ -304,8 +317,19 @@ O autor começou a Missão 19 pela **polícia** (8–9/11/2026). O planeta que d
 - Golpes: camada "Golpes" no `Alien.controller` (tronco, braços e cabeça) com Punch_Cross, Punch_Jab e Sword_Attack da Quaternius; cassetete feito em código na mão direita; dano no impacto do golpe.
 - Correção junto: blocos sorteados nascem já no lugar (carros estacionados eram arremessados); poste, carro e lixeira espaçados na calçada.
 
-### Missão 20 — Ambientes e enfeites procedurais
-Tipos de região (subúrbio, zona industrial, fazendas, deserto, laboratórios…) e enfeites colocados por regras dentro dos blocos. Dificuldade subindo com a distância do ponto inicial.
+### Missão 20 — Relevo e biomas ([D29](DECISOES.md))
+**Etapa 1 implementada em 11/11/2026 (aguardando teste do autor).**
+
+- `PlanetTerrain`: altura do chão (Perlin com o jeito do bioma), cor do chão por bloco (textura 64 × 64 com mistura entre regiões, areia na beira da água, neve no alto), água do relevo (lâmina + gatilho de nado) e pesos do sorteio por bioma.
+- `BlockBuilder`: no planeta, o chão de todo bloco vira malha com textura do bioma; floresta e campo ganham relevo; árvores, pedras e arbustos sobem no morro (somem se ficarem debaixo d'água); copas e arbustos com a cor do bioma; beira do rio e anel da esquina com a grama do bioma.
+- `WorldLayout.GeneratePlanet`: o tipo de cada bloco é sorteado com peso do bioma (`PlanetTerrain.LayoutBias`).
+- `WorldStreamer`: configura o relevo depois do sorteio e sobe o jogador se ele ficar debaixo do morro. `WorldNavMesh`: altura mínima de 70 m para pegar os morros.
+- Etapa 2 (11/11/2026, aguardando teste): ondulação geral também na cidade — ruas, calçadas e faixas drapeadas no chão (`PlanetTerrain.SettleObjects`/`Drape`), casas e postes sobem até o chão, carros do trânsito acompanham a rua (`TrafficCar`), civis surgem na altura do chão (`PopulationSpawner`). Rios, lagos, parques, Vilarejo, bases e polos continuam nivelados (nos vales).
+- Etapa 3 (11/11/2026, aguardando teste): Sci-Fi Essentials Kit da Quaternius ([D30](DECISOES.md)) em `Assets/Art/Props/SciFiEssentials` (mapas ORM convertidos para o URP em `TexturesURP`). Rodar `ImNotAnAlien > Preparar Sci-Fi Kit (Missao 20)` uma vez: materiais, modelos, Kit de Blocos, `Resources/WeaponKit.asset` e os inimigos em `Resources/Enemies` (Drone, QuadShell, Trilobite). O `SciFiEnemySpawner` nasce sozinho no Play.
+- Etapa 4 (11/11/2026, aguardando teste): natureza com o Stylized Nature MegaKit + Textured Stylized Trees ([D31](DECISOES.md)) em `Assets/Art/Nature`. Rodar `ImNotAnAlien > Preparar Natureza (Missao 20)` uma vez (materiais com recorte e cor do bioma, modelos, `NatureKit.asset` ligado ao Kit de Blocos) e começar um jogo novo. Grama de triângulos ao vento (`GrassField` + `Assets/Shaders/GrassWind.shader`; ajustes de vento, empurrão e distância no material `NK_GrassBlades`).
+- Etapa 5 (11/11/2026, aguardando teste): casas retrofuturistas no bairro ([D32](DECISOES.md)), com uma malha por casa, LOD, um material e interior falso. Falta: medir FPS num bairro cheio; trocar as casas dos prefabs do Vilarejo; lojas no mesmo estilo.
+- **Anotado pelo autor em 11/11/2026: a física do pulo do protagonista está ruim** (rever altura, gravidade, controle no ar e aterrissagem em `PrototypeThirdPersonController`).
+- Próximas etapas: enfeites próprios de cada bioma (cactos nas dunas, pinheiros nos picos, cristais na cratera, antenas no morro), relevo no globo (tecla M), clima por bioma (neve na tundra, névoa no pântano) e dificuldade subindo com a distância do início.
 
 ## Depois da 0.1 (sem ordem aprovada)
 

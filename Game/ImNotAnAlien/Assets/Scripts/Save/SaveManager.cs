@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -86,7 +87,19 @@ public sealed class SaveManager : MonoBehaviour
 
         // Progresso da região (setores limpos e consumidos), antes de a população começar a surgir.
         tracker = FindFirstObjectByType<SectorTracker>();
-        if (tracker != null)
+        if (tracker != null && tracker.PlanetMode)
+        {
+            // Planeta (Missão 19): todas as regiões de uma vez. Jogos salvos antes do planeta não têm
+            // esses setores; o progresso deles nos setores antigos fica de fora.
+            List<SaveData.SectorSave> all = new List<SaveData.SectorSave>();
+            foreach (SaveData.RegionSave saved in data.regions)
+            {
+                all.AddRange(saved.sectors);
+            }
+
+            tracker.RestoreProgress(all);
+        }
+        else if (tracker != null)
         {
             SaveData.RegionSave region = data.FindRegion(tracker.RegionName);
             if (region != null)
@@ -112,10 +125,18 @@ public sealed class SaveManager : MonoBehaviour
 
     private void Start()
     {
-        // Renascer continua sendo no ponto inicial da região (as bases vêm na Missão 19).
+        // Renascer: na última base visitada (Missão 19) ou no ponto inicial.
         if (player != null && player.TryGetComponent(out PlayerHealth health))
         {
-            health.SetSpawnPoint(startPosition, startRotation);
+            if (Planet.Active && !string.IsNullOrEmpty(data.lastBase) && Planet.TryGetBase(data.lastBase, out Planet.BaseInfo info))
+            {
+                Vector3 spawn = WorldOrigin.ToWorld(Planet.BaseSpawnLogical(info, WorldOrigin.ToLogical(player.position)));
+                health.SetSpawnPoint(spawn, Quaternion.Euler(0f, 180f, 0f));
+            }
+            else
+            {
+                health.SetSpawnPoint(startPosition, startRotation);
+            }
         }
 
         if (tracker != null)
@@ -188,6 +209,22 @@ public sealed class SaveManager : MonoBehaviour
 
     private void OnSectorCleared(int index) => Save(true);
 
+    public IReadOnlyList<string> VisitedBases => data.visitedBases;
+
+    // Chegou numa base (BaseSite). Marca como visitada e última, e salva. Devolve true na primeira visita.
+    public bool OnBaseVisited(string baseId)
+    {
+        bool first = !data.visitedBases.Contains(baseId);
+        if (first)
+        {
+            data.visitedBases.Add(baseId);
+        }
+
+        data.lastBase = baseId;
+        Save(!first); // na primeira visita o aviso grande da base já diz "jogo salvo"
+        return first;
+    }
+
     private void OnRegionCleared() => Save(true);
 
     // ---------- Salvar ----------
@@ -245,10 +282,32 @@ public sealed class SaveManager : MonoBehaviour
         if (player != null)
         {
             data.hasPlayerPosition = true;
-            data.playerPosition = WorldOrigin.ToLogical(dead ? startPosition : player.position);
+            Vector3 where = dead && PlayerHealth.Instance != null ? PlayerHealth.Instance.SpawnPosition : dead ? startPosition : player.position;
+            data.playerPosition = WorldOrigin.ToLogical(where);
+            if (Planet.Active)
+            {
+                data.playerPosition = Planet.WrapLogical(data.playerPosition); // depois de dar voltas no planeta
+            }
         }
 
-        if (tracker != null && !tracker.SingleSectorMode)
+        if (tracker != null && tracker.PlanetMode)
+        {
+            data.regions.RemoveAll(r => !r.name.StartsWith("R")); // regiões do mundo antigo (antes do planeta)
+            for (int r = 0; r < Planet.RegionCount; r++)
+            {
+                SaveData.RegionSave region = data.GetOrAddRegion(Planet.RegionId(r));
+                region.quota = tracker.RegionQuotaOf(r);
+                region.consumed = tracker.RegionConsumedOf(r);
+                region.cleared = tracker.IsRegionCleared(r);
+                region.sectors.Clear();
+                for (int i = r * Planet.SectorsPerRegion; i < (r + 1) * Planet.SectorsPerRegion && i < tracker.Sectors.Count; i++)
+                {
+                    SectorTracker.SectorInfo sector = tracker.Sectors[i];
+                    region.sectors.Add(new SaveData.SectorSave { name = sector.id, consumed = sector.consumed, cleared = sector.cleared });
+                }
+            }
+        }
+        else if (tracker != null && !tracker.SingleSectorMode)
         {
             SaveData.RegionSave region = data.GetOrAddRegion(tracker.RegionName);
             region.quota = tracker.RegionQuota;

@@ -71,3 +71,37 @@ MonoBehaviour:
   - {fileID: 2100000, guid: 3a9d7b880b51582438aaa63e5203bf29, type: 2}
   - {fileID: 2100000, guid: 4e26d2f188db01041894f16448185d20, type: 2}
   carModel: {fileID: 919132149155446097, guid: c51bf70a2d5c25c468f8d6df32d165cb, type: 3}
+  satelliteDish: {fileID: 919132149155446097, guid: bbea728cbfebfde4a82efc3f3eaae7e3, type: 3}
+  crates:
+  - {fileID: 919132149155446097, guid: e32e8d846681b074e8ef87f38c6f96ba, type: 3}
+  - {fileID: 919132149155446097, guid: 6d72b55a1d0932142bf425a39ce4f041, type: 3}
+  largeCrates:
+  - {fileID: 919132149155446097, guid: 84785f83e3d3daf4797c98981e2c7b08, type: 3}
+  - {fileID: 919132149155446097, guid: 54c33e74e88574f4aa93d880123b27d1, type: 3}
+  barrels:
+  - {fileID: 919132149155446097, guid: 87a4d532ba225e843914ee14211ec8db, type: 3}
+  - {fileID: 919132149155446097, guid: 0b02e0775dd7be94698daefbf6afd3af, type: 3}
+  - {fileID: 919132149155446097, guid: 0d0345a627338a842a803853cab198d1, type: 3}
+  desks:
+  - {fileID: 919132149155446097, guid: c63ac86c91460024083938c27dd883cf, type: 3}
+  - {fileID: 919132149155446097, guid: d73785950895e07438b8040a31176e4d, type: 3}
+  - {fileID: 919132149155446097, guid: 7e480e4d3898ef84fbb07916f673d5d0, type: 3}
+  shelves:
+  - {fileID: 919132149155446097, guid: b93d4fa3446d2d74a8db233407f76801, type: 3}
+  - {fileID: 919132149155446097, guid: 74a0a7043ef796d45973797aae49e1bf, type: 3}
+  - {fileID: 919132149155446097, guid: 8c62e6a19ada3fa4280f6ada3bb0b497, type: 3}
+  - {fileID: 919132149155446097, guid: 3d11c7ae6647be7438702f786be14989, type: 3}
+  locker: {fileID: 919132149155446097, guid: 9389b86a396a98d4b97d2d7888642026, type: 3}
+  chair: {fileID: 919132149155446097, guid: 04b31391efab11c43a5c27e4dfc3df19, type: 3}
+  mug: {fileID: 919132149155446097, guid: 5ebd41d0a841de84cb72c915663386e7, type: 3}
+  retroHouses: 1
+  houseModels:
+  - {fileID: 919132149155446097, guid: a4f944dd9bd362f4cbac828dc6a15fb7, type: 3}
+  - {fileID: 919132149155446097, guid: 6b8d4d2f5ef36d141b68221c8708a916, type: 3}
+  - {fileID: 919132149155446097, guid: f5435c6f5fe09b447b288ef4793a2219, type: 3}
+  - {fileID: 919132149155446097, guid: a0428f5097f58a445b14b685a392f42f, type: 3}
+  buildingModels:
+  - {fileID: 919132149155446097, guid: 65d18527048a5de44a15cd242134ff4e, type: 3}
+  - {fileID: 919132149155446097, guid: d72e6e363f2188341bad993ae1014a19, type: 3}
+  - {fileID: 919132149155446097, guid: 163cb19bca9a4da45bf668de66276636, type: 3}
+  nature: {fileID: 11400000, guid: 10fc2b078bad5f0459d6c0819664b21a, type: 2}

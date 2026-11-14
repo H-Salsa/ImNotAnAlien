@@ -141,9 +141,10 @@ public sealed class WorldNavMesh : MonoBehaviour
             sources.AddRange(blockSources);
 
             Rect rect = streamer.BlockRectWorld(block.Coord);
+            float tall = Mathf.Max(height, 100f); // Missão 20: ondulação + morros (até ~65 m nos Picos Gelados)
             Bounds blockBounds = new Bounds(
-                new Vector3(rect.center.x, -10f + height / 2f, rect.center.y),
-                new Vector3(rect.width + 2f, height, rect.height + 2f));
+                new Vector3(rect.center.x, -10f + tall / 2f, rect.center.y),
+                new Vector3(rect.width + 2f, tall, rect.height + 2f));
             if (any)
             {
                 world.Encapsulate(blockBounds);

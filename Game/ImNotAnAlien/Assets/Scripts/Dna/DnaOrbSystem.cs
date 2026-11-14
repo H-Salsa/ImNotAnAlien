@@ -75,6 +75,7 @@ public sealed class DnaOrbSystem : MonoBehaviour
     public static void SpawnFrom(AlienHealth source, Vector3 position, int totalValue, int orbCount)
     {
         int alienId = source.GetInstanceID();
+        PlayerBreath.NoteOrbsFrom(source);
 
         if (Instance == null)
         {
@@ -128,6 +129,8 @@ public sealed class DnaOrbSystem : MonoBehaviour
         {
             SectorTracker.Instance.OnOrbAbsorbed(orb.SourceAlienId);
         }
+
+        PlayerBreath.OnOrbAbsorbed(orb.SourceAlienId); // Missão 20: DNA aquático recarrega o ar
 
         GameFeel.DnaAbsorbed(orb.transform.position, orbColor);
     }

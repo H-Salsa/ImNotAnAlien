@@ -9,7 +9,7 @@ using UnityEngine;
 // Padrão das bordas: rua de 10 m no meio do lado (calçadas de 3 m dos dois lados);
 // rio de 25 m no meio do lado (margens em rampa, fundo raso).
 // Coordenadas: a raiz do bloco fica no canto sudoeste; o centro do bloco é (50, 50).
-public static class BlockBuilder
+public static partial class BlockBuilder
 {
     public const float Size = 100f;
     private const float Half = Size / 2f;
@@ -38,6 +38,12 @@ public static class BlockBuilder
         public Transform trig;
         public readonly List<Rect> reserved = new List<Rect>();
         public readonly bool[] arm = new bool[4];
+        public Vector2Int coord;
+        public bool terrain;          // Missão 20: planeta com relevo e biomas
+        public Planet.Biome biome;
+        public Material grass;        // grama das caixas (com a cor do bioma no planeta)
+        public BlockAssets assets;
+        public bool[] blocked;        // Missão 20: onde não nasce planta (BlockedMap), células de 1 m
         public bool AnyRoad => arm[0] || arm[1] || arm[2] || arm[3];
     }
 
@@ -55,7 +61,20 @@ public static class BlockBuilder
             spec = spec,
             rng = new System.Random(spec.seed),
             root = rootObject.transform,
+            coord = coord,
         };
+
+        c.terrain = PlanetTerrain.Active && spec.type != BlockType.Polo;
+        c.grass = c.kit.grass;
+        if (c.terrain)
+        {
+            c.biome = PlanetTerrain.BiomeOfBlock(coord);
+            c.assets = rootObject.AddComponent<BlockAssets>();
+            if (c.kit.grass != null)
+            {
+                c.grass = PlanetTerrain.BiomeGrass(c.kit.grass, c.biome);
+            }
+        }
 
         c.est = Child(c.root, "Estatico");
         c.dyn = Child(c.root, "Dinamico");
@@ -73,6 +92,9 @@ public static class BlockBuilder
             case BlockType.Esquina:
                 BuildEsquinaRing(c);
                 break;
+            case BlockType.Polo:
+                BuildPole(c);
+                break;
             default:
                 Ground(c);
                 if (c.AnyRoad)
@@ -81,8 +103,24 @@ public static class BlockBuilder
                 }
 
                 Fill(c);
+                GroundCover(c); // Missão 20: grama, flores, pedrinhas (Kit de Natureza)
                 break;
         }
+
+        if (c.terrain)
+        {
+            // Missão 20: ruas e calçadas acompanham o relevo, o resto sobe para a altura do chão;
+            // copas e arbustos com a cor do bioma.
+            int mode = PlanetTerrain.GroundMode(coord, spec.type);
+            if (mode > 0)
+            {
+                PlanetTerrain.SettleObjects(c.root, c.est, c.dyn, coord, c.biome, spec.seed, mode == 2, c.assets);
+            }
+
+            PlanetTerrain.TintFoliage(c.root, c.biome);
+        }
+
+        WaterLook.Apply(rootObject.transform, kit.water); // Missão 20: água transparente
 
         WorldBlock block = rootObject.AddComponent<WorldBlock>();
         block.Setup(coord, c.est, c.dyn);
@@ -104,15 +142,73 @@ public static class BlockBuilder
             case BlockType.Predios: Predios(c); break;
             case BlockType.Lago: Lago(c); break;
             case BlockType.Campo: Campo(c); break;
+            case BlockType.Lagoa: Lagoa(c); break;
+            case BlockType.Base: BaseBlock(c); break;
         }
 
         StreetProps(c);
+        if (c.terrain && c.biome == Planet.Biome.Antenas && c.kit.satelliteDish != null &&
+            (c.spec.type == BlockType.Floresta || c.spec.type == BlockType.Campo || c.spec.type == BlockType.Fazenda))
+        {
+            AntennaField(c);
+        }
+    }
+
+    // Morro das Antenas: parabólicas espalhadas (umas gigantes), viradas para lados diferentes.
+    private static void AntennaField(Ctx c)
+    {
+        Transform group = Child(c.est, "Antenas");
+        if (c.rng.NextDouble() < 0.35)
+        {
+            Scatter(c, 1, 12f, p => Antenna(c, group, p, Range(c, 2.2f, 2.8f)));
+        }
+
+        Scatter(c, c.rng.Next(2, 5), 5f, p => Antenna(c, group, p, Range(c, 1f, 1.6f)));
+    }
+
+    // Uma antena parabólica destrutível (base de ~1 m), com luz vermelha piscando no topo.
+    private static Transform Antenna(Ctx c, Transform parent, Vector2 p, float scale)
+    {
+        Transform root = Child(parent, "Antena");
+        root.localPosition = new Vector3(p.x, 0f, p.y);
+        root.localRotation = Quaternion.Euler(0f, Range(c, 0f, 360f), 0f);
+
+        GameObject dish = KitModel(c.kit.satelliteDish, "Parabolica", root, Vector3.zero, 0f, scale, 0f);
+        Object.DestroyImmediate(dish.GetComponent<BoxCollider>());
+        Bounds bounds = LocalBounds(dish);
+        float top = (bounds.max.y - bounds.min.y) * scale;
+
+        // Colisor só no poste (o prato fica no alto e não atrapalha quem passa embaixo).
+        Transform pole = Child(root, "Poste");
+        BoxCollider box = pole.gameObject.AddComponent<BoxCollider>();
+        box.center = new Vector3(0f, top * 0.4f, 0f);
+        box.size = new Vector3(1.1f * scale, top * 0.8f, 1.1f * scale);
+
+        GameObject lamp = NoCollider(Prim(c, PrimitiveType.Sphere, "Luz_Piscando", root, new Vector3(0f, top + 0.15f * scale, 0f),
+            Vector3.one * 0.35f * scale, Mat(c, "Antena_Luz", new Color(1f, 0.15f, 0.1f), 0.3f, 5f)));
+        lamp.AddComponent<BlinkLight>();
+
+        root.gameObject.AddComponent<DestructibleStructure>();
+        return root;
     }
 
     // ---------- Chão e ruas ----------
 
     private static void Ground(Ctx c)
     {
+        if (c.terrain && c.kit.grass != null)
+        {
+            // Missão 20: chão com relevo e textura do bioma.
+            int mode = PlanetTerrain.GroundMode(c.coord, c.spec.type);
+            PlanetTerrain.BuildGround(c.est, c.coord, c.kit.grass, mode, c.assets, out float lowest);
+            if (mode == 2 && lowest < PlanetTerrain.WaterLevel)
+            {
+                PlanetTerrain.AddWater(c.est, c.trig, c.kit.water, c.assets);
+            }
+
+            return;
+        }
+
         Box(c, c.est, "Chao", new Vector3(Half, -0.1f, Half), new Vector3(Size, 0.2f, Size), c.kit.grass);
     }
 
@@ -253,10 +349,10 @@ public static class BlockBuilder
     private static void BuildEsquinaRing(Ctx c)
     {
         Transform ground = Child(c.est, "Chao_Anel");
-        Box(c, ground, "Chao_N", new Vector3(Half, -0.1f, 95f), new Vector3(Size, 0.2f, 10f), c.kit.grass);
-        Box(c, ground, "Chao_S", new Vector3(Half, -0.1f, 5f), new Vector3(Size, 0.2f, 10f), c.kit.grass);
-        Box(c, ground, "Chao_O", new Vector3(5f, -0.1f, Half), new Vector3(10f, 0.2f, 80f), c.kit.grass);
-        Box(c, ground, "Chao_L", new Vector3(95f, -0.1f, Half), new Vector3(10f, 0.2f, 80f), c.kit.grass);
+        Box(c, ground, "Chao_N", new Vector3(Half, -0.1f, 95f), new Vector3(Size, 0.2f, 10f), c.grass);
+        Box(c, ground, "Chao_S", new Vector3(Half, -0.1f, 5f), new Vector3(Size, 0.2f, 10f), c.grass);
+        Box(c, ground, "Chao_O", new Vector3(5f, -0.1f, Half), new Vector3(10f, 0.2f, 80f), c.grass);
+        Box(c, ground, "Chao_L", new Vector3(95f, -0.1f, Half), new Vector3(10f, 0.2f, 80f), c.grass);
 
         Transform roads = Child(c.est, "Ruas");
         for (int s = 0; s < 4; s++)
@@ -277,6 +373,13 @@ public static class BlockBuilder
     // Montado com o rio no eixo X (leste-oeste) dentro de um "pivô" no centro, girado 90° se o rio for norte-sul.
     private static void BuildRiverBlock(Ctx c)
     {
+        bool straight = c.spec.Count(Socket.Rio) == 2 && c.spec.north == c.spec.south;
+        if (!straight)
+        {
+            BuildRiverPieces(c); // Missão 20: curva ou nascente
+            return;
+        }
+
         bool northSouth = c.spec.north == Socket.Rio;
         bool bridge = northSouth ? c.arm[1] : c.arm[0];
 
@@ -286,8 +389,8 @@ public static class BlockBuilder
 
         // Chão das duas margens.
         float groundDepth = Half - RiverHalf;
-        Local(c, pivot, "Chao_Norte", new Vector3(0f, -0.1f, RiverHalf + groundDepth / 2f), new Vector3(Size, 0.2f, groundDepth), c.kit.grass);
-        Local(c, pivot, "Chao_Sul", new Vector3(0f, -0.1f, -(RiverHalf + groundDepth / 2f)), new Vector3(Size, 0.2f, groundDepth), c.kit.grass);
+        Local(c, pivot, "Chao_Norte", new Vector3(0f, -0.1f, RiverHalf + groundDepth / 2f), new Vector3(Size, 0.2f, groundDepth), c.grass);
+        Local(c, pivot, "Chao_Sul", new Vector3(0f, -0.1f, -(RiverHalf + groundDepth / 2f)), new Vector3(Size, 0.2f, groundDepth), c.grass);
 
         // Fundo, margens em rampa e água.
         float bedHalf = RiverHalf - BankLength;
@@ -359,12 +462,133 @@ public static class BlockBuilder
         StreetProps(c);
     }
 
+    // Curva ou nascente (Missão 20). O bloco é dividido em 3 × 3: o quadrado do meio (25 m), um "braço"
+    // para cada lado e os 4 cantos. Os braços com rio e o meio viram canal (fundo, margens em rampa,
+    // água e gatilho), o resto é chão. Na nascente, o canal acaba no meio do bloco com pedras em volta.
+    private static void BuildRiverPieces(Ctx c)
+    {
+        Transform rio = Child(c.est, "Rio");
+        float w = RiverHalf;
+        float arm = Half - w;
+        bool[] river = new bool[4];
+        for (int s = 0; s < 4; s++)
+        {
+            river[s] = c.spec.Get(s) == Socket.Rio;
+        }
+
+        // Cantos: sempre chão.
+        for (int sx = -1; sx <= 1; sx += 2)
+        {
+            for (int sz = -1; sz <= 1; sz += 2)
+            {
+                Box(c, rio, "Chao_Canto", new Vector3(Half + sx * (w + arm / 2f), -0.1f, Half + sz * (w + arm / 2f)), new Vector3(arm, 0.2f, arm), c.grass);
+            }
+        }
+
+        // Meio: margem nos lados sem rio.
+        bool[] centerWalls = new bool[4];
+        for (int s = 0; s < 4; s++)
+        {
+            centerWalls[s] = !river[s];
+        }
+
+        RiverChannel(c, rio, Center, new Vector2(w * 2f, w * 2f), centerWalls);
+
+        // Braços.
+        for (int s = 0; s < 4; s++)
+        {
+            Vector2 at = Center + Dir[s] * (w + arm / 2f);
+            bool alongZ = s == 0 || s == 2;
+            Vector2 size = alongZ ? new Vector2(w * 2f, arm) : new Vector2(arm, w * 2f);
+            if (river[s])
+            {
+                RiverChannel(c, rio, at, size, alongZ ? new[] { false, true, false, true } : new[] { true, false, true, false });
+            }
+            else
+            {
+                Box(c, rio, "Chao", new Vector3(at.x, -0.1f, at.y), new Vector3(size.x, 0.2f, size.y), c.grass);
+            }
+        }
+
+        // Curva: arredonda o canto de dentro (senão fica um degrau entre as duas margens).
+        for (int s = 0; s < 4; s++)
+        {
+            int next = (s + 1) % 4;
+            if (river[s] && river[next])
+            {
+                Vector2 corner = Center + (Dir[s] + Dir[next]) * w;
+                float height = -0.02f - RiverBedY;
+                Prim(c, PrimitiveType.Cylinder, "Margem_Curva", rio, new Vector3(corner.x, RiverBedY + height / 2f, corner.y),
+                    new Vector3(BankLength * 2f, height / 2f, BankLength * 2f), c.kit.riverBed);
+            }
+        }
+
+        // Nascente: pedras no fim do canal.
+        if (c.spec.Count(Socket.Rio) == 1)
+        {
+            int inlet = System.Array.IndexOf(river, true);
+            Vector2 back = -Dir[inlet];
+            Vector2 side = new Vector2(back.y, back.x);
+            Transform rocks = Child(c.est, "Nascente");
+            Rock(c, rocks, Center + back * (w + 2f), Range(c, 1.6f, 2.2f));
+            Rock(c, rocks, Center + back * (w + 1f) + side * 6f, Range(c, 0.9f, 1.4f));
+            Rock(c, rocks, Center + back * (w + 1.5f) - side * 7f, Range(c, 1f, 1.5f));
+            Reserve(c, RectAround(Center + back * (w + 2f), 18f, 18f));
+        }
+
+        Transform trees = Child(c.est, "Arvores");
+        Scatter(c, 14, 2.5f, p => Tree(c, trees, p, Range(c, 0.9f, 1.2f)));
+        Transform bushes = Child(c.est, "Arbustos");
+        Scatter(c, 10, 1.5f, p => Bush(c, bushes, p));
+        StreetProps(c);
+    }
+
+    // Um trecho de canal (retângulo em coordenadas do bloco). "walls" = lados com margem em rampa.
+    private static void RiverChannel(Ctx c, Transform parent, Vector2 center, Vector2 size, bool[] walls)
+    {
+        float minX = center.x - size.x / 2f, maxX = center.x + size.x / 2f;
+        float minZ = center.y - size.y / 2f, maxZ = center.y + size.y / 2f;
+        NoCollider(Box(c, parent, "Agua", new Vector3(center.x, WaterY, center.y), new Vector3(size.x, 0.02f, size.y), c.kit.water));
+
+        // Fundo: o retângulo sem as rampas.
+        float bx0 = minX + (walls[3] ? BankLength : 0f), bx1 = maxX - (walls[1] ? BankLength : 0f);
+        float bz0 = minZ + (walls[2] ? BankLength : 0f), bz1 = maxZ - (walls[0] ? BankLength : 0f);
+        Box(c, parent, "Fundo", new Vector3((bx0 + bx1) / 2f, RiverBedY - 0.1f, (bz0 + bz1) / 2f), new Vector3(bx1 - bx0, 0.2f, bz1 - bz0), c.kit.riverBed);
+
+        float drop = -0.02f - RiverBedY;
+        float slope = Mathf.Sqrt(BankLength * BankLength + drop * drop);
+        float angle = Mathf.Atan2(drop, BankLength) * Mathf.Rad2Deg;
+        float rampY = (-0.02f + RiverBedY) / 2f - 0.1f;
+        if (walls[0]) Local(c, parent, "Margem", new Vector3(center.x, rampY, maxZ - BankLength / 2f), new Vector3(size.x, 0.2f, slope), c.kit.riverBed, new Vector3(-angle, 0f, 0f));
+        if (walls[2]) Local(c, parent, "Margem", new Vector3(center.x, rampY, minZ + BankLength / 2f), new Vector3(size.x, 0.2f, slope), c.kit.riverBed, new Vector3(angle, 0f, 0f));
+        if (walls[1]) Local(c, parent, "Margem", new Vector3(maxX - BankLength / 2f, rampY, center.y), new Vector3(slope, 0.2f, size.y), c.kit.riverBed, new Vector3(0f, 0f, angle));
+        if (walls[3]) Local(c, parent, "Margem", new Vector3(minX + BankLength / 2f, rampY, center.y), new Vector3(slope, 0.2f, size.y), c.kit.riverBed, new Vector3(0f, 0f, -angle));
+
+        Transform trigger = Child(c.trig, "Agua_Gatilho");
+        trigger.localPosition = new Vector3(center.x, (RiverBedY + WaterY) / 2f, center.y);
+        BoxCollider box = trigger.gameObject.AddComponent<BoxCollider>();
+        box.isTrigger = true;
+        box.size = new Vector3(size.x, WaterY - RiverBedY + 0.2f, size.y);
+        trigger.gameObject.AddComponent<WaterZone>();
+
+        Reserve(c, RectAround(center, size.x + 4f, size.y + 4f));
+    }
+
     // ---------- Tipos ----------
 
     private static void Bairro(Ctx c)
     {
         Transform houses = Child(c.est, "Casas");
-        AlongRoads(c, new[] { 17f, 30f, 43f }, 0.85f, (p, yaw, faceOffset) => House(c, houses, p, yaw), 8.5f, 9.5f, 2.5f);
+        if (c.kit.retroHouses)
+        {
+            // Bairro cheio (pedido do autor): 4 casas por lado de rua, quase sem vão, e uma 2ª fileira atrás.
+            AlongRoads(c, new[] { 13.5f, 24f, 34.5f, 45f }, 0.95f, (p, yaw, faceOffset) => House(c, houses, p, yaw), 9.5f, 9.5f, 2.5f);
+            AlongRoads(c, new[] { 13.5f, 24f, 34.5f, 45f }, 0.6f, (p, yaw, faceOffset) => House(c, houses, p, yaw), 9.5f, 9.5f, 14f);
+        }
+        else
+        {
+            AlongRoads(c, new[] { 17f, 30f, 43f }, 0.85f, (p, yaw, faceOffset) => House(c, houses, p, yaw), 8.5f, 9.5f, 2.5f);
+        }
 
         Transform trees = Child(c.est, "Arvores");
         Scatter(c, 10, 2.2f, p => Tree(c, trees, p, Range(c, 0.8f, 1.1f)));
@@ -376,6 +600,8 @@ public static class BlockBuilder
     {
         Transform buildings = Child(c.est, "Predios");
         AlongRoads(c, new[] { 19f, 38f }, 1f, (p, yaw, f) => Building(c, buildings, p, yaw), 15f, 15f, 2f);
+        // 2ª fileira de prédios atrás da primeira (cidade mais densa, pedido do autor).
+        AlongRoads(c, new[] { 19f, 38f }, 0.75f, (p, yaw, f) => Building(c, buildings, p, yaw), 15f, 13f, 18f);
         Transform trees = Child(c.est, "Arvores");
         Scatter(c, 6, 2.2f, p => Tree(c, trees, p, 0.9f));
         Transform benches = Child(c.est, "Bancos");
@@ -415,6 +641,33 @@ public static class BlockBuilder
             Crate(c, new Vector3(p.x, 0.5f, p.y));
             if (c.rng.NextDouble() < 0.5) Crate(c, new Vector3(p.x + 0.2f, 1.5f, p.y));
         });
+
+        // Sci-Fi Kit: caixas grandes e grupinhos de barris (alguns explodem).
+        if (c.kit.largeCrates != null && c.kit.largeCrates.Length > 0)
+        {
+            Scatter(c, c.rng.Next(1, 3), 4.5f, p => LargeCrate(c, p));
+        }
+
+        // Depósito de barris: fileiras arrumadas (como num pátio de oficina), todos do mesmo tipo.
+        // Um depósito por galpão; metade dos depósitos é de barris explosivos (avermelhados).
+        if (c.kit.barrels != null && c.kit.barrels.Length > 0)
+        {
+            Scatter(c, 1, 6f, p =>
+            {
+                bool explosive = c.rng.NextDouble() < 0.5;
+                GameObject model = Pick(c, c.kit.barrels);
+                int rows = c.rng.Next(2, 4);
+                int columns = c.rng.Next(3, 5);
+                for (int row = 0; row < rows; row++)
+                {
+                    for (int column = 0; column < columns; column++)
+                    {
+                        Vector2 spot = p + new Vector2((column - (columns - 1) * 0.5f) * 0.95f, (row - (rows - 1) * 0.5f) * 0.95f);
+                        Barrel(c, spot, 0f, explosive, model);
+                    }
+                }
+            });
+        }
     }
 
     private static void Parque(Ctx c)
@@ -471,6 +724,18 @@ public static class BlockBuilder
         Scatter(c, 18, 1.2f, p => Bush(c, bushes, p));
     }
 
+    // Pedaço do Grande Lago (Missão 20): o relevo faz a água (PlanetTerrain + GreatLake); aqui só a
+    // margem: pedras, arbustos e algumas árvores. O que cair dentro d'água some no SettleObjects.
+    private static void Lagoa(Ctx c)
+    {
+        Transform rocks = Child(c.est, "Pedras");
+        Scatter(c, 6, 1.5f, p => Rock(c, rocks, p, Range(c, 0.7f, 1.8f)));
+        Transform trees = Child(c.est, "Arvores");
+        Scatter(c, 5, 2.5f, p => Tree(c, trees, p, Range(c, 1f, 1.3f)));
+        Transform bushes = Child(c.est, "Arbustos");
+        Scatter(c, 18, 1.2f, p => Bush(c, bushes, p));
+    }
+
     private static void Campo(Ctx c)
     {
         Transform rocks = Child(c.est, "Pedras");
@@ -488,6 +753,11 @@ public static class BlockBuilder
         Scatter(c, 7, 2.5f, p => Tree(c, trees, p, Range(c, 1f, 1.4f)));
         Transform bushes = Child(c.est, "Arbustos");
         Scatter(c, 22, 1.2f, p => Bush(c, bushes, p));
+        if (Nature(c) != null && Has(Nature(c).flowers))
+        {
+            return; // flores de verdade vêm na vegetação rasteira (GroundCover)
+        }
+
         Transform flowers = Child(c.est, "Flores");
         for (int i = 0; i < 40; i++)
         {
@@ -685,6 +955,12 @@ public static class BlockBuilder
     // Casa destrutível (paredes, telhado de duas águas, porta, janelas; às vezes sobrado e chaminé).
     private static void House(Ctx c, Transform parent, Vector2 p, float yaw)
     {
+        if (c.kit.retroHouses)
+        {
+            RetroHouse.Build(parent, p, yaw, c.rng, c.kit.houseWalls != null && c.kit.houseWalls.Length > 0 ? c.kit.houseWalls[0] : null, c.kit.houseModels);
+            return;
+        }
+
         float w = Range(c, 8f, 9.5f);
         float d = Range(c, 8f, 9.5f);
         bool twoStory = c.rng.NextDouble() < 0.25;
@@ -737,6 +1013,12 @@ public static class BlockBuilder
     // Prédio alto (não desmorona: fica para a Superforça, decisão D15).
     private static void Building(Ctx c, Transform parent, Vector2 p, float yaw)
     {
+        if (c.kit.buildingModels != null && c.kit.buildingModels.Length > 0)
+        {
+            RetroHouse.BuildBuilding(parent, p, yaw, c.rng, c.kit.houseWalls != null && c.kit.houseWalls.Length > 0 ? c.kit.houseWalls[0] : null, c.kit.buildingModels);
+            return;
+        }
+
         float w = Range(c, 12f, 15f);
         float h = Range(c, 12f, 34f);
         Transform building = Child(parent, "Predio");
@@ -802,6 +1084,11 @@ public static class BlockBuilder
 
     private static void BuildTree(Ctx c, Transform tree, float scale)
     {
+        if (NatureTree(c, tree, scale))
+        {
+            return;
+        }
+
         float canopy = (3.2f + (float)c.rng.NextDouble() * 1.6f) * scale;
         float trunkHeight = 2f * scale;
         Prim(c, PrimitiveType.Cylinder, "Tronco", tree, new Vector3(0f, trunkHeight, 0f), new Vector3(0.5f * scale, trunkHeight, 0.5f * scale), c.kit.trunk);
@@ -810,12 +1097,22 @@ public static class BlockBuilder
 
     private static void Bush(Ctx c, Transform parent, Vector2 p)
     {
+        if (NatureBush(c, parent, p) != null)
+        {
+            return;
+        }
+
         float s = Range(c, 1f, 2f);
         NoCollider(Prim(c, PrimitiveType.Sphere, "Arbusto", parent, new Vector3(p.x, s * 0.35f, p.y), new Vector3(s, s * 0.8f, s), c.kit.bush));
     }
 
     private static void Rock(Ctx c, Transform parent, Vector2 p, float s)
     {
+        if (NatureRock(c, parent, p, s) != null)
+        {
+            return;
+        }
+
         Prim(c, PrimitiveType.Sphere, "Pedra", parent, new Vector3(p.x, s * 0.25f, p.y), new Vector3(s, s * 0.7f, s * Range(c, 0.8f, 1.2f)), c.kit.rock,
             new Vector3(0f, Range(c, 0f, 360f), 0f));
     }
@@ -835,7 +1132,133 @@ public static class BlockBuilder
 
     private static void Crate(Ctx c, Vector3 p)
     {
+        GameObject model = Pick(c, c.kit.crates);
+        if (model != null)
+        {
+            // Sci-Fi Kit: caixa de 1 m de altura (mesmo lugar e peso da caixa antiga). "p" = centro.
+            GameObject crate = KitModel(model, "Caixa", c.dyn, new Vector3(p.x, p.y - 0.5f, p.z), Range(c, 0f, 360f), 0f, 1f);
+            Throwable(crate, 40f);
+            return;
+        }
+
         Throwable(Prim(c, PrimitiveType.Cube, "Caixa", c.dyn, p, Vector3.one, c.kit.crate, new Vector3(0f, Range(c, 0f, 90f), 0f)), 40f);
+    }
+
+    // Caixa grande do Sci-Fi Kit (galpões): ~3,5 × 1,5 × 1,5 m, 500 kg.
+    private static void LargeCrate(Ctx c, Vector2 p)
+    {
+        GameObject model = Pick(c, c.kit.largeCrates);
+        if (model != null)
+        {
+            Throwable(KitModel(model, "Caixa_Grande", c.dyn, new Vector3(p.x, 0f, p.y), Range(c, 0f, 360f), 1f, 0f), 500f);
+        }
+    }
+
+    // Barril (Sci-Fi Kit). Os explosivos são avermelhados: arremessar ou bater forte = BUM.
+    private static void Barrel(Ctx c, Vector2 p, float baseY, bool explosive, GameObject model = null)
+    {
+        model = model != null ? model : Pick(c, c.kit.barrels);
+        if (model == null)
+        {
+            return;
+        }
+
+        GameObject barrel = KitModel(model, explosive ? "Barril_Explosivo" : "Barril", c.dyn, new Vector3(p.x, baseY, p.y), Range(c, 0f, 360f), 1f, 0f);
+        Throwable(barrel, 60f);
+        if (explosive)
+        {
+            foreach (Renderer part in barrel.GetComponentsInChildren<Renderer>())
+            {
+                part.sharedMaterials = System.Array.ConvertAll(part.sharedMaterials, m => Tinted(m, new Color(1f, 0.42f, 0.32f)));
+            }
+
+            barrel.AddComponent<ExplosiveVehicle>().ConfigureAsBarrel();
+        }
+    }
+
+    // Instancia um modelo do kit com um colisor de caixa do tamanho dele. "baseLocal" = ponto no chão.
+    // scale > 0 = escala fixa; height > 0 = escala para ficar com essa altura.
+    private static GameObject KitModel(GameObject model, string name, Transform parent, Vector3 baseLocal, float yaw, float scale, float height)
+    {
+        GameObject go = Object.Instantiate(model, parent);
+        go.name = name;
+        go.transform.localPosition = baseLocal;
+        go.transform.localRotation = Quaternion.identity;
+        go.transform.localScale = Vector3.one;
+        foreach (Collider extra in go.GetComponentsInChildren<Collider>(true))
+        {
+            Object.DestroyImmediate(extra);
+        }
+
+        Bounds bounds = LocalBounds(go);
+        float s = height > 0f && bounds.size.y > 0.01f ? height / bounds.size.y : Mathf.Max(0.01f, scale);
+        go.transform.localScale = Vector3.one * s;
+        // Pivô na base: se o modelo começa um pouco acima ou abaixo de 0, corrige.
+        go.transform.localPosition = baseLocal - Vector3.up * (bounds.min.y * s);
+
+        BoxCollider box = go.AddComponent<BoxCollider>();
+        box.center = bounds.center;
+        box.size = bounds.size;
+        go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+        return go;
+    }
+
+    // Caixa que envolve as malhas do objeto, no espaço do próprio objeto.
+    private static Bounds LocalBounds(GameObject go)
+    {
+        bool any = false;
+        Bounds result = default;
+        foreach (MeshFilter filter in go.GetComponentsInChildren<MeshFilter>(true))
+        {
+            if (filter.sharedMesh == null)
+            {
+                continue;
+            }
+
+            Bounds b = filter.sharedMesh.bounds;
+            for (int k = 0; k < 8; k++)
+            {
+                Vector3 corner = new Vector3((k & 1) == 0 ? b.min.x : b.max.x, (k & 2) == 0 ? b.min.y : b.max.y, (k & 4) == 0 ? b.min.z : b.max.z);
+                Vector3 local = go.transform.InverseTransformPoint(filter.transform.TransformPoint(corner));
+                if (!any)
+                {
+                    result = new Bounds(local, Vector3.zero);
+                    any = true;
+                }
+                else
+                {
+                    result.Encapsulate(local);
+                }
+            }
+        }
+
+        return any ? result : new Bounds(Vector3.up * 0.5f, Vector3.one);
+    }
+
+    private static readonly Dictionary<(int, Color), Material> TintCache = new Dictionary<(int, Color), Material>();
+
+    // Cópia do material com outra cor (compartilhada entre todos os objetos iguais).
+    private static Material Tinted(Material source, Color color)
+    {
+        if (source == null)
+        {
+            return null;
+        }
+
+        (int, Color) key = (source.GetInstanceID(), color);
+        if (!TintCache.TryGetValue(key, out Material tinted) || tinted == null)
+        {
+            tinted = new Material(source) { name = source.name + "_Tinta" };
+            tinted.color = color;
+            if (tinted.HasProperty("_BaseColor"))
+            {
+                tinted.SetColor("_BaseColor", color);
+            }
+
+            TintCache[key] = tinted;
+        }
+
+        return tinted;
     }
 
     private static void Bin(Ctx c, Vector3 p)
@@ -954,6 +1377,343 @@ public static class BlockBuilder
 
     private static Rect RectAround(Vector2 center, float width, float depth) =>
         new Rect(center.x - width / 2f, center.y - depth / 2f, width, depth);
+
+    // ---------- Planeta (Missão 19): bases e polos ----------
+
+    private static readonly Dictionary<string, Material> RuntimeMaterials = new Dictionary<string, Material>();
+
+    // Material criado no jogo (cópia do material da grama, com outra cor). Um por nome, reaproveitado.
+    private static Material Mat(Ctx c, string name, Color color, float smoothness = 0.2f, float glow = 0f)
+    {
+        if (RuntimeMaterials.TryGetValue(name, out Material cached) && cached != null)
+        {
+            return cached;
+        }
+
+        Material material = c.kit.grass != null ? new Material(c.kit.grass) : new Material(CurvedHorizon.LitShader());
+        material.name = name;
+        material.color = color;
+        if (material.HasProperty("_Smoothness"))
+        {
+            material.SetFloat("_Smoothness", smoothness);
+        }
+
+        if (glow > 0f)
+        {
+            material.EnableKeyword("_EMISSION");
+            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            material.SetColor("_EmissionColor", color * glow);
+        }
+
+        RuntimeMaterials[name] = material;
+        return material;
+    }
+
+    // Base: esconderijo improvisado num lugar alienígena abandonado, decorado com coisas "humanas"
+    // para provar que ele não é alien (decisão D22). Rua chegando pelo sul até o pátio.
+    private static void BaseBlock(Ctx c)
+    {
+        Transform site = Child(c.est, "Base");
+        Material metal = Mat(c, "Base_Metal", new Color(0.55f, 0.58f, 0.62f), 0.55f);
+        Material rust = Mat(c, "Base_Ferrugem", new Color(0.55f, 0.32f, 0.2f), 0.15f);
+        Material glow = Mat(c, "Base_Luz", new Color(0.35f, 1f, 0.75f), 0.4f, 3f);
+        Material concrete = Mat(c, "Base_Concreto", new Color(0.62f, 0.62f, 0.6f), 0.1f);
+        Material glass = Mat(c, "Base_Vidro", new Color(0.65f, 0.88f, 0.92f), 0.9f);
+        Material cloth = Mat(c, "Base_Lencol", new Color(0.92f, 0.85f, 0.6f), 0.1f);
+
+        // Pátio de terra batida em volta do centro.
+        NoCollider(Box(c, site, "Patio", new Vector3(Half, 0.02f, Half + 12f), new Vector3(46f, 0.03f, 40f), c.kit.path));
+        Reserve(c, new Rect(Half - 24f, Half - 10f, 48f, 44f));
+
+        switch (c.spec.variant)
+        {
+            case "torre": RadioTower(c, site, metal, rust, glow); break;
+            case "laboratorio": OldLab(c, site, concrete, metal, glow); break;
+            case "estufa": Greenhouse(c, site, metal, glass); break;
+            default: CrashedShip(c, site, metal, rust, glow); break;
+        }
+
+        // Coisas "humanas": placa, cama, foto da Terra, fogueira, varal.
+        Transform home = Child(site, "LarDoceLar");
+        Box(c, home, "Placa_Poste_E", new Vector3(Half - 4f, 1.4f, Half + 2f), new Vector3(0.25f, 2.8f, 0.25f), c.kit.wood);
+        Box(c, home, "Placa_Poste_D", new Vector3(Half + 4f, 1.4f, Half + 2f), new Vector3(0.25f, 2.8f, 0.25f), c.kit.wood);
+        Box(c, home, "Placa", new Vector3(Half, 2.6f, Half + 2f), new Vector3(9f, 1.4f, 0.2f), c.kit.wood);
+        // Lido de quem chega pela rua (do sul) e de quem está no pátio (do norte).
+        Label(home, "LAR DOCE LAR", new Vector3(Half, 2.6f, Half + 1.85f), 0.14f, new Color(0.15f, 0.08f, 0.03f), 0f);
+        Label(home, "LAR DOCE LAR", new Vector3(Half, 2.6f, Half + 2.15f), 0.14f, new Color(0.15f, 0.08f, 0.03f), 180f);
+
+        Box(c, home, "Cama", new Vector3(Half + 12f, 0.35f, Half + 22f), new Vector3(2.2f, 0.7f, 3.4f), cloth);
+        Box(c, home, "Travesseiro", new Vector3(Half + 12f, 0.8f, Half + 23.2f), new Vector3(1.4f, 0.3f, 0.7f), Mat(c, "Base_Branco", Color.white));
+        Box(c, home, "Quadro", new Vector3(Half + 12f, 1.8f, Half + 24.4f), new Vector3(1.4f, 1.1f, 0.12f), c.kit.wood);
+        NoCollider(Prim(c, PrimitiveType.Sphere, "Foto_Terra", home, new Vector3(Half + 12f, 1.8f, Half + 24.32f), new Vector3(0.75f, 0.75f, 0.05f),
+            Mat(c, "Base_Terra", new Color(0.2f, 0.45f, 0.95f), 0.6f)));
+        NoCollider(Prim(c, PrimitiveType.Sphere, "Continente", home, new Vector3(Half + 11.9f, 1.85f, Half + 24.27f), new Vector3(0.35f, 0.3f, 0.04f),
+            Mat(c, "Base_Continente", new Color(0.3f, 0.7f, 0.3f))));
+
+        BaseFurniture(c, home);
+
+        Transform fire = Child(home, "Fogueira");
+        fire.localPosition = new Vector3(Half - 10f, 0f, Half + 14f);
+        for (int i = 0; i < 6; i++)
+        {
+            float a = i * 60f;
+            Prim(c, PrimitiveType.Sphere, "Pedra", fire, new Vector3(Mathf.Cos(a * Mathf.Deg2Rad) * 1.1f, 0.15f, Mathf.Sin(a * Mathf.Deg2Rad) * 1.1f),
+                new Vector3(0.6f, 0.4f, 0.6f), c.kit.rock);
+        }
+
+        NoCollider(Prim(c, PrimitiveType.Sphere, "Fogo", fire, new Vector3(0f, 0.45f, 0f), new Vector3(0.9f, 1.1f, 0.9f),
+            Mat(c, "Base_Fogo", new Color(1f, 0.55f, 0.15f), 0.2f, 4f)));
+        for (int i = 0; i < 3; i++)
+        {
+            Box(c, fire, "Tronco", new Vector3(Mathf.Cos(i * 2.1f) * 2.4f, 0.25f, Mathf.Sin(i * 2.1f) * 2.4f), new Vector3(1.8f, 0.5f, 0.5f), c.kit.trunk, i * 60f);
+        }
+
+        // Farol: um feixe alto, para achar a base de longe.
+        NoCollider(Prim(c, PrimitiveType.Cylinder, "Farol", site, new Vector3(Half - 16f, 30f, Half + 28f), new Vector3(0.6f, 30f, 0.6f), glow));
+
+        // Anel no chão marcando a zona segura (raio da BaseSite).
+        Transform ring = Child(site, "Zona_Segura");
+        const int pieces = 40;
+        for (int i = 0; i < pieces; i++)
+        {
+            float a = i * Mathf.PI * 2f / pieces;
+            Vector3 p = new Vector3(Half + Mathf.Cos(a) * BaseSite.DefaultRadius, 0.04f, Half + 12f + Mathf.Sin(a) * BaseSite.DefaultRadius);
+            NoCollider(Box(c, ring, "Marca", p, new Vector3(1.6f, 0.04f, 0.35f), glow, -a * Mathf.Rad2Deg + 90f));
+        }
+
+        BaseSite baseSite = c.root.gameObject.AddComponent<BaseSite>();
+        baseSite.Setup(c.spec.variant, new Vector3(Half, 0f, Half + 12f));
+    }
+
+    // Sci-Fi Kit: o "quarto" do protagonista ao lado da cama — mesa com caneca, cadeira, armário e estante.
+    private static void BaseFurniture(Ctx c, Transform home)
+    {
+        if (c.kit.desks == null || c.kit.desks.Length == 0)
+        {
+            return;
+        }
+
+        Transform room = Child(home, "Moveis");
+        KitModel(c.kit.desks[1 % c.kit.desks.Length], "Mesa", room, new Vector3(Half + 16.5f, 0f, Half + 23.5f), 180f, 1f, 0f);
+        if (c.kit.mug != null)
+        {
+            GameObject mug = KitModel(c.kit.mug, "Caneca", room, new Vector3(Half + 16f, 0.95f, Half + 23.4f), Range(c, 0f, 360f), 1f, 0f);
+            Throwable(mug, 0.4f);
+        }
+
+        if (c.kit.chair != null)
+        {
+            KitModel(c.kit.chair, "Cadeira", room, new Vector3(Half + 16.5f, 0f, Half + 21.8f), Range(c, -20f, 20f), 1f, 0f);
+        }
+
+        if (c.kit.locker != null)
+        {
+            KitModel(c.kit.locker, "Armario", room, new Vector3(Half + 9.2f, 0f, Half + 24.6f), 180f, 1f, 0f);
+        }
+
+        if (c.kit.shelves != null && c.kit.shelves.Length > 0)
+        {
+            KitModel(c.kit.shelves[c.kit.shelves.Length - 1], "Estante", room, new Vector3(Half + 19.8f, 0f, Half + 24.6f), 180f, 1f, 0f);
+        }
+    }
+
+    private static void CrashedShip(Ctx c, Transform site, Material metal, Material rust, Material glow)
+    {
+        Transform ship = Child(site, "Nave");
+        ship.localPosition = new Vector3(Half + 2f, 1.6f, Half + 22f);
+        ship.localRotation = Quaternion.Euler(10f, 25f, -8f);
+        Prim(c, PrimitiveType.Cylinder, "Disco", ship, Vector3.zero, new Vector3(18f, 1.2f, 18f), metal);
+        Prim(c, PrimitiveType.Cylinder, "Aro", ship, new Vector3(0f, -0.3f, 0f), new Vector3(20f, 0.4f, 20f), rust);
+        NoCollider(Prim(c, PrimitiveType.Sphere, "Cupula", ship, new Vector3(0f, 1.5f, 0f), new Vector3(8f, 4.5f, 8f),
+            Mat(c, "Base_Cupula", new Color(0.55f, 0.9f, 0.85f), 0.9f)));
+        for (int i = 0; i < 8; i++)
+        {
+            float a = i * 45f * Mathf.Deg2Rad;
+            NoCollider(Prim(c, PrimitiveType.Sphere, "Luz", ship, new Vector3(Mathf.Cos(a) * 9.2f, 0.1f, Mathf.Sin(a) * 9.2f), Vector3.one * 0.7f, glow));
+        }
+
+        // Pedaços espalhados e um sulco no chão por onde ela caiu.
+        Transform debris = Child(site, "Destrocos");
+        NoCollider(Box(c, debris, "Sulco", new Vector3(Half - 10f, 0.03f, Half + 30f), new Vector3(6f, 0.04f, 26f), c.kit.soil, 40f));
+        for (int i = 0; i < 6; i++)
+        {
+            Vector3 p = new Vector3(Half + Range(c, -20f, 20f), 0.4f, Half + Range(c, 26f, 38f));
+            Box(c, debris, "Pedaco", p, new Vector3(Range(c, 1f, 3f), Range(c, 0.3f, 0.8f), Range(c, 1f, 2.5f)), i % 2 == 0 ? metal : rust, Range(c, 0f, 360f));
+        }
+    }
+
+    private static void RadioTower(Ctx c, Transform site, Material metal, Material rust, Material glow)
+    {
+        Transform tower = Child(site, "Torre");
+        tower.localPosition = new Vector3(Half + 8f, 0f, Half + 26f);
+        const float height = 34f;
+        for (int sx = -1; sx <= 1; sx += 2)
+        {
+            for (int sz = -1; sz <= 1; sz += 2)
+            {
+                Local(c, tower, "Perna", new Vector3(sx * 2f, height / 2f, sz * 2f), new Vector3(0.4f, height, 0.4f), rust);
+            }
+        }
+
+        for (float y = 4f; y < height; y += 4f)
+        {
+            Local(c, tower, "Travessa", new Vector3(0f, y, 2f), new Vector3(4.4f, 0.25f, 0.25f), metal);
+            Local(c, tower, "Travessa", new Vector3(0f, y, -2f), new Vector3(4.4f, 0.25f, 0.25f), metal);
+            Local(c, tower, "Travessa", new Vector3(2f, y, 0f), new Vector3(0.25f, 0.25f, 4.4f), metal);
+            Local(c, tower, "Travessa", new Vector3(-2f, y, 0f), new Vector3(0.25f, 0.25f, 4.4f), metal);
+        }
+
+        if (c.kit.satelliteDish != null)
+        {
+            // Sci-Fi Kit: parabólica no topo e uma gigante ao lado da torre.
+            GameObject top = KitModel(c.kit.satelliteDish, "Antena", tower, new Vector3(0f, height, 0f), 200f, 1.3f, 0f);
+            Object.DestroyImmediate(top.GetComponent<BoxCollider>());
+            Antenna(c, tower, new Vector2(10f, 6f), 3f);
+        }
+        else
+        {
+            NoCollider(Prim(c, PrimitiveType.Sphere, "Antena", tower, new Vector3(0f, height + 2f, 2.5f), new Vector3(6f, 6f, 1.2f), metal, new Vector3(-20f, 0f, 0f)));
+        }
+        NoCollider(Prim(c, PrimitiveType.Sphere, "Luz_Topo", tower, new Vector3(0f, height + 0.6f, 0f), Vector3.one * 1.2f, glow));
+
+        // Casinha de ferro ao pé da torre.
+        Local(c, tower, "Casinha", new Vector3(-9f, 1.6f, -2f), new Vector3(7f, 3.2f, 5f), metal);
+        Local(c, tower, "Telhado", new Vector3(-9f, 3.3f, -2f), new Vector3(7.6f, 0.3f, 5.6f), rust);
+        Local(c, tower, "Porta", new Vector3(-9f, 1.1f, -4.52f), new Vector3(1.2f, 2.2f, 0.05f), c.kit.door);
+    }
+
+    private static void OldLab(Ctx c, Transform site, Material concrete, Material metal, Material glow)
+    {
+        Transform lab = Child(site, "Laboratorio");
+        lab.localPosition = new Vector3(Half, 0f, Half + 26f);
+        Local(c, lab, "Predio", new Vector3(0f, 3f, 0f), new Vector3(18f, 6f, 10f), concrete);
+        Local(c, lab, "Telhado", new Vector3(0f, 6.15f, 0f), new Vector3(18.6f, 0.3f, 10.6f), metal);
+        Local(c, lab, "Porta", new Vector3(0f, 1.2f, -5.02f), new Vector3(2.4f, 2.4f, 0.05f), c.kit.door);
+        for (int i = -1; i <= 1; i += 2)
+        {
+            Local(c, lab, "Janela", new Vector3(i * 5.5f, 3.2f, -5.02f), new Vector3(3f, 1.6f, 0.05f), c.kit.window);
+        }
+
+        Local(c, lab, "Rachadura", new Vector3(4f, 4f, -5.03f), new Vector3(0.15f, 3f, 0.02f), c.kit.rock, new Vector3(0f, 0f, 25f));
+        Prim(c, PrimitiveType.Cylinder, "Chamine", lab, new Vector3(-6f, 8f, 2f), new Vector3(1.2f, 2.5f, 1.2f), metal);
+
+        // Sci-Fi Kit: mesas, estantes e armário de laboratório largados na frente do prédio.
+        if (c.kit.desks != null && c.kit.desks.Length > 0)
+        {
+            KitModel(c.kit.desks[c.kit.desks.Length - 1], "Mesa_Lab", lab, new Vector3(-6f, 0f, -9f), 180f, 1f, 0f);
+            if (c.kit.chair != null) KitModel(c.kit.chair, "Cadeira_Lab", lab, new Vector3(-6.5f, 0f, -10.6f), Range(c, 150f, 210f), 1f, 0f);
+        }
+
+        if (c.kit.shelves != null && c.kit.shelves.Length > 0)
+        {
+            KitModel(c.kit.shelves[c.kit.shelves.Length - 1], "Estante_Lab", lab, new Vector3(-9.5f, 0f, -6f), 180f, 1f, 0f);
+            KitModel(c.kit.shelves[1 % c.kit.shelves.Length], "Estante_Lab", lab, new Vector3(-12f, 0f, -6f), 180f, 1f, 0f);
+        }
+
+        if (c.kit.locker != null)
+        {
+            KitModel(c.kit.locker, "Armario_Lab", lab, new Vector3(6.5f, 0f, -6f), 180f, 1f, 0f);
+            KitModel(c.kit.locker, "Armario_Lab", lab, new Vector3(7.6f, 0f, -6f), 180f, 1f, 0f);
+        }
+
+        // Tanques com líquido brilhante (DNA alienígena velho).
+        for (int i = 0; i < 3; i++)
+        {
+            Vector3 p = new Vector3(12f, 0f, -3f + i * 4f);
+            Prim(c, PrimitiveType.Cylinder, "Tanque", lab, p + new Vector3(0f, 2f, 0f), new Vector3(2.6f, 2f, 2.6f), metal);
+            NoCollider(Prim(c, PrimitiveType.Cylinder, "Liquido", lab, p + new Vector3(0f, 2.2f, 0f), new Vector3(2.3f, 1.6f, 2.3f), glow));
+        }
+    }
+
+    private static void Greenhouse(Ctx c, Transform site, Material metal, Material glass)
+    {
+        Transform house = Child(site, "Estufa");
+        house.localPosition = new Vector3(Half, 0f, Half + 26f);
+        const float w = 16f, d = 9f, h = 5f;
+        // Vidro (meio quebrado) e armação.
+        Local(c, house, "Vidro_Fundo", new Vector3(0f, h / 2f, d / 2f), new Vector3(w, h, 0.1f), glass);
+        Local(c, house, "Vidro_Esq", new Vector3(-w / 2f, h / 2f, 0f), new Vector3(0.1f, h, d), glass);
+        Local(c, house, "Vidro_Dir", new Vector3(w / 2f, h / 2f, 0f), new Vector3(0.1f, h, d), glass);
+        Local(c, house, "Vidro_Frente_E", new Vector3(-w / 4f - 1.5f, h / 2f, -d / 2f), new Vector3(w / 2f - 3f, h, 0.1f), glass);
+        Local(c, house, "Vidro_Frente_D", new Vector3(w / 4f + 1.5f, h / 2f, -d / 2f), new Vector3(w / 2f - 3f, h, 0.1f), glass);
+        NoCollider(Local(c, house, "Teto", new Vector3(0f, h + 0.6f, 0f), new Vector3(w, 0.1f, d + 0.5f), glass, new Vector3(0f, 0f, 0f)));
+        for (float x = -w / 2f; x <= w / 2f + 0.1f; x += 4f)
+        {
+            Local(c, house, "Armacao", new Vector3(x, h / 2f + 0.3f, -d / 2f), new Vector3(0.25f, h + 0.6f, 0.25f), metal);
+            Local(c, house, "Armacao", new Vector3(x, h / 2f + 0.3f, d / 2f), new Vector3(0.25f, h + 0.6f, 0.25f), metal);
+            Local(c, house, "Arco", new Vector3(x, h + 0.55f, 0f), new Vector3(0.25f, 0.25f, d), metal);
+        }
+
+        // Plantas alienígenas que cresceram demais.
+        for (int i = 0; i < 7; i++)
+        {
+            Vector3 p = new Vector3(Range(c, -w / 2f + 1.5f, w / 2f - 1.5f), 0f, Range(c, -d / 2f + 1.5f, d / 2f - 1.5f));
+            NoCollider(Prim(c, PrimitiveType.Sphere, "Planta", house, p + new Vector3(0f, 1.2f, 0f), new Vector3(1.6f, 2.6f, 1.6f), Pick(c, c.kit.canopies)));
+        }
+
+        Local(c, house, "Canteiro", new Vector3(0f, 0.25f, 0f), new Vector3(w - 2f, 0.5f, 2f), c.kit.soil);
+    }
+
+    // Placa de texto (usa a fonte embutida do Unity).
+    private static void Label(Transform parent, string text, Vector3 localPosition, float size, Color color, float yaw)
+    {
+        GameObject go = new GameObject("Texto");
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = localPosition;
+        go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+        TextMesh mesh = go.AddComponent<TextMesh>();
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        mesh.font = font;
+        mesh.text = text;
+        mesh.fontSize = 64;
+        mesh.characterSize = size;
+        mesh.anchor = TextAnchor.MiddleCenter;
+        mesh.alignment = TextAlignment.Center;
+        mesh.color = color;
+        if (font != null)
+        {
+            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+        }
+    }
+
+    // Polo: neve, blocos de gelo e montes de neve. "variant": "norte" ou "sul", e "_fora" na linha de fora
+    // (a que encosta na linha do polo). Perto da linha do polo fica uma faixa livre, igual dos dois lados,
+    // para a passagem para o outro lado do planeta não aparecer (a nevasca esconde o resto).
+    private static void BuildPole(Ctx c)
+    {
+        Material snow = Mat(c, "Polo_Neve", new Color(0.93f, 0.96f, 1f), 0.35f);
+        Material ice = Mat(c, "Polo_Gelo", new Color(0.62f, 0.83f, 0.95f), 0.85f);
+        Box(c, c.est, "Chao_Neve", new Vector3(Half, -0.1f, Half), new Vector3(Size, 0.2f, Size), snow);
+
+        string variant = c.spec.variant ?? "";
+        bool north = variant.StartsWith("norte");
+        bool outer = variant.EndsWith("_fora");
+        Transform field = Child(c.est, "Gelo");
+        if (outer)
+        {
+            // Faixa livre de 45 m junto da linha do polo.
+            Reserve(c, new Rect(0f, north ? Size - 45f : 0f, Size, 45f));
+
+            // O mastro do polo, listrado, no meio da linha (tem um igual do outro lado).
+            float z = north ? Size - 3f : 3f;
+            Material red = Mat(c, "Polo_Vermelho", new Color(0.85f, 0.15f, 0.15f), 0.4f);
+            for (int i = 0; i < 8; i++)
+            {
+                Prim(c, PrimitiveType.Cylinder, "Mastro", field, new Vector3(Half, 0.4f + i * 0.8f, z), new Vector3(0.35f, 0.4f, 0.35f), i % 2 == 0 ? red : snow);
+            }
+
+            NoCollider(Prim(c, PrimitiveType.Sphere, "Bola", field, new Vector3(Half, 6.8f, z), Vector3.one * 0.8f, Mat(c, "Polo_Dourado", new Color(1f, 0.8f, 0.3f), 0.7f, 1.5f)));
+            Box(c, field, "Placa", new Vector3(Half, 4.6f, z), new Vector3(3.2f, 0.8f, 0.12f), c.kit.wood);
+            string title = north ? "POLO NORTE" : "POLO SUL";
+            Label(field, title, new Vector3(Half, 4.6f, z - 0.08f), 0.09f, Color.white, 0f);
+            Label(field, title, new Vector3(Half, 4.6f, z + 0.08f), 0.09f, Color.white, 180f);
+        }
+
+        Scatter(c, outer ? 8 : 14, 4f, p => Box(c, field, "Bloco_Gelo", new Vector3(p.x, Range(c, 0.5f, 1.8f), p.y),
+            new Vector3(Range(c, 2f, 4f), Range(c, 1.5f, 4f), Range(c, 2f, 4f)), ice, Range(c, 0f, 360f)));
+        Scatter(c, outer ? 10 : 18, 3f, p => NoCollider(Prim(c, PrimitiveType.Sphere, "Monte_Neve", field, new Vector3(p.x, 0.2f, p.y),
+            new Vector3(Range(c, 3f, 6f), Range(c, 0.8f, 1.6f), Range(c, 3f, 6f)), snow)));
+    }
 
     // ---------- Primitivas ----------
 

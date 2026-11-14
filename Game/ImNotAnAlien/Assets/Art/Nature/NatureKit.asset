@@ -1,0 +1,149 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd23265fb3da2e0499e7d60d14021ded, type: 3}
+  m_Name: NatureKit
+  m_EditorClassIdentifier: Assembly-CSharp::NatureKit
+  commonTrees:
+  - {fileID: 919132149155446097, guid: 889ca2c8f956fea479938cbeac4eb50b, type: 3}
+  - {fileID: 919132149155446097, guid: 0ff79427209b87c4185d4147966cff18, type: 3}
+  - {fileID: 919132149155446097, guid: 541010946201cd94caf98a9735ea1f52, type: 3}
+  - {fileID: 919132149155446097, guid: a9b6e75a807164e4eab038400c7b24b2, type: 3}
+  - {fileID: 919132149155446097, guid: 286a2444531ab844b9347999dfa33ff9, type: 3}
+  roundTrees:
+  - {fileID: 919132149155446097, guid: 49419a55684f1ab468c29ed61a897f5a, type: 3}
+  - {fileID: 919132149155446097, guid: 8d12aa0eb94e3e84fb20b5a323d290d3, type: 3}
+  - {fileID: 919132149155446097, guid: d2966ed13f06b8a4d9d6263da5e100b2, type: 3}
+  - {fileID: 919132149155446097, guid: 7cdcd94609d94e44c94e5cba0990baa6, type: 3}
+  - {fileID: 919132149155446097, guid: edf098758db6aba49a4aec06b8a40e19, type: 3}
+  - {fileID: 919132149155446097, guid: 6f3d6093e6d0dfd4b83a5fe7fce99861, type: 3}
+  - {fileID: 919132149155446097, guid: 78c0fe6149ee24b42b998ce46054e141, type: 3}
+  - {fileID: 919132149155446097, guid: 3b08eeadfbd621c4e966d9e1deb71314, type: 3}
+  - {fileID: 919132149155446097, guid: fd96bdca194fa954ebe2145b26ab70b2, type: 3}
+  - {fileID: 919132149155446097, guid: 93d39df7596c5c94f931b416fc3ef215, type: 3}
+  birches:
+  - {fileID: 919132149155446097, guid: 3e3ffd6c158bb084d97ba9d0c9cb41db, type: 3}
+  - {fileID: 919132149155446097, guid: 09c828f9e7392714ebdff5809978dee0, type: 3}
+  - {fileID: 919132149155446097, guid: 6f8c47efd6d609d449c09bdce99c80a4, type: 3}
+  - {fileID: 919132149155446097, guid: a8fe8660057dea04ca094703faa6adb0, type: 3}
+  - {fileID: 919132149155446097, guid: 880d516b29382224ebeb4b78c24910e0, type: 3}
+  - {fileID: 919132149155446097, guid: c2b5fd6326bc2a1418f3b0215185ed86, type: 3}
+  - {fileID: 919132149155446097, guid: fbc5aecc17f062541bf60ca9be5e0a58, type: 3}
+  - {fileID: 919132149155446097, guid: a58eb988bca3ea94cb940f9dcba0355b, type: 3}
+  - {fileID: 919132149155446097, guid: 61b51e856b049b149ab31766565eb28f, type: 3}
+  - {fileID: 919132149155446097, guid: ee1ea590fadf5e54e81202cdf25466ed, type: 3}
+  pines:
+  - {fileID: 919132149155446097, guid: 69f7e6d4d5cba314582f4a17537ce01e, type: 3}
+  - {fileID: 919132149155446097, guid: cf753fd631a6b4e42a5dc42de94d669c, type: 3}
+  - {fileID: 919132149155446097, guid: 52306184974e7564cbc6dd9810dc5f77, type: 3}
+  - {fileID: 919132149155446097, guid: 0d1548d47b1913d44a669d21207d5b02, type: 3}
+  - {fileID: 919132149155446097, guid: da18f9d31eee68846a0fd63a369a25e2, type: 3}
+  - {fileID: 919132149155446097, guid: 38aa62ae4eaa05d459dffb5d576ee813, type: 3}
+  - {fileID: 919132149155446097, guid: 8580cb19a54deb14b876c5d290ebd0a4, type: 3}
+  - {fileID: 919132149155446097, guid: d066aa7ed7f87be49af3b12cba3a0ddd, type: 3}
+  - {fileID: 919132149155446097, guid: ce03543968dadcb429a8fd7d417286d0, type: 3}
+  - {fileID: 919132149155446097, guid: 476e6a0dbd36a9143b68d79a066d0893, type: 3}
+  twistedTrees:
+  - {fileID: 919132149155446097, guid: fdff8f90ccf2d1c4c8bdf1f30b821c68, type: 3}
+  - {fileID: 919132149155446097, guid: 39c6838fe3b69c74c90b514ae9ed70a7, type: 3}
+  - {fileID: 919132149155446097, guid: 76ecafaf4e92fd64ebba7581715f9ee1, type: 3}
+  - {fileID: 919132149155446097, guid: 8b8063e4c2b377247821ccfbbf6dedf0, type: 3}
+  - {fileID: 919132149155446097, guid: d863e0774e7211b4f85357b0b1979abe, type: 3}
+  deadTrees:
+  - {fileID: 919132149155446097, guid: f0709769b12cce24597f094f02e9b5b5, type: 3}
+  - {fileID: 919132149155446097, guid: b7f4e51977df2a34fad5ec90f1024688, type: 3}
+  - {fileID: 919132149155446097, guid: 2186bbf6ad44f5e4791871afc3d38905, type: 3}
+  - {fileID: 919132149155446097, guid: aab3263b04a702743b604761349f710b, type: 3}
+  - {fileID: 919132149155446097, guid: dce7406eb19530f4d95e3cadc2f58f03, type: 3}
+  - {fileID: 919132149155446097, guid: ac45275e0d89818419b71a43e41e37fb, type: 3}
+  - {fileID: 919132149155446097, guid: e933d80f89a320d49b82bc96ab8869a1, type: 3}
+  - {fileID: 919132149155446097, guid: 6053d990d06fe184997490285e244ed3, type: 3}
+  - {fileID: 919132149155446097, guid: 4dc396a160e06c74caba15e5a258e2f8, type: 3}
+  - {fileID: 919132149155446097, guid: e2a4d5c960b90304fb28f0223b12353b, type: 3}
+  - {fileID: 919132149155446097, guid: aa0ad36d3ecacbb49a36330ee4f9b571, type: 3}
+  - {fileID: 919132149155446097, guid: 22e79574a60c0da45893cb168505b2bb, type: 3}
+  - {fileID: 919132149155446097, guid: 20ffc47bc6634ee438e390f8f03333b9, type: 3}
+  - {fileID: 919132149155446097, guid: e36fa2be46f4b7240a2fb5918617ccf9, type: 3}
+  - {fileID: 919132149155446097, guid: 0c41b1ffa24721c45afa640663bedb98, type: 3}
+  deadBirches:
+  - {fileID: 919132149155446097, guid: 0a27bcfdb3d34c549ad36684db69f31e, type: 3}
+  - {fileID: 919132149155446097, guid: 673ac6d7945be884b981fa39b7207cbd, type: 3}
+  - {fileID: 919132149155446097, guid: 5c7228dbd7f67e041b4f301d8b2019e8, type: 3}
+  - {fileID: 919132149155446097, guid: 93225df69f738d0408e4fce95cba8d70, type: 3}
+  - {fileID: 919132149155446097, guid: 3aa42cc6a03a0594ba6c78031fb407fb, type: 3}
+  - {fileID: 919132149155446097, guid: 96ee41e57bca27645aad075a5e1ed8a9, type: 3}
+  - {fileID: 919132149155446097, guid: d1c66cc10beca9d48990528dbb18a786, type: 3}
+  - {fileID: 919132149155446097, guid: 0a680ed72eafec140aa962d5a0be883c, type: 3}
+  - {fileID: 919132149155446097, guid: 6440ae35dcff69f419aa3ed2210ab49f, type: 3}
+  - {fileID: 919132149155446097, guid: b9d5b9e40204d8a4b8bb30fbe4c67da1, type: 3}
+  bushes:
+  - {fileID: 919132149155446097, guid: 02cde47bcb4c84f4d9fd15a0f49cf27d, type: 3}
+  flowerBushes:
+  - {fileID: 919132149155446097, guid: b267ecfe9027a6a41a71c3e8100b52b5, type: 3}
+  grasses:
+  - {fileID: 919132149155446097, guid: f65dc863189e5c64c8f39b0090d35ffc, type: 3}
+  - {fileID: 919132149155446097, guid: 90752508bbe52be4b8eaf5de2811c48b, type: 3}
+  - {fileID: 919132149155446097, guid: 92e802a5616f6a34e89adf3f32c81363, type: 3}
+  - {fileID: 919132149155446097, guid: 50c39fa6985150b42ae8be540a6d98e5, type: 3}
+  flowers:
+  - {fileID: 919132149155446097, guid: 159255795177bdd4db223b7a5b42b49e, type: 3}
+  - {fileID: 919132149155446097, guid: 1b2c074142bac4b458cdcd3cae1dcbca, type: 3}
+  - {fileID: 919132149155446097, guid: 8ff5372c405ddfe4a922e67aecd0e9c6, type: 3}
+  - {fileID: 919132149155446097, guid: ff89749f73a3a3942908c1b634455dd0, type: 3}
+  ferns:
+  - {fileID: 919132149155446097, guid: 7fad073d66b873847b15a7dbffb90bc0, type: 3}
+  - {fileID: 919132149155446097, guid: b9dc32c46a7a6014599559240059ac76, type: 3}
+  - {fileID: 919132149155446097, guid: 6550a93119983da41a69151eb1c9341d, type: 3}
+  - {fileID: 919132149155446097, guid: ed6ca40f37711954e9bce779acecfd1c, type: 3}
+  - {fileID: 919132149155446097, guid: 35d4daa6c9f935349a789724312f9747, type: 3}
+  - {fileID: 919132149155446097, guid: 75ed565dfeb186c41bf0d418a2bb3b76, type: 3}
+  - {fileID: 919132149155446097, guid: 5fddb421e52359d4e9aeb423b39530c7, type: 3}
+  mushrooms:
+  - {fileID: 919132149155446097, guid: e46d7e6ad8519214eaa53279dfc979d4, type: 3}
+  - {fileID: 919132149155446097, guid: df9ed54d77408a145b01a2e4f8ae1d05, type: 3}
+  rocks:
+  - {fileID: 919132149155446097, guid: 5ffe91738ebe1f34cb47351f0d23a082, type: 3}
+  - {fileID: 919132149155446097, guid: 55126060d7997dd4e9f06c5c88da766f, type: 3}
+  - {fileID: 919132149155446097, guid: 767fc969fa1596f4fad3e704528ac3c4, type: 3}
+  pebbles:
+  - {fileID: 919132149155446097, guid: d8f153b4a1b78ac4387ae59f2d3e8657, type: 3}
+  - {fileID: 919132149155446097, guid: 744f9766b68839d45aaf2257b090f62c, type: 3}
+  - {fileID: 919132149155446097, guid: 56f712740f43c5c468c38acb6dbbc5f0, type: 3}
+  - {fileID: 919132149155446097, guid: 33bbf31b16ac2f243a4e8a329bb296c3, type: 3}
+  - {fileID: 919132149155446097, guid: 2c5d09806c22ea14d855d82f12bc26e4, type: 3}
+  - {fileID: 919132149155446097, guid: d9aadd347a0865549977079fa5c44dc1, type: 3}
+  - {fileID: 919132149155446097, guid: 3b4eedf81d7bd664ca1143028d717966, type: 3}
+  - {fileID: 919132149155446097, guid: 21a8f11849cb5904ea175639195a0131, type: 3}
+  - {fileID: 919132149155446097, guid: 0a6555dd4feada741b23d46267d063c3, type: 3}
+  - {fileID: 919132149155446097, guid: f0bad5c3ebcf6534b8bc02258eda16bc, type: 3}
+  - {fileID: 919132149155446097, guid: 940d517c704810b409cfc466941b60f7, type: 3}
+  rockPaths:
+  - {fileID: 919132149155446097, guid: 06615aca3e77306429d3cde6e8224ccc, type: 3}
+  - {fileID: 919132149155446097, guid: a1435e2ab1b6721459c9ca79448a0b08, type: 3}
+  - {fileID: 919132149155446097, guid: faa30e91a169f094a8fbefa099c85b87, type: 3}
+  - {fileID: 919132149155446097, guid: c7a4e4412b8cfd24a9f2f8cd57f1192d, type: 3}
+  - {fileID: 919132149155446097, guid: 5b2fdeda43c0236468b5b6e397c8384f, type: 3}
+  - {fileID: 919132149155446097, guid: 70b8bee761c09df45bfd755afc583d3d, type: 3}
+  - {fileID: 919132149155446097, guid: 83798d846c5288a4c81ae3f2e629f053, type: 3}
+  - {fileID: 919132149155446097, guid: 0a443532675d44943bbda578c9e20031, type: 3}
+  - {fileID: 919132149155446097, guid: 95f89516d3136e1489a97be4565b21c7, type: 3}
+  - {fileID: 919132149155446097, guid: 9508a4195876ae140b63c05be9d366e2, type: 3}
+  desertRock: {fileID: 2100000, guid: 0959eb709f6b70a4e995e20ee3e556f6, type: 2}
+  normalRock: {fileID: 2100000, guid: 90f030ed47df68349804df05c2eb5826, type: 2}
+  grassBlades: {fileID: 2100000, guid: da2d7c027bf74a5459fb955a81560330, type: 2}
+  tintable:
+  - {fileID: 2100000, guid: e263b3233fdfec04fa546e568cdc9fcb, type: 2}
+  - {fileID: 2100000, guid: e06be0b5d0d604e49bdf3ace4a94aa46, type: 2}
+  - {fileID: 2100000, guid: 11e2713617badcc4095c36c922af92d7, type: 2}
+  - {fileID: 2100000, guid: 9335806b9ccb9a04890863e8e31b580a, type: 2}
+  - {fileID: 2100000, guid: f8d9d53f3dfbe3941b989a87980d456b, type: 2}
+  - {fileID: 2100000, guid: 7e5b39fb9ed985a49a396edef7425c13, type: 2}
+  - {fileID: 2100000, guid: fdd6ccfe9ad42114b87027b2d0136dfa, type: 2}

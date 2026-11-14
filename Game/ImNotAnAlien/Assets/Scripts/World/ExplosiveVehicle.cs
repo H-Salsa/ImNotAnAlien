@@ -4,6 +4,8 @@ using UnityEngine;
 // Carro que pode pegar fogo e explodir (tem gasolina!).
 // - Perde vida com batidas fortes (arremessado contra algo, ou caindo de muito alto).
 //   Esbarrões enquanto a telecinese segura o carro não contam.
+// - O dano depende do PESO e da velocidade do que bateu: caixa e lixeira só amassam (precisa de
+//   vários golpes); alienígena arremessado machuca mais; outro carro ou parede machucam muito.
 // - Danificado: solta fumaça. Sem vida: PEGA FOGO e explode alguns segundos depois
 //   (ou na hora, se levar outra pancada forte enquanto queima).
 // - Explosão: empurra tudo em volta, fere alienígenas e o jogador, danifica casas
@@ -18,6 +20,12 @@ public sealed class ExplosiveVehicle : MonoBehaviour
     [Tooltip("Batidas mais lentas que isso (m/s) não danificam o carro.")]
     [SerializeField, Min(0f)] private float minImpactSpeed = 12f;
     [SerializeField, Min(0f)] private float impactDamagePerSpeed = 4f;
+    [Tooltip("Peso (kg) que causa o dano 'cheio'. Coisas mais leves causam proporcionalmente menos.")]
+    [SerializeField, Min(1f)] private float referenceMass = 300f;
+    [Tooltip("Limites do multiplicador por peso (caixa leve ... carro pesado).")]
+    [SerializeField] private Vector2 massMultiplierRange = new Vector2(0.12f, 2f);
+    [Tooltip("Golpes mais fracos que isso não tiram o motorista do carro (só amassam).")]
+    [SerializeField, Min(0f)] private float abandonDamage = 20f;
     [Tooltip("Segundos pegando fogo até explodir.")]
     [SerializeField, Min(0.1f)] private float burnTime = 2.5f;
 
@@ -42,6 +50,27 @@ public sealed class ExplosiveVehicle : MonoBehaviour
     private ParticleSystem fire;
 
     public bool IsExploded => exploded;
+
+    // Missão 20: barril explosivo (Sci-Fi Kit) — menos vida, explosão menor e some ao explodir.
+    private bool vanish;
+
+    public void ConfigureAsBarrel()
+    {
+        maxHealth = 18f;
+        health = maxHealth;
+        minImpactSpeed = 7f;
+        impactDamagePerSpeed = 4f;
+        referenceMass = 60f;
+        abandonDamage = 999f;
+        burnTime = 1.6f;
+        radius = 6.5f;
+        power = 1300f;
+        alienDamage = 110f;
+        playerDamage = 30f;
+        structureDamage = 220f;
+        vehicleDamage = 70f;
+        vanish = true;
+    }
 
     private void Awake()
     {
@@ -82,20 +111,24 @@ public sealed class ExplosiveVehicle : MonoBehaviour
 
         if (body.isKinematic)
         {
-            // Carro do trânsito atingido por algo arremessado: o motorista sai voando.
-            if (!TryGetComponent(out TrafficCar traffic))
+            // Carro do trânsito: só toma dano de coisa arremessada (não do asfalto).
+            if (!TryGetComponent(out TrafficCar _))
             {
                 return;
             }
-
-            traffic.Abandon();
         }
         else if (telekinesis != null && telekinesis.HeldBody == body)
         {
             return; // sendo segurado: esbarrões no caminho não contam
         }
 
-        TakeDamage((speed - minImpactSpeed) * impactDamagePerSpeed);
+        // Peso do que bateu: coisa fixa (parede, chão) ou parada conta como pesada.
+        Rigidbody other = collision.rigidbody;
+        float massMultiplier = other == null || other.isKinematic
+            ? 1f
+            : Mathf.Clamp(other.mass / referenceMass, massMultiplierRange.x, massMultiplierRange.y);
+
+        TakeDamage((speed - minImpactSpeed) * impactDamagePerSpeed * massMultiplier);
     }
 
     public void TakeDamage(float amount)
@@ -105,12 +138,14 @@ public sealed class ExplosiveVehicle : MonoBehaviour
             return;
         }
 
-        if (TryGetComponent(out TrafficCar traffic) && !traffic.IsAbandoned)
+        health -= amount;
+
+        // Carro do trânsito: golpe forte (ou já muito amassado) e o motorista sai voando.
+        if (TryGetComponent(out TrafficCar traffic) && !traffic.IsAbandoned &&
+            (amount >= abandonDamage || health <= maxHealth * 0.5f))
         {
             traffic.Abandon();
         }
-
-        health -= amount;
 
         if (health <= maxHealth * 0.5f && smoke == null)
         {
@@ -162,6 +197,24 @@ public sealed class ExplosiveVehicle : MonoBehaviour
         GameFeel.Explosion(center, radius);
         ApplyBlast(center);
         WantedSystem.ReportDestruction(center);
+        if (vanish)
+        {
+            if (fire != null)
+            {
+                fire.transform.SetParent(null, true);
+                Destroy(fire.gameObject, 3f);
+            }
+
+            if (smoke != null)
+            {
+                smoke.transform.SetParent(null, true);
+                Destroy(smoke.gameObject, 4f);
+            }
+
+            Destroy(gameObject);
+            return;
+        }
+
         MakeWreck();
 
         // O próprio carro dá um pulo com a explosão.
@@ -191,7 +244,7 @@ public sealed class ExplosiveVehicle : MonoBehaviour
             DestructibleStructure structure = hit.GetComponentInParent<DestructibleStructure>();
             if (structure != null && structures.Add(structure))
             {
-                structure.TakeDamage(structureDamage * falloff, closest, closest - center);
+                structure.TakeBlast(structureDamage * falloff, closest, center, radius); // casa do Blender voa em pedaços
             }
 
             PlayerHealth player = hit.GetComponentInParent<PlayerHealth>();
@@ -218,6 +271,9 @@ public sealed class ExplosiveVehicle : MonoBehaviour
                 alien.TakeDamage(alienDamage * falloff);
             }
 
+            // Missão 20: inimigos do Sci-Fi Kit (robô de 4 patas, drone) também sentem a explosão.
+            other.SendMessage("OnBlast", falloff, SendMessageOptions.DontRequireReceiver);
+
             if (other.TryGetComponent(out ExplosiveVehicle vehicle))
             {
                 vehicle.TakeDamage(vehicleDamage * falloff); // reação em cadeia
@@ -225,6 +281,19 @@ public sealed class ExplosiveVehicle : MonoBehaviour
             else if (other.isKinematic && other.TryGetComponent(out TrafficCar traffic))
             {
                 traffic.Abandon();
+            }
+
+            if (other.TryGetComponent(out CollapsingFragment _))
+            {
+                // Cacos e entulho também voam (por velocidade, não por impulso: senão os leves
+                // sairiam do mapa). Os que acabaram de ser soltos pela própria explosão (TakeBlast)
+                // ganham só um reforço.
+                if (!other.isKinematic)
+                {
+                    other.AddExplosionForce(14f, center, radius * 1.2f, 1.2f, ForceMode.VelocityChange);
+                }
+
+                continue;
             }
 
             if (!other.isKinematic)

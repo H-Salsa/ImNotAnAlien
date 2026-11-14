@@ -56,6 +56,18 @@ public sealed class AlienHealth : MonoBehaviour
     public int QuotaSector { get; set; } = -1;
     public bool CountsForQuota { get; set; } = true;
 
+    // Missão 20: criaturas selvagens (Trilobite) não chamam a polícia quando morrem.
+    public bool ReportsToPolice { get; set; } = true;
+
+    // Missão 20: quem cria outro tipo de bicho com esta vida ajusta os números.
+    public void Configure(float health, int dna, int orbs)
+    {
+        maxHealth = Mathf.Max(1f, health);
+        CurrentHealth = maxHealth;
+        dnaValue = Mathf.Max(0, dna);
+        orbCount = Mathf.Max(1, orbs);
+    }
+
     // Avisa outros sistemas (contador, DNA, etc.) quando este alienígena é derrotado.
     public event Action<AlienHealth> Died;
 
@@ -99,12 +111,25 @@ public sealed class AlienHealth : MonoBehaviour
         }
 
         float speed = collision.relativeVelocity.magnitude;
+        Rigidbody other = collision.rigidbody;
+
+        // Reação do corpo (Missão 19): quem leva uma pancada de algo arremessado cambaleia,
+        // recua ou cai, conforme o peso × velocidade do objeto — mesmo quando não machuca muito.
+        if (brain != null && other != null && !other.isKinematic && speed > 2f && collision.contactCount > 0)
+        {
+            Vector3 push = transform.position - collision.GetContact(0).point;
+            Vector3 flying = other.linearVelocity;
+            flying.y = 0f;
+            push.y = 0f;
+            Vector3 direction = flying.sqrMagnitude > 1f ? flying.normalized + push.normalized * 0.5f : push;
+            brain.OnStruck(direction, other.mass * speed);
+        }
+
         if (speed <= minImpactSpeed)
         {
             return;
         }
 
-        Rigidbody other = collision.rigidbody;
         float massMultiplier = other == null || other.isKinematic
             ? staticImpactMultiplier
             : Mathf.Clamp(other.mass / referenceMass, massMultiplierRange.x, massMultiplierRange.y);
@@ -187,7 +212,10 @@ public sealed class AlienHealth : MonoBehaviour
 
         DnaOrbSystem.SpawnFrom(this, transform.position + Vector3.up * 1.2f, dnaValue, orbCount);
         TintAsDrained();
-        WantedSystem.ReportKill(transform.position, brain != null && brain.AlienRole == AlienBrain.Role.Policial);
+        if (ReportsToPolice)
+        {
+            WantedSystem.ReportKill(transform.position, brain != null && brain.AlienRole == AlienBrain.Role.Policial);
+        }
 
         Debug.Log($"{name} foi derrotado.", this);
         Died?.Invoke(this);

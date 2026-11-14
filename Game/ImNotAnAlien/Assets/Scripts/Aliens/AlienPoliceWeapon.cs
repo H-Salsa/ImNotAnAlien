@@ -5,6 +5,7 @@ using UnityEngine;
 // Como desviar: quando a ponta da arma acende (aviso), o policial TRAVA a mira no lugar
 // onde o jogador estava. Os tiros são rápidos, mas quem se move durante o aviso escapa.
 // Cada disparo é uma rajada curta ("pah, pah").
+// Missão 19: pente de 6 tiros; acabou, o policial recarrega (~1,8 s, com animação) — uma brecha para o jogador.
 [DisallowMultipleComponent]
 public sealed class AlienPoliceWeapon : MonoBehaviour
 {
@@ -33,12 +34,28 @@ public sealed class AlienPoliceWeapon : MonoBehaviour
     [Tooltip("Os tiros também machucam outros alienígenas (o caos é bem-vindo).")]
     [SerializeField] private bool friendlyFire = true;
 
+    [Header("Pente")]
+    [SerializeField, Min(1)] private int magazineSize = 6;
+    [SerializeField, Min(0f)] private float reloadTime = 1.8f;
+
+    private int inMagazine;
+
+    // Contadores para a animação (AlienAnimator): mudou = tocar tiro / recarga.
+    public int ShotCount { get; private set; }
+    public int ReloadCount { get; private set; }
+
     private float cooldown;
     private float warningTimer = -1f;
     private int shotsRemaining;
     private float burstTimer;
     private Vector3 lockedTarget;
     private Vector3 indicatorBaseScale = Vector3.one;
+
+    // Missão 20: o material do tiro, para os inimigos do Sci-Fi Kit atirarem igual à polícia.
+    public static Material SharedProjectileMaterial { get; private set; }
+
+    public Transform Muzzle => muzzle != null ? muzzle : transform.Find("Corpo/Arma/Ponta");
+    public GameObject ChargeIndicator => chargeIndicator;
 
     private void Awake()
     {
@@ -47,12 +64,18 @@ public sealed class AlienPoliceWeapon : MonoBehaviour
             muzzle = transform.Find("Corpo/Arma/Ponta");
         }
 
+        if (projectileMaterial != null)
+        {
+            SharedProjectileMaterial = projectileMaterial;
+        }
+
         if (chargeIndicator != null)
         {
             indicatorBaseScale = chargeIndicator.transform.localScale;
             chargeIndicator.SetActive(false);
         }
 
+        inMagazine = magazineSize;
         ResetCooldown();
     }
 
@@ -113,6 +136,13 @@ public sealed class AlienPoliceWeapon : MonoBehaviour
                 if (shotsRemaining == 0)
                 {
                     cooldown = NextInterval();
+                    if (inMagazine <= 0)
+                    {
+                        // Pente vazio: recarrega (a próxima rajada espera a recarga).
+                        inMagazine = magazineSize;
+                        ReloadCount++;
+                        cooldown = Mathf.Max(cooldown, reloadTime);
+                    }
                 }
             }
 
@@ -192,6 +222,8 @@ public sealed class AlienPoliceWeapon : MonoBehaviour
         direction = Quaternion.Euler(Random.Range(-spreadDegrees, spreadDegrees), Random.Range(-spreadDegrees, spreadDegrees), 0f) * direction;
 
         AlienProjectile.Spawn(projectileMaterial, muzzle.position, direction * shotSpeed, damage * WantedSystem.DamageMultiplier, transform, friendlyFire);
+        inMagazine--;
+        ShotCount++;
         GameFeel.PoliceShot(muzzle.position);
     }
 }

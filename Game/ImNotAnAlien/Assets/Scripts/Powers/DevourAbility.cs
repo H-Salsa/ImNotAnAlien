@@ -167,6 +167,7 @@ public sealed class DevourAbility : MonoBehaviour
 
         int quotaSector = alien.QuotaSector;
         bool countsForQuota = alien.CountsForQuota;
+        PlayerBreath.OnDevoured(alien); // Missão 20: alien aquático recarrega o ar
         int dna = alien.Devour(); // para o alienígena e marca como consumido
         foreach (Collider part in alien.GetComponentsInChildren<Collider>())
         {

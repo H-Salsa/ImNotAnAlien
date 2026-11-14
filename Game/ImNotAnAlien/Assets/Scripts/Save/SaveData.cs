@@ -7,7 +7,8 @@ using UnityEngine;
 [Serializable]
 public sealed class SaveData
 {
-    public const int CurrentVersion = 1;
+    // 2 = planeta (Missão 19): 16 regiões com 16 setores cada, bases visitadas.
+    public const int CurrentVersion = 2;
 
     [Serializable]
     public sealed class EvolutionSave
@@ -50,6 +51,14 @@ public sealed class SaveData
     public Vector3 playerPosition;
 
     public List<RegionSave> regions = new List<RegionSave>();
+
+    // Bases (Missão 19): as que já foram visitadas (viagem rápida) e a última (onde renasce).
+    public List<string> visitedBases = new List<string>();
+    public string lastBase;
+
+    // Marcador posto no globo (posição no planeta, em blocos).
+    public bool hasWaypoint;
+    public Vector2 waypoint;
 
     public static SaveData NewGame()
     {

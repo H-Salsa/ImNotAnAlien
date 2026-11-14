@@ -5,6 +5,8 @@ using UnityEngine;
 // 2. Depois perde a colisão, afunda no chão encolhendo e é apagado.
 // Assim os pedaços nunca se acumulam e não pesam o computador.
 // Segurança: se ficar preso em algum lugar (ex.: telhado) e não parar, some depois de um tempo máximo.
+// Missão 20: cacos marcados como escombro (StayAsRubble) não afundam: ao pousar, ficam parados no lugar
+// (como parte do monte de entulho da casa) e somem junto com o bloco.
 public sealed class CollapsingFragment : MonoBehaviour
 {
     private const float MinFallTime = 1f;          // tempo mínimo com física, mesmo que pouse antes
@@ -20,6 +22,14 @@ public sealed class CollapsingFragment : MonoBehaviour
     private float sinkStart = -1f;
     private Vector3 startScale;
     private float extraDelay;
+    private bool rubble;
+    private Transform rubbleParent;
+
+    public void StayAsRubble(Transform parent)
+    {
+        rubble = true;
+        rubbleParent = parent;
+    }
 
     private void Start()
     {
@@ -40,6 +50,12 @@ public sealed class CollapsingFragment : MonoBehaviour
             bool landed = age >= MinFallTime + extraDelay && restTime >= RestTimeToSink;
             if (landed || age >= MaxPhysicsTime)
             {
+                if (rubble)
+                {
+                    Settle();
+                    return;
+                }
+
                 StartSinking();
             }
 
@@ -54,6 +70,22 @@ public sealed class CollapsingFragment : MonoBehaviour
         {
             Destroy(gameObject);
         }
+    }
+
+    // Vira escombro fixo: sem física (pode pisar em cima), preso ao lugar da casa.
+    private void Settle()
+    {
+        if (body != null)
+        {
+            body.isKinematic = true;
+        }
+
+        if (rubbleParent != null)
+        {
+            transform.SetParent(rubbleParent, true);
+        }
+
+        enabled = false;
     }
 
     private void StartSinking()

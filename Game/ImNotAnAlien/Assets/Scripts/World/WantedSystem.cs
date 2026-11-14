@@ -163,7 +163,7 @@ public sealed class WantedSystem : MonoBehaviour
 
     private void UpdateSuspicion()
     {
-        if (Stars > 0 || player == null || PlayerHealth.Instance != null && PlayerHealth.Instance.IsDead)
+        if (Stars > 0 || player == null || PlayerHealth.Instance != null && PlayerHealth.Instance.IsDead || BaseSite.PlayerInside != null)
         {
             suspicion = 0f;
             suspiciousOfficer = null;
@@ -448,6 +448,9 @@ public sealed class WantedSystem : MonoBehaviour
         spawner.ExtraPolice = policePerLevel[Mathf.Clamp(Stars, 0, policePerLevel.Length - 1)];
         spawner.ExtraPoliceCount = Stars <= maxCountingLevel;
     }
+
+    // Chegou numa base (Missão 19): o procurado zera.
+    public void ClearWanted() => ResetWanted();
 
     private void ResetWanted()
     {

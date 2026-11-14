@@ -497,6 +497,9 @@ public static class ProtagonistSetupTool
         toHit.AddCondition(AnimatorConditionMode.If, 0f, "Hit");
         toHit.AddCondition(AnimatorConditionMode.IfNot, 0f, "Dead");
 
+        // Pulo completo (Missão 19): impulso e aterrissagem.
+        ProtagonistJumpSetup.Add(controller);
+
         EditorUtility.SetDirty(controller);
         return controller;
     }

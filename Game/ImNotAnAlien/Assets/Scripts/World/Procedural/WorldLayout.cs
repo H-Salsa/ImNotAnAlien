@@ -25,6 +25,9 @@ public enum BlockType
     Predios,   // novo: prédios altos
     Lago,      // novo: lago grande com píer
     Campo,     // novo: campo aberto com arbustos e pedras
+    Base,      // Missão 19: esconderijo do protagonista (só fixo)
+    Polo,      // Missão 19: gelo dos polos, além da última linha do planeta (só montado pelo WorldStreamer)
+    Lagoa,     // Missão 20: pedaço do Grande Lago (só fixo, ver GreatLake)
 }
 
 // A "receita" de um bloco: tipo, o que há em cada lado e a semente própria dele.
@@ -103,6 +106,9 @@ public sealed class WorldLayout
     public float BlockSize { get; }
     public int Seed { get; }
 
+    // Planeta (Missão 19): o eixo X dá a volta (o bloco 128 é o bloco 0 de novo).
+    public bool WrapsX { get; private set; }
+
     private readonly BlockSpec[,] cells;
 
     public WorldLayout(int width, int height, Vector2 origin, float blockSize, int seed, BlockSpec[,] cells)
@@ -115,9 +121,9 @@ public sealed class WorldLayout
         this.cells = cells;
     }
 
-    public bool Contains(Vector2Int c) => c.x >= 0 && c.y >= 0 && c.x < Width && c.y < Height;
+    public bool Contains(Vector2Int c) => c.y >= 0 && c.y < Height && (WrapsX || c.x >= 0 && c.x < Width);
 
-    public BlockSpec Get(Vector2Int c) => cells[c.x, c.y];
+    public BlockSpec Get(Vector2Int c) => cells[WrapsX ? ((c.x % Width) + Width) % Width : c.x, c.y];
 
     public Vector3 CenterLogical(Vector2Int c) =>
         new Vector3(Origin.x + (c.x + 0.5f) * BlockSize, 0.05f, Origin.y + (c.y + 0.5f) * BlockSize);
@@ -137,8 +143,8 @@ public sealed class WorldLayout
             case BlockType.Galpoes: return 1f;
             case BlockType.Praca: return 1f;
             case BlockType.Lago: return 1f;
-            case BlockType.Rio: return 0.6f;
-            default: return 0f; // Esquina: só fixa
+            case BlockType.Rio: return 0f; // Missão 20: rio agora é relevo (GreatLake); o bloco Rio só no Vilarejo
+            default: return 0f; // Esquina e Base: só fixas
         }
     }
 
@@ -153,7 +159,20 @@ public sealed class WorldLayout
                 // Rio atravessando de um lado ao oposto; os outros dois lados iguais (mato, ou rua = ponte).
                 bool northSouth = s.north == Socket.Rio && s.south == Socket.Rio && s.east == s.west && s.east != Socket.Rio;
                 bool eastWest = s.east == Socket.Rio && s.west == Socket.Rio && s.north == s.south && s.north != Socket.Rio;
-                return northSouth || eastWest;
+                if (northSouth || eastWest)
+                {
+                    return true;
+                }
+
+                // Missão 20: curva (dois lados vizinhos) ou nascente (um lado só); o resto é mato.
+                // Assim o rio termina e faz curvas, em vez de dar a volta no planeta em linha reta.
+                if (roads > 0)
+                {
+                    return false;
+                }
+
+                bool bend = rivers == 2 && s.north != s.south;
+                return rivers == 1 || bend;
             case BlockType.Floresta:
                 return roads == 0 && rivers == 0;
             case BlockType.Bairro:
@@ -449,6 +468,401 @@ public sealed class WorldLayout
             h = h * 73856093 ^ x * 19349663;
             h = h * 83492791 ^ y * 2654435;
             return h & int.MaxValue;
+        }
+    }
+
+    // ---------- Planeta (Missão 19) ----------
+
+    // Sorteio do planeta inteiro (ex.: 128 × 128 = 16 mil blocos), rápido o bastante para o começo do jogo.
+    // - X dá a volta; o norte e o sul dão nos polos: lado virado para o polo só pode ter mato ou rio.
+    // - Cada bloco guarda as opções que ainda servem num conjunto de bits (128 opções no máximo).
+    // - Os blocos são decididos em ordem (linha por linha), sempre tirando dos vizinhos o que não encaixa.
+    //   Se algum bloco ficar sem opção, só um pedaço em volta dele é refeito (não o planeta todo).
+    public static WorldLayout GeneratePlanet(int width, int height, Vector2 origin, float blockSize, int seed,
+        IDictionary<Vector2Int, BlockSpec> fixedCells)
+    {
+        System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
+        System.Random random = new System.Random(seed);
+
+        List<Variant> pool = AllVariants();
+        // Blocos fixos que não estão no sorteio (Esquina, Base) entram como opções extras, só para eles.
+        Dictionary<Vector2Int, int> fixedIndex = new Dictionary<Vector2Int, int>();
+        if (fixedCells != null)
+        {
+            foreach (KeyValuePair<Vector2Int, BlockSpec> pair in fixedCells)
+            {
+                int found = pool.FindIndex(v => SameSpec(v.spec, pair.Value));
+                if (found < 0)
+                {
+                    pool.Add(new Variant { spec = pair.Value, weight = 0f });
+                    found = pool.Count - 1;
+                }
+
+                Vector2Int key = new Vector2Int(((pair.Key.x % width) + width) % width, pair.Key.y);
+                fixedIndex[key] = found;
+            }
+        }
+
+        if (pool.Count > 128)
+        {
+            Debug.LogError($"Sorteio do planeta: {pool.Count} opções de bloco; o máximo é 128.");
+        }
+
+        PlanetSolver solver = new PlanetSolver(width, height, pool, random);
+        bool ok = solver.Solve(fixedIndex);
+
+        BlockSpec[,] cells = new BlockSpec[width, height];
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                Vector2Int c = new Vector2Int(x, y);
+                int chosen = solver.Chosen(x, y);
+                BlockSpec spec = chosen >= 0 ? pool[chosen].spec : BlockSpec.Make(BlockType.Floresta, Socket.Mato, Socket.Mato, Socket.Mato, Socket.Mato);
+                if (fixedCells != null && fixedIndex.ContainsKey(c))
+                {
+                    // Mantém a receita original (variante, semente) dos blocos fixos.
+                    foreach (KeyValuePair<Vector2Int, BlockSpec> pair in fixedCells)
+                    {
+                        if (((pair.Key.x % width) + width) % width == x && pair.Key.y == y)
+                        {
+                            spec = pair.Value;
+                        }
+                    }
+                }
+
+                if (spec.seed == 0 || !fixedIndex.ContainsKey(c))
+                {
+                    spec.seed = CellSeed(seed, x, y);
+                }
+
+                cells[x, y] = spec;
+            }
+        }
+
+        watch.Stop();
+        Debug.Log(ok
+            ? $"Planeta sorteado: {width} × {height} blocos em {watch.ElapsedMilliseconds} ms ({solver.Repairs} consertos)."
+            : $"Planeta sorteado com {solver.Failures} bloco(s) sem encaixe (viraram floresta), em {watch.ElapsedMilliseconds} ms.");
+
+        return new WorldLayout(width, height, origin, blockSize, seed, cells) { WrapsX = true };
+    }
+
+    private static bool SameSpec(BlockSpec a, BlockSpec b) =>
+        a.type == b.type && a.north == b.north && a.east == b.east && a.south == b.south && a.west == b.west;
+
+    // Resolve o encaixe do planeta com conjuntos de bits.
+    private sealed class PlanetSolver
+    {
+        private readonly int width;
+        private readonly int height;
+        private readonly List<Variant> pool;
+        private readonly System.Random random;
+        private readonly ulong[] lo;
+        private readonly ulong[] hi;
+        private readonly bool[] locked;
+        // Opções que têm o socket "k" no lado "side": [side * 3 + k].
+        private readonly ulong[] sideLo = new ulong[12];
+        private readonly ulong[] sideHi = new ulong[12];
+        private ulong allLo;
+        private ulong allHi;
+        private readonly Stack<int> queue = new Stack<int>();
+
+        public int Repairs { get; private set; }
+        public int Failures { get; private set; }
+
+        public PlanetSolver(int width, int height, List<Variant> pool, System.Random random)
+        {
+            this.width = width;
+            this.height = height;
+            this.pool = pool;
+            this.random = random;
+            lo = new ulong[width * height];
+            hi = new ulong[width * height];
+            locked = new bool[width * height];
+
+            for (int i = 0; i < pool.Count && i < 128; i++)
+            {
+                for (int side = 0; side < 4; side++)
+                {
+                    int k = (int)pool[i].spec.Get(side);
+                    if (i < 64) sideLo[side * 3 + k] |= 1UL << i;
+                    else sideHi[side * 3 + k] |= 1UL << (i - 64);
+                }
+
+                if (pool[i].weight > 0f)
+                {
+                    if (i < 64) allLo |= 1UL << i;
+                    else allHi |= 1UL << (i - 64);
+                }
+            }
+        }
+
+        private int Index(int x, int y) => y * width + x;
+
+        public int Chosen(int x, int y)
+        {
+            int i = Index(x, y);
+            ulong a = lo[i], b = hi[i];
+            if (a != 0 && (a & (a - 1)) == 0 && b == 0) return TrailingZeros(a);
+            if (b != 0 && (b & (b - 1)) == 0 && a == 0) return 64 + TrailingZeros(b);
+            return -1;
+        }
+
+        // Domínio inicial de um bloco livre: tudo do sorteio, menos rua virada para o polo.
+        private void ResetCell(int x, int y)
+        {
+            int i = Index(x, y);
+            ulong a = allLo, b = allHi;
+            // Missão 20: só mato virado para o polo (o rio agora tem nascente e não precisa chegar lá).
+            if (y == height - 1)
+            {
+                a &= sideLo[0 * 3 + (int)Socket.Mato];
+                b &= sideHi[0 * 3 + (int)Socket.Mato];
+            }
+
+            if (y == 0)
+            {
+                a &= sideLo[2 * 3 + (int)Socket.Mato];
+                b &= sideHi[2 * 3 + (int)Socket.Mato];
+            }
+
+            lo[i] = a;
+            hi[i] = b;
+        }
+
+        public bool Solve(Dictionary<Vector2Int, int> fixedIndex)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    ResetCell(x, y);
+                }
+            }
+
+            foreach (KeyValuePair<Vector2Int, int> pair in fixedIndex)
+            {
+                if (pair.Key.y < 0 || pair.Key.y >= height)
+                {
+                    continue;
+                }
+
+                int i = Index(pair.Key.x, pair.Key.y);
+                lo[i] = pair.Value < 64 ? 1UL << pair.Value : 0UL;
+                hi[i] = pair.Value >= 64 ? 1UL << (pair.Value - 64) : 0UL;
+                locked[i] = true;
+            }
+
+            for (int i = 0; i < lo.Length; i++)
+            {
+                queue.Push(i);
+            }
+
+            if (Propagate(out _) == false)
+            {
+                Debug.LogWarning("Sorteio do planeta: os blocos fixos não encaixam entre si.");
+            }
+
+            int cursor = 0;
+            int total = width * height;
+            int safety = total * 4;
+            while (cursor < total && safety-- > 0)
+            {
+                int x = cursor % width;
+                int y = cursor / width;
+                int i = Index(x, y);
+                ulong a = lo[i], b = hi[i];
+                bool single = a != 0 && (a & (a - 1)) == 0 && b == 0 || b != 0 && (b & (b - 1)) == 0 && a == 0;
+                if (single)
+                {
+                    cursor++;
+                    continue;
+                }
+
+                if (a == 0 && b == 0)
+                {
+                    // Sem opção (sobrou de um conserto que não deu): vira floresta.
+                    Failures++;
+                    cursor++;
+                    continue;
+                }
+
+                int chosen = Pick(a, b, x, y);
+                lo[i] = chosen < 64 ? 1UL << chosen : 0UL;
+                hi[i] = chosen >= 64 ? 1UL << (chosen - 64) : 0UL;
+                queue.Push(i);
+                if (!Propagate(out int bad))
+                {
+                    Repairs++;
+                    if (!Repair(bad))
+                    {
+                        Failures++;
+                    }
+
+                    cursor = 0; // os já decididos são pulados rapidinho
+                    continue;
+                }
+
+                cursor++;
+            }
+
+            return Failures == 0;
+        }
+
+        // Missão 20: o peso de cada tipo muda com o bioma da região (Cidade Nublada = prédios;
+        // Picos Gelados = mato e montanha; Baía = mato à beira-mar...). Veja PlanetTerrain.LayoutBias.
+        private readonly double[] bias = new double[128];
+
+        private int Pick(ulong a, ulong b, int x, int y)
+        {
+            double total = 0;
+            for (int j = 0; j < pool.Count && j < 128; j++)
+            {
+                bias[j] = 0;
+                if (Has(a, b, j))
+                {
+                    bias[j] = pool[j].weight * PlanetTerrain.LayoutBias(x, y, pool[j].spec.type);
+                    total += bias[j];
+                }
+            }
+
+            double roll = random.NextDouble() * total;
+            int last = -1;
+            for (int j = 0; j < pool.Count && j < 128; j++)
+            {
+                if (!Has(a, b, j))
+                {
+                    continue;
+                }
+
+                last = j;
+                roll -= bias[j];
+                if (roll <= 0)
+                {
+                    return j;
+                }
+            }
+
+            return last;
+        }
+
+        private static bool Has(ulong a, ulong b, int j) => j < 64 ? (a >> j & 1UL) != 0 : (b >> (j - 64) & 1UL) != 0;
+
+        // Tira dos vizinhos as opções que não encaixam mais. "bad" = bloco que ficou sem opção.
+        private bool Propagate(out int bad)
+        {
+            bad = -1;
+            while (queue.Count > 0)
+            {
+                int i = queue.Pop();
+                int x = i % width;
+                int y = i / width;
+                ulong a = lo[i], b = hi[i];
+                if (a == 0 && b == 0)
+                {
+                    queue.Clear();
+                    bad = i;
+                    return false;
+                }
+
+                for (int side = 0; side < 4; side++)
+                {
+                    int nx = x + Directions[side].x;
+                    int ny = y + Directions[side].y;
+                    if (ny < 0 || ny >= height)
+                    {
+                        continue;
+                    }
+
+                    nx = ((nx % width) + width) % width;
+                    int opposite = (side + 2) % 4;
+                    ulong allowLo = 0, allowHi = 0;
+                    for (int k = 0; k < 3; k++)
+                    {
+                        if ((a & sideLo[side * 3 + k]) != 0 || (b & sideHi[side * 3 + k]) != 0)
+                        {
+                            allowLo |= sideLo[opposite * 3 + k];
+                            allowHi |= sideHi[opposite * 3 + k];
+                        }
+                    }
+
+                    int n = Index(nx, ny);
+                    ulong newLo = lo[n] & allowLo;
+                    ulong newHi = hi[n] & allowHi;
+                    if (newLo == lo[n] && newHi == hi[n])
+                    {
+                        continue;
+                    }
+
+                    lo[n] = newLo;
+                    hi[n] = newHi;
+                    if (newLo == 0 && newHi == 0)
+                    {
+                        queue.Clear();
+                        bad = n;
+                        return false;
+                    }
+
+                    queue.Push(n);
+                }
+            }
+
+            return true;
+        }
+
+        // Refaz um quadrado em volta do bloco sem opção (cada vez maior, se precisar).
+        private bool Repair(int bad)
+        {
+            int bx = bad % width;
+            int by = bad / width;
+            for (int radius = 3; radius <= 12; radius += 2)
+            {
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    for (int dy = -radius; dy <= radius; dy++)
+                    {
+                        int x = ((bx + dx) % width + width) % width;
+                        int y = by + dy;
+                        if (y >= 0 && y < height && !locked[Index(x, y)])
+                        {
+                            ResetCell(x, y);
+                        }
+                    }
+                }
+
+                for (int dx = -radius - 1; dx <= radius + 1; dx++)
+                {
+                    for (int dy = -radius - 1; dy <= radius + 1; dy++)
+                    {
+                        int x = ((bx + dx) % width + width) % width;
+                        int y = by + dy;
+                        if (y >= 0 && y < height)
+                        {
+                            queue.Push(Index(x, y));
+                        }
+                    }
+                }
+
+                if (Propagate(out _))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static int TrailingZeros(ulong v)
+        {
+            int n = 0;
+            while ((v & 1UL) == 0 && n < 64)
+            {
+                v >>= 1;
+                n++;
+            }
+
+            return n;
         }
     }
 

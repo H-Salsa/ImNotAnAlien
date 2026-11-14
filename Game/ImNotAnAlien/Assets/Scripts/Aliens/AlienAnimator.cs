@@ -21,6 +21,12 @@ public sealed class AlienAnimator : MonoBehaviour
     private static readonly int PunchId = Animator.StringToHash("Soco");
     private static readonly int JabId = Animator.StringToHash("Jab");
     private static readonly int BatonId = Animator.StringToHash("Cassetete");
+    private static readonly int HitHeadId = Animator.StringToHash("PancadaCabeca");
+    private static readonly int HitChestId = Animator.StringToHash("PancadaPeito");
+    private static readonly int ShotId = Animator.StringToHash("Tiro");
+    private static readonly int ReloadId = Animator.StringToHash("Recarga");
+    private static readonly int ActivityId = Animator.StringToHash("Atividade");
+    private static readonly int SwimmingId = Animator.StringToHash("Swimming");
 
     [SerializeField] private Animator animator;
     [Tooltip("Posição da arma em relação à mão direita (para frente, para cima).")]
@@ -36,6 +42,12 @@ public sealed class AlienAnimator : MonoBehaviour
 
     // Golpes (Missão 19).
     private bool hasMeleeParams;
+    private bool hasExtraParams; // pancada, tiro, recarga e atividades (Missão 19)
+    private AlienPoliceWeapon gun;
+    private bool gunChecked;
+    private int lastStruck;
+    private int lastShot;
+    private int lastReload;
     private int lastSwing;
     private bool nextJab;
     private Transform baton;
@@ -51,6 +63,30 @@ public sealed class AlienAnimator : MonoBehaviour
     public enum ExpressionTest { Automatica, Normal, Apavorado, Bravo }
     [Tooltip("Para conferir as expressões: força uma cara neste alien (deixe em Automatica no jogo).")]
     [SerializeField] private ExpressionTest expressionTest = ExpressionTest.Automatica;
+    // Natação (Missão 20): na água funda o modelo sobe até a linha da água e usa a animação de nadar
+    // (estado "Nadando" do Alien.controller, criado por "Preparar Nado dos Aliens (Missao 20)").
+    [Header("Natação")]
+    [Tooltip("Profundidade mínima da água (m) para nadar.")]
+    [SerializeField, Min(0f)] private float swimDepthToFloat = 1.3f;
+    [Tooltip("Enquanto nada, a raiz do modelo fica esta distância abaixo da superfície (as animações de nado já descem o corpo).")]
+    [SerializeField] private float swimRootBelowSurface = 0.05f;
+    [Tooltip("Nadando para a frente, o alien sobe até isto (m) para a cabeça ficar fora d'água.")]
+    [SerializeField] private float swimForwardLift = 0.15f;
+    [Tooltip("Nadando para a frente, o corpo inclina este ângulo (graus): cabeça para cima, pernas para baixo.")]
+    [SerializeField] private float swimSurfaceTilt = 12f;
+    private float swimTilt;
+    private Transform tiltModel;
+    private Quaternion tiltBase;
+    private bool tiltApplied;
+    private static readonly Collider[] waterHits = new Collider[8];
+    private bool hasSwimParam;
+    private bool swimming;
+    private float swimLift;
+    private float waterTimer;
+    private float waterSurfaceY;
+    private SwimWake wake;
+    private static bool warnedNoSwim;
+
     private bool lastDead;
     private bool lastTumbling;
     private SkinnedMeshRenderer face;
@@ -120,12 +156,24 @@ public sealed class AlienAnimator : MonoBehaviour
         }
 
         weapon = transform.Find("Corpo/Arma");
+        // Missão 20: arma do Sci-Fi Kit (pistola; rifle para o exército no nível 5).
+        WeaponKit.Equip(weapon, WantedSystem.Instance != null && WantedSystem.Instance.Stars >= AlienAppearance.ArmyFromStars);
         weaponRenderers = weapon != null ? weapon.GetComponentsInChildren<Renderer>(true) : new Renderer[0];
         foreach (AnimatorControllerParameter parameter in animator.parameters)
         {
             if (parameter.nameHash == BatonId)
             {
                 hasMeleeParams = true;
+            }
+
+            if (parameter.nameHash == ActivityId)
+            {
+                hasExtraParams = true;
+            }
+
+            if (parameter.nameHash == SwimmingId)
+            {
+                hasSwimParam = true;
             }
         }
         flailPhase = Random.Range(0f, 10f);
@@ -178,6 +226,7 @@ public sealed class AlienAnimator : MonoBehaviour
         }
 
         smoothedSpeed = Mathf.Lerp(smoothedSpeed, speed, 1f - Mathf.Exp(-10f * Time.deltaTime));
+        UpdateSwim(dead, tumbling);
 
         // Com o Animator desligado (membros moles) ou ainda não iniciado, não dá para mexer nos
         // parâmetros: o Unity reclama "Parameter does not exist".
@@ -187,8 +236,13 @@ public sealed class AlienAnimator : MonoBehaviour
             animator.SetBool(TumblingId, tumbling && !dead);
             animator.SetBool(HeldId, held && !dead);
             animator.SetBool(DeadId, dead);
-            animator.SetBool(AimingId, !dead && brain != null && brain.IsAttacking);
+            animator.SetBool(AimingId, !dead && brain != null && brain.IsAttacking && !swimming);
+            if (hasSwimParam)
+            {
+                animator.SetBool(SwimmingId, swimming);
+            }
             UpdateSwing(dead || tumbling);
+            UpdateExtras(dead || tumbling);
         }
 
         UpdateHeldItems(dead);
@@ -198,6 +252,82 @@ public sealed class AlienAnimator : MonoBehaviour
 
         // Segurado: anima (procurando o chão). Arremessado ou morto: membros moles.
         ragdoll.SetFloppy((tumbling && !held) || dead, dead);
+    }
+
+    // Água funda debaixo do alien: nada na superfície. O NavMesh fica no fundo; o "baseOffset" do agente
+    // sobe o alien inteiro (com os colisores, para dar para acertar) até a linha da água.
+    private void UpdateSwim(bool dead, bool tumbling)
+    {
+        float ground = transform.position.y - (agent != null && agent.enabled ? agent.baseOffset : 0f);
+        waterTimer -= Time.deltaTime;
+        if (waterTimer <= 0f)
+        {
+            waterTimer = 0.2f + Random.value * 0.1f;
+            swimming = !dead && !tumbling && agent != null && agent.enabled && FindWater(ground, out waterSurfaceY);
+            if (swimming && !hasSwimParam)
+            {
+                // Sem o estado "Nadando" no Alien.controller ele "andaria sobre a água": fica no fundo.
+                swimming = false;
+                if (!warnedNoSwim)
+                {
+                    warnedNoSwim = true;
+                    Debug.LogWarning("Aliens: o Alien.controller não tem o estado de nado. Rode ImNotAnAlien > Preparar Nado dos Aliens (Missao 20).");
+                }
+            }
+        }
+
+        // Nadando para a frente o corpo deitado fica mais baixo: sobe um pouco com a velocidade.
+        float target = swimming ? Mathf.Max(0f, waterSurfaceY - swimRootBelowSurface - ground + swimForwardLift * Mathf.Clamp01(smoothedSpeed / 2f)) : 0f;
+        float lift = Mathf.Lerp(swimLift, target, 1f - Mathf.Exp(-4f * Time.deltaTime));
+
+        // Inclinação nadando para a frente (igual ao protagonista).
+        swimTilt = Mathf.Lerp(swimTilt, swimming ? -swimSurfaceTilt * Mathf.Clamp01(smoothedSpeed / 2f) : 0f, 1f - Mathf.Exp(-6f * Time.deltaTime));
+        Transform model = animator.transform;
+        if (model != tiltModel || (!tiltApplied && Mathf.Abs(swimTilt) <= 0.01f))
+        {
+            tiltModel = model;
+            tiltBase = model.localRotation;
+        }
+
+        if (Mathf.Abs(swimTilt) > 0.01f || tiltApplied)
+        {
+            model.localRotation = tiltBase * Quaternion.Euler(swimTilt, 0f, 0f);
+            tiltApplied = Mathf.Abs(swimTilt) > 0.01f;
+        }
+        if (swimming || wake != null)
+        {
+            if (wake == null)
+            {
+                wake = SwimWake.For(transform);
+            }
+
+            wake.Feed(swimming, waterSurfaceY, agent != null && agent.enabled ? agent.velocity : Vector3.zero, transform.position + transform.forward * 0.5f);
+        }
+
+        if (Mathf.Abs(lift - swimLift) > 0.0001f && agent != null)
+        {
+            agent.baseOffset = lift;
+            swimLift = lift;
+        }
+    }
+
+    private bool FindWater(float ground, out float surfaceY)
+    {
+        surfaceY = 0f;
+        Vector3 feet = new Vector3(transform.position.x, ground + 0.2f, transform.position.z);
+        int count = Physics.OverlapSphereNonAlloc(feet, 0.3f, waterHits, Physics.AllLayers, QueryTriggerInteraction.Collide);
+        for (int i = 0; i < count; i++)
+        {
+            if (waterHits[i] == null || waterHits[i].GetComponent<WaterZone>() == null)
+            {
+                continue;
+            }
+
+            surfaceY = waterHits[i].bounds.max.y;
+            return surfaceY - ground >= swimDepthToFloat;
+        }
+
+        return false;
     }
 
     // Segurado: fica de pé (sem virar de cabeça para baixo) e de frente para o jogador, assustado.
@@ -282,6 +412,60 @@ public sealed class AlienAnimator : MonoBehaviour
     }
 
     // ---------- Golpes (Missão 19) ----------
+
+    // Pancada (cabeça/peito), tiro e recarga da pistola, e atividades dos civis (conversa, dança, banco).
+    private void UpdateExtras(bool busy)
+    {
+        if (!hasExtraParams || brain == null)
+        {
+            return;
+        }
+
+        animator.SetInteger(ActivityId, busy ? 0 : (int)brain.CurrentActivity);
+
+        if (brain.StruckCount != lastStruck)
+        {
+            lastStruck = brain.StruckCount;
+            if (!busy)
+            {
+                animator.SetTrigger(brain.LastStruckStrong ? HitHeadId : HitChestId);
+            }
+        }
+
+        if (!gunChecked)
+        {
+            gunChecked = true;
+            gun = GetComponent<AlienPoliceWeapon>();
+            if (gun != null)
+            {
+                lastShot = gun.ShotCount;
+                lastReload = gun.ReloadCount;
+            }
+        }
+
+        if (gun == null)
+        {
+            return;
+        }
+
+        if (gun.ShotCount != lastShot)
+        {
+            lastShot = gun.ShotCount;
+            if (!busy)
+            {
+                animator.SetTrigger(ShotId);
+            }
+        }
+
+        if (gun.ReloadCount != lastReload)
+        {
+            lastReload = gun.ReloadCount;
+            if (!busy)
+            {
+                animator.SetTrigger(ReloadId);
+            }
+        }
+    }
 
     private void UpdateSwing(bool busy)
     {
@@ -371,7 +555,7 @@ public sealed class AlienAnimator : MonoBehaviour
 
         if (batonMaterial == null)
         {
-            batonMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "Cassetete" };
+            batonMaterial = new Material(CurvedHorizon.LitShader()) { name = "Cassetete" };
             batonMaterial.color = new Color(0.08f, 0.08f, 0.09f);
             batonMaterial.SetFloat("_Smoothness", 0.35f);
         }

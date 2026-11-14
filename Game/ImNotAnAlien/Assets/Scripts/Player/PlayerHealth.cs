@@ -87,6 +87,39 @@ public sealed class PlayerHealth : MonoBehaviour
         spawnRotation = rotation;
     }
 
+    public Vector3 SpawnPosition => spawnPosition;
+
+    // Base (Missão 19): vida cheia na hora.
+    public void HealFull()
+    {
+        if (IsDead)
+        {
+            return;
+        }
+
+        CurrentHealth = maxHealth;
+        Changed?.Invoke();
+    }
+
+    // Leva o jogador para outro lugar (viagem rápida entre bases). Posição de MUNDO.
+    public void Teleport(Vector3 position, Quaternion rotation)
+    {
+        CharacterController controller = GetComponent<CharacterController>();
+        if (controller != null)
+        {
+            controller.enabled = false;
+        }
+
+        transform.SetPositionAndRotation(position, rotation);
+        Physics.SyncTransforms();
+        if (controller != null)
+        {
+            controller.enabled = true;
+        }
+
+        invulnerableUntil = Time.time + respawnInvulnerability;
+    }
+
     public void SetMaxHealth(float newMaxHealth)
     {
         newMaxHealth = Mathf.Max(1f, newMaxHealth);

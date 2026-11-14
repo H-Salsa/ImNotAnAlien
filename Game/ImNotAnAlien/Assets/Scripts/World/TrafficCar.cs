@@ -22,6 +22,7 @@ public sealed class TrafficCar : MonoBehaviour
 
     private readonly List<Vector3> path = new List<Vector3>();
     private readonly List<float> pathSpeeds = new List<float>();
+    private float rideHeight; // altura do carro acima do chão (Missão 20: ruas com morro)
     private readonly RaycastHit[] hits = new RaycastHit[12];
 
     private TrafficSystem system;
@@ -32,6 +33,14 @@ public sealed class TrafficCar : MonoBehaviour
     private int pathIndex;
     private float speed;
     private float blockedTime;
+
+    // Quem está parado na minha frente (para resolver dois carros que travaram um ao outro).
+    private TrafficCar blocker;
+    private TrafficCar ignoredCar;
+    private float ignoredCarUntil;
+    private float frontOffset = -1f;
+    private float halfWidth = 0.9f;
+    private readonly Collider[] overlaps = new Collider[12];
     private float ignoreObstaclesUntil;
     private float nextHonk;
     private bool abandoned;
@@ -126,6 +135,7 @@ public sealed class TrafficCar : MonoBehaviour
         fromNode = from;
         toNode = to;
         speed = owner.CruiseSpeed * 0.6f;
+        rideHeight = transform.position.y - PlanetTerrain.SurfaceY(transform.position);
         PlanLeg(transform.position);
     }
 
@@ -175,8 +185,17 @@ public sealed class TrafficCar : MonoBehaviour
                 GameFeel.Horn(position);
             }
 
-            // Travou com outro carro (cruzamento) ou parado muito tempo: segue mesmo assim.
-            if (isCar && blockedTime > 3f || !isPlayer && blockedTime > 6f)
+            // Dois carros travados um pelo outro (cruzamento): só um passa (o de número menor).
+            if (isCar && blockedTime > 3f && blocker != null && blocker.blocker == this &&
+                GetInstanceID() < blocker.GetInstanceID())
+            {
+                ignoredCar = blocker;
+                ignoredCarUntil = Time.time + 2.5f;
+            }
+
+            // Parado muito tempo por outra coisa (caixa, carro abandonado): segue empurrando.
+            // Carro do trânsito nunca é ignorado (senão um atravessa o outro).
+            if (!isPlayer && !isCar && blockedTime > 6f)
             {
                 ignoreObstaclesUntil = Time.time + 2f;
             }
@@ -184,6 +203,7 @@ public sealed class TrafficCar : MonoBehaviour
         else
         {
             blockedTime = 0f;
+            blocker = null;
         }
 
         speed = Mathf.MoveTowards(speed, wanted, (wanted < speed ? Braking : Acceleration) * dt);
@@ -208,8 +228,15 @@ public sealed class TrafficCar : MonoBehaviour
         }
 
         Vector3 direction = toTarget.normalized;
-        body.MovePosition(position + direction * step);
-        Quaternion facing = Quaternion.LookRotation(direction, Vector3.up);
+        // Missão 20: as ruas sobem e descem os morros — o carro acompanha a altura do chão e inclina.
+        Vector3 next = position + direction * step;
+        next.y = PlanetTerrain.SurfaceY(next) + rideHeight;
+        body.MovePosition(next);
+        Vector3 ahead = position + direction * 2f;
+        Vector3 slope = direction * 2f;
+        slope.y = PlanetTerrain.SurfaceY(ahead) - PlanetTerrain.SurfaceY(position - direction * 2f);
+        slope.y *= 0.5f;
+        Quaternion facing = Quaternion.LookRotation(slope.sqrMagnitude > 0.0001f ? slope : direction, Vector3.up);
         body.MoveRotation(Quaternion.Slerp(body.rotation, facing, 8f * dt));
     }
 
@@ -324,17 +351,25 @@ public sealed class TrafficCar : MonoBehaviour
     {
         isPlayer = false;
         isCar = false;
+        MeasureBody();
         Vector3 forward = body.rotation * Vector3.forward;
-        Vector3 origin = body.position + Vector3.up * 0.9f + forward * 2.2f;
-        int count = Physics.BoxCastNonAlloc(origin, new Vector3(0.9f, 0.45f, 0.2f), forward, hits, body.rotation, LookAhead,
+        // A frente de verdade do carro (o ônibus é bem mais comprido que o carro pequeno).
+        Vector3 origin = body.position + Vector3.up * 0.9f + forward * (frontOffset + 0.3f);
+        Vector3 half = new Vector3(halfWidth, 0.45f, 0.2f);
+        int count = Physics.BoxCastNonAlloc(origin, half, forward, hits, body.rotation, LookAhead + speed * 0.4f,
+            Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+
+        // O BoxCast não enxerga o que já está encostado na frente: confere também essa faixa.
+        int overlapCount = Physics.OverlapBoxNonAlloc(origin + forward * 1f, new Vector3(halfWidth, 0.45f, 1.2f), overlaps, body.rotation,
             Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
 
         bool ignoring = Time.time < ignoreObstaclesUntil;
         bool found = false;
-        for (int i = 0; i < count; i++)
+        blocker = null;
+        for (int i = 0; i < count + overlapCount; i++)
         {
-            Collider other = hits[i].collider;
-            if (other.transform.IsChildOf(transform))
+            Collider other = i < count ? hits[i].collider : overlaps[i - count];
+            if (other == null || other.transform.IsChildOf(transform))
             {
                 continue;
             }
@@ -345,17 +380,83 @@ public sealed class TrafficCar : MonoBehaviour
                 continue; // coisas fixas (casas, muretas, paredes invisíveis) não estão na faixa
             }
 
-            if (ignoring && !player)
+            TrafficCar car = other.attachedRigidbody != null ? other.attachedRigidbody.GetComponent<TrafficCar>() : null;
+            bool liveCar = car != null && !car.IsAbandoned;
+            if (liveCar && car == ignoredCar && Time.time < ignoredCarUntil)
+            {
+                continue; // destravando um cruzamento
+            }
+
+            if (ignoring && !player && !liveCar)
             {
                 continue;
             }
 
             found = true;
             isPlayer |= player;
-            isCar |= other.attachedRigidbody != null && other.attachedRigidbody.GetComponent<TrafficCar>() != null;
+            if (liveCar)
+            {
+                isCar = true;
+                blocker = car;
+            }
         }
 
         return found;
+    }
+
+    // Tamanho do carro (uma vez): onde fica a frente e a largura, pelos colisores.
+    private void MeasureBody()
+    {
+        if (frontOffset >= 0f)
+        {
+            return;
+        }
+
+        frontOffset = 2.2f;
+        bool any = false;
+        float front = 0f;
+        float width = 0f;
+        foreach (Collider part in GetComponentsInChildren<Collider>())
+        {
+            if (part.isTrigger)
+            {
+                continue;
+            }
+
+            // Caixa do colisor no espaço dele (exata mesmo com o carro virado).
+            Bounds local;
+            if (part is BoxCollider box)
+            {
+                local = new Bounds(box.center, box.size);
+            }
+            else if (part is MeshCollider meshCollider && meshCollider.sharedMesh != null)
+            {
+                local = meshCollider.sharedMesh.bounds;
+            }
+            else
+            {
+                continue;
+            }
+
+            for (int corner = 0; corner < 8; corner++)
+            {
+                Vector3 p = new Vector3(
+                    (corner & 1) == 0 ? local.min.x : local.max.x,
+                    (corner & 2) == 0 ? local.min.y : local.max.y,
+                    (corner & 4) == 0 ? local.min.z : local.max.z);
+                Vector3 inCar = transform.InverseTransformPoint(part.transform.TransformPoint(p));
+                front = Mathf.Max(front, inCar.z);
+                width = Mathf.Max(width, Mathf.Abs(inCar.x));
+            }
+
+            any = true;
+        }
+
+        if (any)
+        {
+            frontOffset = Mathf.Clamp(front, 1.5f, 8f);
+            halfWidth = Mathf.Clamp(width * 0.85f, 0.7f, 1.4f);
+        }
     }
 
     // ---------- Virar carro comum ----------

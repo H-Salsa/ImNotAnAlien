@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -83,6 +84,12 @@ public sealed class AlienBrain : MonoBehaviour
     [Header("Telecinese")]
     [Tooltip("Tempo parado no chão, depois de arremessado, até se levantar.")]
     [SerializeField, Min(0.1f)] private float recoverDelay = 1.2f;
+
+    [Header("Levar uma pancada (objeto arremessado)")]
+    [Tooltip("Força (peso × velocidade) mínima para reagir. Caixa leve devagar não faz nada.")]
+    [SerializeField, Min(0f)] private float staggerMomentum = 40f;
+    [Tooltip("A partir desta força, o alienígena cai (vira corpo solto e levanta depois).")]
+    [SerializeField, Min(1f)] private float knockdownMomentum = 450f;
     [Tooltip("Se cair abaixo desta altura (fora do mapa), o alienígena é removido.")]
     [SerializeField] private float fallOutHeight = -30f;
 
@@ -106,6 +113,11 @@ public sealed class AlienBrain : MonoBehaviour
     private bool seesPlayer;
     private float sightTimer;
     private float lostSightTime;
+    private float staggerTime;
+    private float staggerDuration;
+    private Vector3 staggerVelocity;
+    private Vector3 staggerAxis;
+    private float staggerTilt;
     private float searchTimer;
     private float meleeTimer;
     private bool meleeMode;
@@ -133,6 +145,31 @@ public sealed class AlienBrain : MonoBehaviour
     // Sobe a cada golpe iniciado; o AlienAnimator dispara a animação quando muda.
     public int SwingCount { get; private set; }
     public bool IsFleeing => enabled && state == State.Fleeing;
+
+    // Pancadas (para a animação): sobe a cada pancada que não derruba; "forte" = cabeça, fraca = peito.
+    public int StruckCount { get; private set; }
+    public bool LastStruckStrong { get; private set; }
+
+    // ---------- Atividades dos civis (Missão 19) ----------
+    // Parados no passeio, os civis às vezes conversam em dupla, sentam num banco ou dançam.
+    public enum Activity { Nenhuma = 0, Conversa = 1, Danca = 2, Sentado = 3 }
+
+    public Activity CurrentActivity { get; private set; }
+
+    [Header("Atividades (civis)")]
+    [SerializeField, Range(0f, 1f)] private float talkChance = 0.35f;
+    [SerializeField, Range(0f, 1f)] private float benchChance = 0.25f;
+    [SerializeField, Range(0f, 1f)] private float danceChance = 0.05f;
+
+    private static readonly List<AlienBrain> Civilians = new List<AlienBrain>();
+    private static readonly Dictionary<Transform, AlienBrain> BenchUsers = new Dictionary<Transform, AlienBrain>();
+    private float activityTimer;
+    private AlienBrain talkPartner;
+    private Transform bench;
+    private bool walkingToBench;
+    private Vector3 benchStand;
+    private Vector3 benchSeat;
+    private Vector3 benchFacing;
 
     private void Awake()
     {
@@ -178,11 +215,17 @@ public sealed class AlienBrain : MonoBehaviour
     {
         WorldOrigin.Shifted -= OnOriginShifted; // (evita assinar duas vezes)
         WorldOrigin.Shifted += OnOriginShifted;
+        if (role == Role.Civil && !Civilians.Contains(this))
+        {
+            Civilians.Add(this);
+        }
     }
 
     private void OnDestroy()
     {
         WorldOrigin.Shifted -= OnOriginShifted;
+        Civilians.Remove(this);
+        ReleaseBench();
     }
 
     // O mundo recentralizou (Missão 16): o "bairro" onde ele passeia anda junto.
@@ -190,6 +233,8 @@ public sealed class AlienBrain : MonoBehaviour
     private void OnOriginShifted(Vector3 delta)
     {
         home -= delta;
+        benchStand -= delta;
+        benchSeat -= delta;
     }
 
     private void Start()
@@ -209,8 +254,20 @@ public sealed class AlienBrain : MonoBehaviour
         EnterWander();
     }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
+    {
+        Civilians.Clear();
+        BenchUsers.Clear();
+    }
+
     private void OnDisable()
     {
+        if (CurrentActivity != Activity.Nenhuma || walkingToBench)
+        {
+            StopActivity(true); // derrotado ou desligado sentado/conversando: solta o banco
+        }
+
         // Ao ser derrotado (ou desativado), some o "!" e o corpo volta ao lugar.
         if (alertIcon != null)
         {
@@ -230,6 +287,12 @@ public sealed class AlienBrain : MonoBehaviour
     {
         UpdateScareHop();
 
+        // Qualquer coisa fora do passeio (susto, telecinese, pancada) interrompe a atividade.
+        if ((state != State.Wandering || staggerTime > 0f || !enabled) && (CurrentActivity != Activity.Nenhuma || walkingToBench))
+        {
+            StopActivity(true);
+        }
+
         RigidbodyInterpolation wanted = physicsBody != null && !physicsBody.isKinematic
             ? RigidbodyInterpolation.Interpolate
             : RigidbodyInterpolation.None;
@@ -246,6 +309,12 @@ public sealed class AlienBrain : MonoBehaviour
         if (state == State.Tumbling)
         {
             UpdateTumble();
+            return;
+        }
+
+        if (staggerTime > 0f)
+        {
+            UpdateStagger();
             return;
         }
 
@@ -428,14 +497,31 @@ public sealed class AlienBrain : MonoBehaviour
 
     private void UpdateWander()
     {
+        if (CurrentActivity != Activity.Nenhuma)
+        {
+            UpdateActivity();
+            return;
+        }
+
         bool arrived = !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f;
         if (!arrived)
         {
             return;
         }
 
+        if (walkingToBench)
+        {
+            SitDown();
+            return;
+        }
+
         idleTimer -= Time.deltaTime;
         if (idleTimer > 0f)
+        {
+            return;
+        }
+
+        if (role == Role.Civil && TryStartActivity())
         {
             return;
         }
@@ -885,6 +971,307 @@ public sealed class AlienBrain : MonoBehaviour
         agent.enabled = true;
         agent.Warp(hit.position);
         EnterAlert(); // levanta e reage: civil foge, policial volta a atacar
+    }
+
+    // ---------- Atividades ----------
+
+    private bool TryStartActivity()
+    {
+        float roll = Random.value;
+        if (roll < talkChance)
+        {
+            AlienBrain partner = FindTalkPartner();
+            if (partner != null)
+            {
+                float duration = Random.Range(6f, 12f);
+                StartTalk(partner, duration);
+                partner.StartTalk(this, duration);
+                return true;
+            }
+        }
+        else if (roll < talkChance + benchChance)
+        {
+            if (TryGoToBench())
+            {
+                return true;
+            }
+        }
+        else if (roll < talkChance + benchChance + danceChance)
+        {
+            BeginActivity(Activity.Danca, Random.Range(5f, 9f));
+            return true;
+        }
+
+        return false;
+    }
+
+    private AlienBrain FindTalkPartner()
+    {
+        foreach (AlienBrain other in Civilians)
+        {
+            if (other == this || other == null || !other.isActiveAndEnabled || other.state != State.Wandering ||
+                other.CurrentActivity != Activity.Nenhuma || other.walkingToBench || other.staggerTime > 0f)
+            {
+                continue;
+            }
+
+            Vector3 offset = other.transform.position - transform.position;
+            if (offset.sqrMagnitude < 5f * 5f && Mathf.Abs(offset.y) < 1f)
+            {
+                return other;
+            }
+        }
+
+        return null;
+    }
+
+    // Dupla que nasceu junta (PopulationSpawner): já começam conversando.
+    public void StartConversationWith(AlienBrain other, float duration)
+    {
+        if (other == null || other == this || state != State.Wandering || other.state != State.Wandering ||
+            CurrentActivity != Activity.Nenhuma || other.CurrentActivity != Activity.Nenhuma)
+        {
+            return;
+        }
+
+        StartTalk(other, duration);
+        other.StartTalk(this, duration);
+    }
+
+    private void StartTalk(AlienBrain partner, float duration)
+    {
+        talkPartner = partner;
+        BeginActivity(Activity.Conversa, duration);
+    }
+
+    private void BeginActivity(Activity activity, float duration)
+    {
+        CurrentActivity = activity;
+        activityTimer = duration;
+        if (agent.enabled && agent.isOnNavMesh)
+        {
+            agent.ResetPath();
+        }
+
+        agent.updateRotation = false;
+    }
+
+    // Procura um banco livre por perto e vai até a frente dele.
+    private bool TryGoToBench()
+    {
+        Collider[] found = Physics.OverlapSphere(transform.position, 15f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        foreach (Collider candidate in found)
+        {
+            if (candidate.name != "Banco" || BenchUsers.ContainsKey(candidate.transform))
+            {
+                continue;
+            }
+
+            Transform seat = candidate.transform;
+            // Senta do lado do banco virado para quem chega.
+            Vector3 side = seat.forward;
+            side.y = 0f;
+            side.Normalize();
+            if (Vector3.Dot(transform.position - seat.position, side) < 0f)
+            {
+                side = -side;
+            }
+
+            Vector3 stand = seat.position + side * 0.75f;
+            if (!NavMesh.SamplePosition(stand, out NavMeshHit hit, 1.2f, NavMesh.AllAreas))
+            {
+                continue;
+            }
+
+            bench = seat;
+            BenchUsers[seat] = this;
+            benchStand = hit.position;
+            benchSeat = new Vector3(seat.position.x, hit.position.y, seat.position.z) + side * 0.18f;
+            benchFacing = side;
+            walkingToBench = true;
+            agent.SetDestination(hit.position);
+            return true;
+        }
+
+        return false;
+    }
+
+    // Chegou na frente do banco: encosta e senta (o NavMeshAgent para de mover o corpo).
+    private void SitDown()
+    {
+        walkingToBench = false;
+        if (bench == null)
+        {
+            ReleaseBench();
+            return;
+        }
+
+        BeginActivity(Activity.Sentado, Random.Range(10f, 22f));
+        agent.updatePosition = false;
+        transform.SetPositionAndRotation(benchSeat, Quaternion.LookRotation(benchFacing, Vector3.up));
+    }
+
+    private void UpdateActivity()
+    {
+        activityTimer -= Time.deltaTime;
+        if (CurrentActivity == Activity.Conversa)
+        {
+            if (talkPartner == null || talkPartner.CurrentActivity != Activity.Conversa || talkPartner.state != State.Wandering)
+            {
+                activityTimer = 0f; // o outro foi embora (ou fugiu)
+            }
+            else
+            {
+                Vector3 toPartner = talkPartner.transform.position - transform.position;
+                toPartner.y = 0f;
+                if (toPartner.sqrMagnitude > 0.01f)
+                {
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(toPartner), 5f * Time.deltaTime);
+                }
+            }
+        }
+        else if (CurrentActivity == Activity.Sentado && bench == null)
+        {
+            activityTimer = 0f; // o banco sumiu (bloco descarregado, destruído)
+        }
+
+        if (activityTimer <= 0f)
+        {
+            StopActivity(false);
+        }
+    }
+
+    // Termina a atividade. "now" = interrompida (susto etc.): levanta na hora.
+    private void StopActivity(bool now)
+    {
+        bool wasSitting = CurrentActivity == Activity.Sentado;
+        CurrentActivity = Activity.Nenhuma;
+        talkPartner = null;
+        walkingToBench = false;
+        ReleaseBench();
+        agent.updateRotation = true;
+
+        if (wasSitting)
+        {
+            transform.position = benchStand;
+            agent.updatePosition = true;
+            if (agent.enabled && agent.isOnNavMesh)
+            {
+                agent.Warp(benchStand);
+            }
+        }
+
+        // Levantando do banco: espera a animação de levantar antes de andar.
+        idleTimer = now ? 0f : (wasSitting ? 1.4f : Random.Range(idleTimeRange.x, idleTimeRange.y));
+    }
+
+    private void ReleaseBench()
+    {
+        if (bench != null && BenchUsers.TryGetValue(bench, out AlienBrain user) && user == this)
+        {
+            BenchUsers.Remove(bench);
+        }
+
+        bench = null;
+    }
+
+    // ---------- Pancadas ----------
+
+    // Atingido por algo arremessado. "momentum" = peso × velocidade de quem bateu.
+    // Fraco: cambaleia e recua um pouco. Médio: recua mais e se dobra. Forte: cai e levanta depois.
+    public void OnStruck(Vector3 direction, float momentum)
+    {
+        if (!enabled || isHeld || state == State.Tumbling || state == State.Devoured || momentum < staggerMomentum)
+        {
+            return;
+        }
+
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.0001f)
+        {
+            direction = -transform.forward;
+        }
+
+        direction.Normalize();
+        if (weapon != null)
+        {
+            weapon.CancelCharge();
+        }
+
+        if (momentum >= knockdownMomentum)
+        {
+            KnockDown(direction * Mathf.Clamp(momentum / 80f, 5f, 14f) + Vector3.up * 3.5f);
+            return;
+        }
+
+        float strength = Mathf.InverseLerp(staggerMomentum, knockdownMomentum, momentum);
+        StruckCount++;
+        LastStruckStrong = strength > 0.4f;
+        staggerDuration = Mathf.Lerp(0.35f, 0.9f, strength);
+        staggerTime = staggerDuration;
+        staggerVelocity = direction * Mathf.Lerp(2.5f, 7f, strength);
+        staggerAxis = Vector3.Cross(Vector3.up, direction);
+        staggerTilt = Mathf.Lerp(18f, 45f, strength);
+        hopTime = -1f;
+        if (agent.enabled && agent.isOnNavMesh)
+        {
+            agent.ResetPath();
+        }
+
+        if (strength > 0.4f)
+        {
+            GameFeel.AlienScream(transform.position + Vector3.up * 1.8f);
+        }
+    }
+
+    // Cai como se tivesse sido arremessado: vira corpo solto e levanta sozinho (UpdateTumble).
+    private void KnockDown(Vector3 velocity)
+    {
+        state = State.Tumbling;
+        isHeld = false;
+        settleTimer = 0f;
+        staggerTime = 0f;
+        hopTime = -1f;
+        agent.enabled = false;
+        physicsBody.isKinematic = false;
+        physicsBody.linearVelocity = velocity;
+        physicsBody.angularVelocity = Random.insideUnitSphere * 5f;
+        if (body != null)
+        {
+            body.localPosition = bodyRestPosition;
+            body.localRotation = Quaternion.identity;
+        }
+
+        GameFeel.AlienScream(transform.position + Vector3.up * 1.8f);
+    }
+
+    // Recuando com o tranco: anda para trás e o corpo se dobra para o lado da pancada.
+    private void UpdateStagger()
+    {
+        staggerTime -= Time.deltaTime;
+        float t = 1f - Mathf.Clamp01(staggerTime / staggerDuration);
+        if (agent.enabled && agent.isOnNavMesh)
+        {
+            agent.Move(staggerVelocity * (1f - t) * Time.deltaTime);
+        }
+
+        if (body != null)
+        {
+            Vector3 localAxis = transform.InverseTransformDirection(staggerAxis);
+            body.localRotation = Quaternion.AngleAxis(Mathf.Sin(t * Mathf.PI) * staggerTilt, localAxis);
+        }
+
+        if (staggerTime > 0f)
+        {
+            return;
+        }
+
+        if (body != null)
+        {
+            body.localRotation = Quaternion.identity;
+        }
+
+        EnterAlert(); // passou o susto: civil foge, policial reage conforme o procurado
     }
 
     // ---------- Visual ----------

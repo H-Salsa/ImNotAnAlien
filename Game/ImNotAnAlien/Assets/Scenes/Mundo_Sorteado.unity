@@ -151,25 +151,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldStreamer
   blockSize: 100
-  gridOrigin: {x: -350, y: -550}
+  gridOrigin: {x: -5950, y: -6150}
   blocks:
-  - coord: {x: 3, y: 5}
+  - coord: {x: 59, y: 61}
     prefab: {fileID: 3420775012991273835, guid: 23e5b79f05ca51349a46bd6798ca5587, type: 3}
-  - coord: {x: 4, y: 5}
+  - coord: {x: 60, y: 61}
     prefab: {fileID: 8013262451545788574, guid: 6e643d381afc86d48a879635db6bd3ab, type: 3}
-  - coord: {x: 5, y: 5}
+  - coord: {x: 61, y: 61}
     prefab: {fileID: 8768954506177797855, guid: 0366341cbd5413341bc9718aa2cd0e4a, type: 3}
-  - coord: {x: 3, y: 4}
+  - coord: {x: 59, y: 60}
     prefab: {fileID: 3777364987789645702, guid: d35d772469acafd4aaa377ebf5998bd4, type: 3}
-  - coord: {x: 4, y: 4}
+  - coord: {x: 60, y: 60}
     prefab: {fileID: 2275387156174997531, guid: e604efa8d8e3fc841a783007d5096246, type: 3}
-  - coord: {x: 5, y: 4}
+  - coord: {x: 61, y: 60}
     prefab: {fileID: 6389132905849145400, guid: 614d36dbeb3718d4eb2fc59688b1ab59, type: 3}
-  - coord: {x: 3, y: 3}
+  - coord: {x: 59, y: 59}
     prefab: {fileID: 3223237071060518091, guid: 3d6f09567874dbb40b303474001e60b3, type: 3}
-  - coord: {x: 4, y: 3}
+  - coord: {x: 60, y: 59}
     prefab: {fileID: 277034316946401960, guid: e86243a5815bd5849a9bf27a38bad7d4, type: 3}
-  - coord: {x: 5, y: 3}
+  - coord: {x: 61, y: 59}
     prefab: {fileID: 6486474228772792229, guid: 3bbd5a7bac4c1104284503fc3d7b9b65, type: 3}
   loadRadius: 170
   unloadRadius: 200
@@ -177,10 +177,11 @@ MonoBehaviour:
   testLoadRadius: 25
   testUnloadRadius: 40
   procedural: 1
-  gridSize: {x: 9, y: 9}
+  gridSize: {x: 128, y: 128}
   kit: {fileID: 11400000, guid: 3c0959dd0c97ccd4091e0d0eaa51258a, type: 2}
   fallbackSeed: 12345
-  mapWalls: 1
+  mapWalls: 0
+  planet: 1
   checkInterval: 0.2
   maxLoadsPerCheck: 1
   killHeight: -40
@@ -1211,52 +1212,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SectorTracker
   sectorName: Vilarejo do Bilu
   clearBonusDna: 100
-  sectors:
-  - name: Esquina
-    area:
-      serializedVersion: 2
-      x: -50
-      y: -100
-      width: 150
-      height: 150
-    quota: 50
-    clearBonusDna: 40
-  - name: Vila das Casas
-    area:
-      serializedVersion: 2
-      x: 100
-      y: -100
-      width: 150
-      height: 150
-    quota: 75
-    clearBonusDna: 40
-  - name: Parque e Lago
-    area:
-      serializedVersion: 2
-      x: -50
-      y: -250
-      width: 150
-      height: 150
-    quota: 55
-    clearBonusDna: 40
-  - name: Margem do Rio
-    area:
-      serializedVersion: 2
-      x: 100
-      y: -250
-      width: 150
-      height: 150
-    quota: 70
-    clearBonusDna: 40
-  - name: Arredores
-    area:
-      serializedVersion: 2
-      x: -350
-      y: -550
-      width: 900
-      height: 900
-    quota: 150
-    clearBonusDna: 40
+  sectors: []
+  planetMode: 1
+  planetSectorQuota: 50
+  planetSectorBonus: 40
+  planetRegionBonus: 400
 --- !u!114 &1546027944
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1408,23 +1368,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 936309485e3194446918ee039691d11c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WantedSystem
-  starThresholds:
+  levelHeat:
   - 10
-  - 40
-  - 90
+  - 70
   - 160
-  - 250
-  maxHeat: 300
+  - 280
+  - 450
+  heatCap: 500
+  minSecondsBetweenStars: 25
+  suspicionRadius: 6
+  suspicionTime: 4
+  level5DamageMultiplier: 1.6
   civilKillHeat: 10
   policeKillHeat: 15
   devourHeat: 15
   destructionHeat: 20
+  resistArrestHeat: 60
   civilWitnessRadius: 25
   policeWitnessRadius: 40
   coolDownDelay: 10
   heatDecayPerSecond: 6
   policeSightRadius: 30
-  extraPolicePerStar: 00000000010000000300000005000000070000000a000000
+  policePerLevel: 000000000100000002000000030000000600000009000000
   maxCountingLevel: 2
 --- !u!114 &1546027950
 MonoBehaviour:
@@ -1515,6 +1480,12 @@ MonoBehaviour:
   dispatchRange: 300
   dispatchSpawnMin: 70
   dispatchSpawnMax: 180
+  noticeRadius: 28
+  respondingCarsPerStar: 000000000000000000000000010000000200000003000000
+  dispatchCooldown: 6
+  policePaint: {r: 0.11764706, g: 0.16470589, b: 0.2901961, a: 1}
+  policeDetail: {r: 0.9490196, g: 0.9490196, b: 0.9490196, a: 1}
+  policeBumper: {r: 0.22745098, g: 0.23921569, b: 0.26666668, a: 1}
   passengerSeatHips: {x: 0.34, y: 0.73, z: 0.02}
   passengerSeatPedals: {x: 0.34, y: 0.53, z: 0.66}
 --- !u!114 &1546027951

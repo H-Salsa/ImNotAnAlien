@@ -13,6 +13,22 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class GameHud : MonoBehaviour
 {
+    public static GameHud Instance { get; private set; }
+
+    private Canvas hudCanvas;
+
+    // Esconde o HUD (ex.: com o mapa planetário aberto).
+    public void SetVisible(bool visible)
+    {
+        hiddenByMenu = !visible;
+        if (hudCanvas != null)
+        {
+            hudCanvas.enabled = visible;
+        }
+    }
+
+    private bool hiddenByMenu;
+
     [Header("Layout")]
     [SerializeField] private bool reserveMinimapSpace;
     [SerializeField, Min(0f)] private float minimapSize = 220f;
@@ -68,6 +84,11 @@ public sealed class GameHud : MonoBehaviour
     private ShockwaveAbility shockwave;
     private GUIStyle markerStyle;
 
+    private void Awake()
+    {
+        Instance = this;
+    }
+
     private void Start()
     {
         font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -118,6 +139,11 @@ public sealed class GameHud : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+
         if (tracker != null)
         {
             tracker.Changed -= OnSectorChanged;
@@ -309,12 +335,13 @@ public sealed class GameHud : MonoBehaviour
         }
 
         SectorTracker.SectorInfo sector = tracker.Sectors[index];
-        sectorEnterText.text = sector.cleared ? $"{sector.name}\n<size=20>setor limpo</size>" : sector.name;
+        string title = tracker.PlanetMode ? $"{tracker.RegionNameOfSector(index)}\n<size=22>Setor {sector.name}</size>" : sector.name;
+        sectorEnterText.text = sector.cleared ? $"{title}\n<size=20>setor limpo</size>" : title;
         sectorEnterText.enabled = true;
         sectorEnterTimer = 2.5f;
     }
 
-    private void ShowBanner(string text, float duration)
+    public void ShowBanner(string text, float duration)
     {
         bannerText.text = text;
         bannerText.enabled = true;
@@ -374,6 +401,11 @@ public sealed class GameHud : MonoBehaviour
 
     private void OnGUI()
     {
+        if (hiddenByMenu)
+        {
+            return;
+        }
+
         if (tracker == null || tracker.IsCleared || Cursor.lockState != CursorLockMode.Locked)
         {
             return;
@@ -477,6 +509,7 @@ public sealed class GameHud : MonoBehaviour
         GameObject canvasObject = new GameObject("HUD_Canvas");
         canvasObject.transform.SetParent(transform, false);
         Canvas canvas = canvasObject.AddComponent<Canvas>();
+        hudCanvas = canvas;
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 10;
         CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
@@ -596,7 +629,7 @@ public sealed class GameHud : MonoBehaviour
         bannerText = NewText("Aviso_Setor", canvasObject.transform, 64, bannerColor, TextAnchor.MiddleCenter);
         RectTransform banner = bannerText.rectTransform;
         banner.anchorMin = banner.anchorMax = banner.pivot = new Vector2(0.5f, 0.72f);
-        banner.sizeDelta = new Vector2(900f, 180f);
+        banner.sizeDelta = new Vector2(1200f, 200f);
         bannerText.fontStyle = FontStyle.Bold;
         bannerText.enabled = false;
 
@@ -604,7 +637,7 @@ public sealed class GameHud : MonoBehaviour
         sectorEnterText = NewText("Aviso_Entrada_Setor", canvasObject.transform, 40, Color.white, TextAnchor.MiddleCenter);
         RectTransform enter = sectorEnterText.rectTransform;
         enter.anchorMin = enter.anchorMax = enter.pivot = new Vector2(0.5f, 0.86f);
-        enter.sizeDelta = new Vector2(900f, 110f);
+        enter.sizeDelta = new Vector2(1000f, 150f);
         sectorEnterText.fontStyle = FontStyle.Bold;
         sectorEnterText.enabled = false;
     }

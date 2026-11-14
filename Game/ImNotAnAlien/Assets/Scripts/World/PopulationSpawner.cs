@@ -24,7 +24,9 @@ public sealed class PopulationSpawner : MonoBehaviour
     [SerializeField] private Material[] civilSkins;
 
     [Header("Quantidade por perto")]
-    [SerializeField, Min(0)] private int targetCivilians = 18;
+    // Missão 19: 18 -> 30 (cidades estavam vazias). Nome novo para o valor novo valer na cena.
+    [Tooltip("Civis por perto do jogador (raio de sumir).")]
+    [SerializeField, Min(0)] private int nearbyCivilians = 30;
     [Tooltip("Policiais de patrulha (sem estar procurado). Contam para a cota.")]
     [SerializeField, Min(0)] private int patrolPolice = 2;
 
@@ -40,6 +42,10 @@ public sealed class PopulationSpawner : MonoBehaviour
     [Header("Ritmo")]
     [SerializeField, Min(0.1f)] private float checkInterval = 0.5f;
     [SerializeField, Min(1)] private int maxSpawnsPerCheck = 2;
+
+    [Header("Grupinhos (Missão 19)")]
+    [Tooltip("Chance de um civil surgir com um colega do lado, já conversando.")]
+    [SerializeField, Range(0f, 1f)] private float pairChance = 0.4f;
 
     private readonly List<AlienHealth> active = new List<AlienHealth>();
     private Transform player;
@@ -94,7 +100,7 @@ public sealed class PopulationSpawner : MonoBehaviour
         }
 
         // Enche o bairro no começo (pode surgir à vista, a partir de uma distância menor).
-        for (int i = 0; i < (targetCivilians + patrolPolice) * 3; i++)
+        for (int i = 0; i < (nearbyCivilians + patrolPolice) * 3; i++)
         {
             if (!TrySpawnOne(true))
             {
@@ -145,7 +151,7 @@ public sealed class PopulationSpawner : MonoBehaviour
         {
             spawnPolice = false;
             counts = true;
-            if (civilians >= targetCivilians)
+            if (civilians >= nearbyCivilians)
             {
                 return false;
             }
@@ -160,7 +166,7 @@ public sealed class PopulationSpawner : MonoBehaviour
             spawnPolice = true;
             counts = ExtraPoliceCount;
         }
-        else if (civilians < targetCivilians)
+        else if (civilians < nearbyCivilians)
         {
             spawnPolice = false;
             counts = true;
@@ -182,7 +188,30 @@ public sealed class PopulationSpawner : MonoBehaviour
         }
 
         Spawn(spawnPolice, counts, spot, sector);
+
+        // Às vezes o civil vem em dupla, já batendo papo.
+        if (!spawnPolice && civilians + 1 < nearbyCivilians && Random.value < pairChance &&
+            (!counts || tracker.AliveCountingIn(sector) < tracker.Sectors[sector].Remaining))
+        {
+            AlienHealth first = active[active.Count - 1];
+            Vector2 side = Random.insideUnitCircle.normalized * 1.6f;
+            if (NavMesh.SamplePosition(spot + new Vector3(side.x, 0f, side.y), out NavMeshHit near, 1f, NavMesh.AllAreas))
+            {
+                Spawn(false, counts, near.position, sector);
+                StartCoroutine(PairChat(first, active[active.Count - 1]));
+            }
+        }
+
         return true;
+    }
+
+    private IEnumerator PairChat(AlienHealth a, AlienHealth b)
+    {
+        yield return null; // espera os dois "acordarem" (Start)
+        if (a != null && b != null && a.TryGetComponent(out AlienBrain brainA) && b.TryGetComponent(out AlienBrain brainB))
+        {
+            brainA.StartConversationWith(brainB, Random.Range(10f, 25f));
+        }
     }
 
     private void CountNearby(out int civilians, out int police)
@@ -223,7 +252,8 @@ public sealed class PopulationSpawner : MonoBehaviour
             }
 
             Vector3 point = hit.position;
-            if (point.y < -0.3f || point.y > 1f)
+            float ground = PlanetTerrain.SurfaceY(point); // Missão 20: relevo
+            if (point.y < ground - 0.3f || point.y > ground + 1f)
             {
                 continue; // nada de surgir no fundo do rio ou em telhados
             }
@@ -231,6 +261,11 @@ public sealed class PopulationSpawner : MonoBehaviour
             if (streamer != null && !streamer.IsLoaded(point, 8f))
             {
                 continue; // perto da borda do que está carregado
+            }
+
+            if (BaseSite.IsInsideAny(point, 12f))
+            {
+                continue; // bases são zona segura (Missão 19): ninguém surge lá
             }
 
             sector = tracker.SectorAt(point);

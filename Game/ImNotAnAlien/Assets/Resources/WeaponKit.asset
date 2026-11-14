@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1e55c9aebe349840b65e9657d758d48, type: 3}
+  m_Name: WeaponKit
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponKit
+  pistol: {fileID: 919132149155446097, guid: 5024bd5397c0d2f498a8a56a1d33cfdd, type: 3}
+  revolver: {fileID: 919132149155446097, guid: e9d07edf277e9444e953843bdafd65a5, type: 3}
+  rifle: {fileID: 919132149155446097, guid: e6fdff99316f56f409d1b9d154f67786, type: 3}
+  sniper: {fileID: 919132149155446097, guid: dbaa8ddcf52810847b9c3c9c41afb74d, type: 3}
+  gunYaw: -90
+  pistolScale: 0.6
+  rifleScale: 0.55

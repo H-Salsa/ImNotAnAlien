@@ -114,6 +114,14 @@ public sealed class TrafficSystem : MonoBehaviour
     private readonly List<(int a, int b)> edges = new List<(int a, int b)>();
     private readonly List<TrafficCar> cars = new List<TrafficCar>();
 
+    // Planeta (Missão 19): a rede de ruas é montada aos poucos, só em volta do jogador
+    // (blocos "sem volta", para os carros darem a volta no planeta sem emenda).
+    private readonly Dictionary<Vector2Int, int> nodeAt = new Dictionary<Vector2Int, int>();
+    private readonly List<(int a, int b)> nearEdges = new List<(int a, int b)>();
+    private bool planetGraph;
+    private Vector2Int graphCenter = new Vector2Int(int.MinValue, int.MinValue);
+    private const int GraphReach = 5; // blocos em volta do jogador
+
     private Transform player;
     private Camera mainCamera;
     private float timer;
@@ -162,7 +170,13 @@ public sealed class TrafficSystem : MonoBehaviour
         }
 
         // Mundo sorteado (Missão 18): a rede vem do sorteio; senão, das ruas da lista.
-        if (streamer != null && streamer.Layout != null)
+        // Planeta (Missão 19): montada aos poucos em volta do jogador.
+        if (streamer != null && streamer.IsPlanet && streamer.Layout != null && player != null)
+        {
+            planetGraph = true;
+            EnsureGraphAround();
+        }
+        else if (streamer != null && streamer.Layout != null)
         {
             BuildGraphFromLayout(streamer.Layout);
         }
@@ -171,7 +185,7 @@ public sealed class TrafficSystem : MonoBehaviour
             BuildGraph();
         }
 
-        if (player == null || edges.Count == 0)
+        if (player == null || edges.Count == 0 && !planetGraph)
         {
             Debug.LogWarning("TrafficSystem: sem jogador ou sem ruas configuradas. Rode 'Preparar Transito'.", this);
             enabled = false;
@@ -194,6 +208,11 @@ public sealed class TrafficSystem : MonoBehaviour
         }
 
         timer = 0.5f;
+        if (planetGraph)
+        {
+            EnsureGraphAround();
+        }
+
         Despawn();
         UpdatePoliceResponse();
         if (policeCarModel != null && CountPoliceCars() < patrolPoliceCars)
@@ -271,6 +290,88 @@ public sealed class TrafficSystem : MonoBehaviour
         Debug.Log($"Trânsito: {nodes.Count} cruzamentos e {edges.Count} trechos de rua no mapa sorteado.");
     }
 
+    // Planeta: garante os cruzamentos e ruas dos blocos em volta do jogador.
+    private void EnsureGraphAround()
+    {
+        WorldLayout layout = streamer.Layout;
+        Vector2Int center = Planet.BlockAt(WorldOrigin.ToLogical(player.position));
+        if (center == graphCenter)
+        {
+            return;
+        }
+
+        graphCenter = center;
+        for (int dx = -GraphReach; dx <= GraphReach; dx++)
+        {
+            for (int dz = -GraphReach; dz <= GraphReach; dz++)
+            {
+                Vector2Int coord = new Vector2Int(center.x + dx, center.y + dz);
+                if (!layout.Contains(coord))
+                {
+                    continue;
+                }
+
+                BlockSpec spec = layout.Get(coord);
+                if (spec.Count(Socket.Rua) == 0)
+                {
+                    continue;
+                }
+
+                int node = PlanetNode(layout, coord);
+                Vector2Int[] steps = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
+                for (int side = 0; side < 4; side++)
+                {
+                    Vector2Int next = coord + steps[side];
+                    if (spec.Get(side) == Socket.Rua && layout.Contains(next) && layout.Get(next).Get((side + 2) % 4) == Socket.Rua)
+                    {
+                        Connect(node, PlanetNode(layout, next));
+                    }
+                }
+            }
+        }
+
+        // Trechos perto do jogador (para surgir carros): os dois cruzamentos a até ~4 blocos.
+        nearEdges.Clear();
+        float reach = (GraphReach - 1) * Planet.BlockSize;
+        Vector3 here = WorldOrigin.ToLogical(player.position);
+        foreach ((int a, int b) edge in edges)
+        {
+            if (FlatDistance(nodes[edge.a], here) < reach && FlatDistance(nodes[edge.b], here) < reach)
+            {
+                nearEdges.Add(edge);
+            }
+        }
+    }
+
+    private static float FlatDistance(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
+
+    private int PlanetNode(WorldLayout layout, Vector2Int coord)
+    {
+        if (nodeAt.TryGetValue(coord, out int index))
+        {
+            return index;
+        }
+
+        nodes.Add(layout.CenterLogical(coord)); // posição LÓGICA "sem volta"
+        neighbors.Add(new List<int>());
+        nodeAt[coord] = nodes.Count - 1;
+        return nodes.Count - 1;
+    }
+
+    // Trecho de rua sorteado para surgir carro (planeta: só os perto do jogador).
+    private bool TryRandomEdge(out (int a, int b) edge)
+    {
+        List<(int a, int b)> source = planetGraph ? nearEdges : edges;
+        if (source.Count == 0)
+        {
+            edge = default;
+            return false;
+        }
+
+        edge = source[UnityEngine.Random.Range(0, source.Count)];
+        return true;
+    }
+
     private int FindOrAddNode(Vector3 point)
     {
         for (int i = 0; i < nodes.Count; i++)
@@ -288,6 +389,11 @@ public sealed class TrafficSystem : MonoBehaviour
 
     private void Connect(int a, int b)
     {
+        if (a == b || neighbors[a].Contains(b))
+        {
+            return; // já ligados
+        }
+
         if (!neighbors[a].Contains(b)) neighbors[a].Add(b);
         if (!neighbors[b].Contains(a)) neighbors[b].Add(a);
         edges.Add((a, b));
@@ -333,7 +439,11 @@ public sealed class TrafficSystem : MonoBehaviour
     {
         for (int attempt = 0; attempt < 10; attempt++)
         {
-            (int a, int b) edge = edges[UnityEngine.Random.Range(0, edges.Count)];
+            if (!TryRandomEdge(out (int a, int b) edge))
+            {
+                return;
+            }
+
             bool reverse = UnityEngine.Random.value < 0.5f;
             int from = reverse ? edge.b : edge.a;
             int to = reverse ? edge.a : edge.b;
@@ -363,9 +473,10 @@ public sealed class TrafficSystem : MonoBehaviour
             }
 
             if (Physics.CheckBox(position + Vector3.up, new Vector3(1.2f, 0.8f, 3f), Quaternion.LookRotation(direction),
-                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore) && BlockedByMovable(position, direction))
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore) && BlockedByMovable(position, direction) ||
+                NearOtherCar(position, 14f))
             {
-                continue; // já tem algo ali
+                continue; // já tem algo ali (ou outro carro perto: ônibus é comprido)
             }
 
             TrafficCar car = BuildCar(position, direction, police);
@@ -373,6 +484,21 @@ public sealed class TrafficSystem : MonoBehaviour
             cars.Add(car);
             return;
         }
+    }
+
+    // Algum carro do trânsito (ou abandonado) a menos de "radius" metros?
+    private bool NearOtherCar(Vector3 position, float radius)
+    {
+        float limit = radius * radius;
+        foreach (TrafficCar other in cars)
+        {
+            if (other != null && (other.transform.position - position).sqrMagnitude < limit)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool BlockedByMovable(Vector3 position, Vector3 direction)
@@ -465,6 +591,7 @@ public sealed class TrafficSystem : MonoBehaviour
     private TrafficCar BuildCar(Vector3 position, Vector3 direction, bool police = false)
     {
         GameObject car = new GameObject(police ? "Viatura" : "Carro_Transito");
+        position.y += PlanetTerrain.SurfaceY(position); // Missão 20: rua no morro
         car.transform.SetPositionAndRotation(position, Quaternion.LookRotation(direction));
         car.transform.SetParent(transform, true);
 
@@ -748,7 +875,13 @@ public sealed class TrafficSystem : MonoBehaviour
     {
         for (int attempt = 0; attempt < 30; attempt++)
         {
-            (int x, int y) = edges[UnityEngine.Random.Range(0, edges.Count)];
+            if (!TryRandomEdge(out (int x, int y) pick))
+            {
+                return null;
+            }
+
+            int x = pick.x;
+            int y = pick.y;
             if (distance[x] < 0 || distance[y] < 0)
             {
                 continue; // sem caminho até o crime
@@ -768,7 +901,7 @@ public sealed class TrafficSystem : MonoBehaviour
             Vector3 position = start + direction * (intersectionClearance + 2f) + Vector3.Cross(Vector3.up, direction) * laneOffset;
             float d = Vector3.Distance(position, crime);
             if (d < dispatchSpawnMin || d > dispatchSpawnMax || IsVisible(position + Vector3.up) ||
-                streamer != null && !streamer.IsLoaded(position, 15f))
+                streamer != null && !streamer.IsLoaded(position, 15f) || NearOtherCar(position, 14f))
             {
                 continue;
             }
