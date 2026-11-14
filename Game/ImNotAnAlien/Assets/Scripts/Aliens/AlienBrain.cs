@@ -102,6 +102,7 @@ public sealed class AlienBrain : MonoBehaviour
     private float settleTimer;
     private Transform player;
     private Vector3 home;
+    private bool aquatic; // AquaticAlien: passeia dentro d'água e não conversa/dança/senta
     private State state;
     private float idleTimer;
     private float repathTimer;
@@ -126,6 +127,7 @@ public sealed class AlienBrain : MonoBehaviour
     private static int WantedStars => WantedSystem.Instance != null ? WantedSystem.Instance.Stars : 0;
 
     public Role AlienRole => role;
+    public bool IsAquatic => aquatic;
     public Transform Body => body;
 
     // Verdadeiro enquanto a telecinese está segurando este alienígena.
@@ -176,6 +178,7 @@ public sealed class AlienBrain : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         weapon = GetComponent<AlienPoliceWeapon>();
         home = transform.position;
+        aquatic = GetComponent<AquaticAlien>() != null;
 
         // Corpo físico usado pela telecinese. Fica "cinemático" (sem física) enquanto anda.
         if (!TryGetComponent(out physicsBody))
@@ -521,8 +524,14 @@ public sealed class AlienBrain : MonoBehaviour
             return;
         }
 
-        if (role == Role.Civil && TryStartActivity())
+        if (role == Role.Civil && !aquatic && TryStartActivity())
         {
+            return;
+        }
+
+        if (aquatic && TryWaterWander())
+        {
+            idleTimer = Random.Range(idleTimeRange.x, idleTimeRange.y) * 0.4f; // na água ela para pouco
             return;
         }
 
@@ -534,6 +543,29 @@ public sealed class AlienBrain : MonoBehaviour
         }
 
         idleTimer = Random.Range(idleTimeRange.x, idleTimeRange.y);
+    }
+
+    // Aquática: escolhe um ponto do fundo com água funda (mais longe que o passeio comum).
+    private bool TryWaterWander()
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            Vector2 offset = Random.insideUnitCircle * wanderRadius * 2f;
+            Vector3 randomPoint = home + new Vector3(offset.x, 0f, offset.y);
+            if (AquaticAlien.WaterDepth(randomPoint) < 0.9f)
+            {
+                continue;
+            }
+
+            if (NavMesh.SamplePosition(randomPoint, out NavMeshHit hit, 3f, NavMesh.AllAreas) &&
+                AquaticAlien.WaterDepth(hit.position) >= 0.9f)
+            {
+                agent.SetDestination(hit.position);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // ---------- Fuga (civil) ----------
@@ -1009,7 +1041,7 @@ public sealed class AlienBrain : MonoBehaviour
     {
         foreach (AlienBrain other in Civilians)
         {
-            if (other == this || other == null || !other.isActiveAndEnabled || other.state != State.Wandering ||
+            if (other == this || other == null || other.aquatic || !other.isActiveAndEnabled || other.state != State.Wandering ||
                 other.CurrentActivity != Activity.Nenhuma || other.walkingToBench || other.staggerTime > 0f)
             {
                 continue;
@@ -1028,7 +1060,7 @@ public sealed class AlienBrain : MonoBehaviour
     // Dupla que nasceu junta (PopulationSpawner): já começam conversando.
     public void StartConversationWith(AlienBrain other, float duration)
     {
-        if (other == null || other == this || state != State.Wandering || other.state != State.Wandering ||
+        if (other == null || other == this || aquatic || other.aquatic || state != State.Wandering || other.state != State.Wandering ||
             CurrentActivity != Activity.Nenhuma || other.CurrentActivity != Activity.Nenhuma)
         {
             return;

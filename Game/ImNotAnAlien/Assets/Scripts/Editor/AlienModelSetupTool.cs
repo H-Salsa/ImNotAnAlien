@@ -37,7 +37,7 @@ public static class AlienModelSetupTool
     };
 
     // Nome do material no Blender -> (material no Unity, cor, suavidade)
-    private static readonly (string blender, string unity, string hex, float smooth)[] MaterialMap =
+    internal static readonly (string blender, string unity, string hex, float smooth)[] MaterialMap =
     {
         ("Alien_Pele", "M_Alien3D_Pele", "3FA59B", 0.35f),
         ("Alien_Pele_Listra", "M_Alien3D_Pele_Listra", "2C7F7A", 0.35f),
@@ -135,7 +135,7 @@ public static class AlienModelSetupTool
         importer.SaveAndReimport();
     }
 
-    private static Material MakeMaterial(string name, string hex, float smoothness)
+    internal static Material MakeMaterial(string name, string hex, float smoothness)
     {
         if (!AssetDatabase.IsValidFolder(MaterialFolder))
         {

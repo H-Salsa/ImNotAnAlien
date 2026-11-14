@@ -87,6 +87,24 @@ public sealed class AlienAnimator : MonoBehaviour
     private SwimWake wake;
     private static bool warnedNoSwim;
 
+    // Alienígena aquática (AquaticAlien): nada SUBMERSA, perto do fundo, e sobe na direção do jogador
+    // quando ele entra na água por perto. As animações dela já são deitadas (golfinho): sem a
+    // inclinação de superfície; o corpo aponta para cima/baixo quando ela sobe/desce.
+    [Header("Natação (aquática)")]
+    [Tooltip("Altura da raiz acima do fundo enquanto passeia (m).")]
+    [SerializeField, Min(0.2f)] private float aquaticCruiseHeight = 0.6f;
+    [Tooltip("Distância mínima entre a raiz e a superfície (fica sempre submersa).")]
+    [SerializeField, Min(0.2f)] private float aquaticSurfaceGap = 0.55f;
+    [Tooltip("Jogador na água a menos disto (m): ela sobe/desce até a altura dele.")]
+    [SerializeField, Min(1f)] private float aquaticNoticeRange = 20f;
+    [Tooltip("Inclinação máxima (graus) subindo ou descendo.")]
+    [SerializeField, Range(0f, 60f)] private float aquaticMaxPitch = 35f;
+    [Tooltip("A aquática já nada a partir desta profundidade (m); os outros, a partir de Swim Depth To Float.")]
+    [SerializeField, Min(0.3f)] private float aquaticSwimDepth = 0.8f;
+    private bool aquatic;
+
+    public bool IsSwimming => swimming;
+
     private bool lastDead;
     private bool lastTumbling;
     private SkinnedMeshRenderer face;
@@ -127,6 +145,7 @@ public sealed class AlienAnimator : MonoBehaviour
     {
         brain = GetComponent<AlienBrain>();
         health = GetComponent<AlienHealth>();
+        aquatic = GetComponent<AquaticAlien>() != null;
         agent = GetComponent<NavMeshAgent>();
         // Com dois modelos (masculino e feminino), o AlienAppearance desliga um deles antes daqui.
         if (animator == null || !animator.gameObject.activeInHierarchy)
@@ -278,10 +297,23 @@ public sealed class AlienAnimator : MonoBehaviour
 
         // Nadando para a frente o corpo deitado fica mais baixo: sobe um pouco com a velocidade.
         float target = swimming ? Mathf.Max(0f, waterSurfaceY - swimRootBelowSurface - ground + swimForwardLift * Mathf.Clamp01(smoothedSpeed / 2f)) : 0f;
-        float lift = Mathf.Lerp(swimLift, target, 1f - Mathf.Exp(-4f * Time.deltaTime));
+        if (swimming && aquatic)
+        {
+            target = AquaticHeight(ground);
+        }
 
-        // Inclinação nadando para a frente (igual ao protagonista).
-        swimTilt = Mathf.Lerp(swimTilt, swimming ? -swimSurfaceTilt * Mathf.Clamp01(smoothedSpeed / 2f) : 0f, 1f - Mathf.Exp(-6f * Time.deltaTime));
+        float lift = Mathf.Lerp(swimLift, target, 1f - Mathf.Exp((aquatic ? -2f : -4f) * Time.deltaTime));
+
+        // Inclinação nadando para a frente (igual ao protagonista). Aquática: aponta para onde está indo
+        // (para cima subindo, para baixo descendo).
+        float wantTilt = swimming ? -swimSurfaceTilt * Mathf.Clamp01(smoothedSpeed / 2f) : 0f;
+        if (aquatic)
+        {
+            float climb = Time.deltaTime > 0f ? (lift - swimLift) / Time.deltaTime : 0f;
+            wantTilt = swimming ? Mathf.Clamp(-Mathf.Atan2(climb, Mathf.Max(0.6f, smoothedSpeed)) * Mathf.Rad2Deg, -aquaticMaxPitch, aquaticMaxPitch) : 0f;
+        }
+
+        swimTilt = Mathf.Lerp(swimTilt, wantTilt, 1f - Mathf.Exp(-6f * Time.deltaTime));
         Transform model = animator.transform;
         if (model != tiltModel || (!tiltApplied && Mathf.Abs(swimTilt) <= 0.01f))
         {
@@ -301,7 +333,9 @@ public sealed class AlienAnimator : MonoBehaviour
                 wake = SwimWake.For(transform);
             }
 
-            wake.Feed(swimming, waterSurfaceY, agent != null && agent.enabled ? agent.velocity : Vector3.zero, transform.position + transform.forward * 0.5f);
+            // A aquática só levanta espuma quando chega perto da superfície.
+            bool atSurface = swimming && (!aquatic || waterSurfaceY - (ground + swimLift) < aquaticSurfaceGap + 0.35f);
+            wake.Feed(atSurface, waterSurfaceY, agent != null && agent.enabled ? agent.velocity : Vector3.zero, transform.position + transform.forward * 0.5f);
         }
 
         if (Mathf.Abs(lift - swimLift) > 0.0001f && agent != null)
@@ -309,6 +343,29 @@ public sealed class AlienAnimator : MonoBehaviour
             agent.baseOffset = lift;
             swimLift = lift;
         }
+    }
+
+    // Altura da raiz (acima do fundo) da aquática: perto do fundo passeando; na altura do jogador
+    // quando ele está na água por perto. Sempre abaixo da superfície e sem raspar no fundo.
+    private float AquaticHeight(float ground)
+    {
+        // Água rasa: a folga até a superfície diminui (até metade da profundidade).
+        float depth = waterSurfaceY - ground;
+        float top = depth - Mathf.Min(aquaticSurfaceGap, depth * 0.5f);
+        float want = aquaticCruiseHeight;
+        if (PlayerHealth.Instance != null)
+        {
+            Vector3 player = PlayerHealth.Instance.transform.position;
+            Vector3 flat = player - transform.position;
+            flat.y = 0f;
+            if (player.y < waterSurfaceY + 0.3f && flat.sqrMagnitude < aquaticNoticeRange * aquaticNoticeRange)
+            {
+                want = player.y + 0.3f - ground;
+            }
+        }
+
+        float bottom = Mathf.Min(0.3f, Mathf.Max(0f, top));
+        return Mathf.Clamp(want, bottom, Mathf.Max(bottom, top));
     }
 
     private bool FindWater(float ground, out float surfaceY)
@@ -324,7 +381,7 @@ public sealed class AlienAnimator : MonoBehaviour
             }
 
             surfaceY = waterHits[i].bounds.max.y;
-            return surfaceY - ground >= swimDepthToFloat;
+            return surfaceY - ground >= (aquatic ? aquaticSwimDepth : swimDepthToFloat);
         }
 
         return false;

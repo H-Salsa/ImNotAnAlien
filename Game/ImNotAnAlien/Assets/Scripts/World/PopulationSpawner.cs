@@ -43,6 +43,18 @@ public sealed class PopulationSpawner : MonoBehaviour
     [SerializeField, Min(0.1f)] private float checkInterval = 0.5f;
     [SerializeField, Min(1)] private int maxSpawnsPerCheck = 2;
 
+    [Header("Aquáticas (Missão 20)")]
+    [Tooltip("Vazio = Resources/Alienigena_Aquatica (criado por 'Preparar Alien Aquatico').")]
+    [SerializeField] private GameObject aquaticPrefab;
+    [Tooltip("Aliens aquáticas por perto, na água funda (não entram na conta dos civis; contam para a cota).")]
+    [SerializeField, Min(0)] private int nearbyAquatics = 4;
+    [Tooltip("Profundidade mínima (m) para uma aquática surgir.")]
+    [SerializeField, Min(0.5f)] private float aquaticSpawnDepth = 1.0f;
+    [Tooltip("De quanto em quanto tempo (s) procura água para soltar uma aquática.")]
+    [SerializeField, Min(0.2f)] private float aquaticCheckInterval = 1.5f;
+    private bool aquaticLoaded;
+    private float aquaticTimer;
+
     [Header("Grupinhos (Missão 19)")]
     [Tooltip("Chance de um civil surgir com um colega do lado, já conversando.")]
     [SerializeField, Range(0f, 1f)] private float pairChance = 0.4f;
@@ -107,6 +119,11 @@ public sealed class PopulationSpawner : MonoBehaviour
                 break;
             }
         }
+
+        for (int i = 0; i < nearbyAquatics * 2; i++)
+        {
+            TrySpawnAquatic(true);
+        }
     }
 
     private void Update()
@@ -119,6 +136,13 @@ public sealed class PopulationSpawner : MonoBehaviour
 
         timer = checkInterval;
         Despawn();
+        aquaticTimer -= checkInterval;
+        if (aquaticTimer <= 0f)
+        {
+            aquaticTimer = aquaticCheckInterval;
+            TrySpawnAquatic(false);
+        }
+
         for (int i = 0; i < maxSpawnsPerCheck; i++)
         {
             if (!TrySpawnOne(false))
@@ -230,6 +254,10 @@ public sealed class PopulationSpawner : MonoBehaviour
             {
                 police++;
             }
+            else if (brain != null && brain.IsAquatic)
+            {
+                // aquáticas têm a conta delas (CountAquatics)
+            }
             else
             {
                 civilians++;
@@ -294,13 +322,95 @@ public sealed class PopulationSpawner : MonoBehaviour
         return false;
     }
 
-    private void Spawn(bool police, bool counts, Vector3 spot, int sector)
-    {
-        GameObject prefab = police ? policePrefab : civilPrefab;
-        GameObject alien = Instantiate(prefab, spot + Vector3.up * 0.1f, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), transform);
-        alien.name = $"{(police ? "Policial" : "Civil")}_{++serial:000}";
+    // ---------- Aquáticas (Missão 20) ----------
 
-        if (!police && civilSkins != null && civilSkins.Length > 0)
+    private GameObject AquaticPrefab
+    {
+        get
+        {
+            if (aquaticPrefab == null && !aquaticLoaded)
+            {
+                aquaticLoaded = true;
+                aquaticPrefab = Resources.Load<GameObject>("Alienigena_Aquatica");
+            }
+
+            return aquaticPrefab;
+        }
+    }
+
+    private int CountAquatics()
+    {
+        int count = 0;
+        float range = despawnDistance * despawnDistance;
+        foreach (AlienHealth alien in active)
+        {
+            if (alien != null && !alien.IsDead && (alien.transform.position - player.position).sqrMagnitude <= range &&
+                alien.TryGetComponent(out AlienBrain brain) && brain.IsAquatic)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    // Solta uma aquática no fundo de uma água funda por perto (só se faltar e se ainda houver cota).
+    private bool TrySpawnAquatic(bool initial)
+    {
+        if (tracker.IsCleared || AquaticPrefab == null || CountAquatics() >= nearbyAquatics)
+        {
+            return false;
+        }
+
+        float minDistance = initial ? initialMinDistance : spawnMinDistance;
+        float maxDistance = Mathf.Max(spawnMaxDistance, minDistance + 15f);
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            Vector2 direction = Random.insideUnitCircle.normalized;
+            Vector3 guess = player.position + new Vector3(direction.x, 0f, direction.y) * Random.Range(minDistance, maxDistance);
+            if (AquaticAlien.WaterDepth(guess) < aquaticSpawnDepth ||
+                !NavMesh.SamplePosition(guess, out NavMeshHit hit, 4f, NavMesh.AllAreas))
+            {
+                continue;
+            }
+
+            Vector3 point = hit.position;
+            float ground = PlanetTerrain.SurfaceY(point);
+            if (AquaticAlien.WaterDepth(point) < aquaticSpawnDepth || point.y < ground - 0.5f || point.y > ground + 1f)
+            {
+                continue; // tem que ser o fundo da água (não uma ponte ou cais)
+            }
+
+            if (streamer != null && !streamer.IsLoaded(point, 8f))
+            {
+                continue;
+            }
+
+            int sector = tracker.SectorAt(point);
+            if (sector < 0 || tracker.IsSectorCleared(sector) || tracker.AliveCountingIn(sector) >= tracker.Sectors[sector].Remaining)
+            {
+                continue;
+            }
+
+            if (!initial && IsVisible(point + Vector3.up * 1.2f))
+            {
+                continue;
+            }
+
+            Spawn(false, true, point, sector, AquaticPrefab, "Aquatica");
+            return true;
+        }
+
+        return false;
+    }
+
+    private void Spawn(bool police, bool counts, Vector3 spot, int sector, GameObject prefabOverride = null, string label = null)
+    {
+        GameObject prefab = prefabOverride != null ? prefabOverride : police ? policePrefab : civilPrefab;
+        GameObject alien = Instantiate(prefab, spot + Vector3.up * 0.1f, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), transform);
+        alien.name = $"{label ?? (police ? "Policial" : "Civil")}_{++serial:000}";
+
+        if (!police && prefabOverride == null && civilSkins != null && civilSkins.Length > 0)
         {
             Material skin = civilSkins[Random.Range(0, civilSkins.Length)];
             SetSkin(alien.transform.Find("Corpo/Tronco"), skin);
