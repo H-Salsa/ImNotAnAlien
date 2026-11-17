@@ -93,6 +93,9 @@ public sealed class AlienBrain : MonoBehaviour
     [Tooltip("Se cair abaixo desta altura (fora do mapa), o alienígena é removido.")]
     [SerializeField] private float fallOutHeight = -30f;
 
+    // Profundidade (m) que a aquática considera "água de verdade" para andar e fugir.
+    private const float AquaticWanderDepth = 0.9f;
+
     private static readonly float[] FleeAngles = { 0f, 25f, -25f, 50f, -50f, 75f, -75f, 100f, -100f, 130f, -130f };
 
     private NavMeshAgent agent;
@@ -147,6 +150,157 @@ public sealed class AlienBrain : MonoBehaviour
     // Sobe a cada golpe iniciado; o AlienAnimator dispara a animação quando muda.
     public int SwingCount { get; private set; }
     public bool IsFleeing => enabled && state == State.Fleeing;
+
+    // ---------- Poderes elementais (Missão 21) ----------
+    // "Preso" por um poder: Choque = atordoado, tremendo; Congelado = duro, sem se mexer.
+    public enum Hold { Nenhum = 0, Choque = 1, Congelado = 2 }
+
+    public Hold CurrentHold => holdTime > 0f ? holdKind : Hold.Nenhum;
+
+    private Hold holdKind;
+    private float holdTime;
+    private float baseSpeed = 1.8f;
+    private float waterFactor = 1f;
+    private float chillFactor = 1f;
+
+    // Multiplicadores de velocidade vindos de fora: a aquática nada mais rápido; o gelo deixa lento.
+    public float WaterSpeedFactor
+    {
+        set
+        {
+            if (!Mathf.Approximately(waterFactor, value))
+            {
+                waterFactor = value;
+                ApplySpeed();
+            }
+        }
+    }
+
+    public float ChillSpeedFactor
+    {
+        set
+        {
+            if (!Mathf.Approximately(chillFactor, value))
+            {
+                chillFactor = value;
+                ApplySpeed();
+            }
+        }
+    }
+
+    private void SetSpeed(float speed)
+    {
+        baseSpeed = speed;
+        ApplySpeed();
+    }
+
+    private void ApplySpeed()
+    {
+        if (agent != null)
+        {
+            agent.speed = baseSpeed * waterFactor * chillFactor;
+        }
+    }
+
+    // Atordoa (choque) ou congela por alguns segundos. Não vale para quem está voando/segurado/devorado.
+    public bool ElementalHold(Hold kind, float seconds)
+    {
+        if (!enabled || kind == Hold.Nenhum || seconds <= 0f || isHeld || state == State.Tumbling || state == State.Devoured)
+        {
+            return false;
+        }
+
+        // Congelado manda: um choque não "descongela" nem encurta o gelo.
+        if (holdTime > 0f && holdKind == Hold.Congelado && kind == Hold.Choque)
+        {
+            return true;
+        }
+
+        holdKind = kind;
+        holdTime = Mathf.Max(holdTime, seconds);
+        staggerTime = 0f;
+        hopTime = -1f;
+        if (weapon != null)
+        {
+            weapon.CancelCharge();
+        }
+
+        if (agent.enabled && agent.isOnNavMesh)
+        {
+            agent.ResetPath();
+            agent.velocity = Vector3.zero;
+        }
+
+        if (kind == Hold.Choque)
+        {
+            StruckCount++;          // a animação de "levou uma pancada" toca junto com o tremor
+            LastStruckStrong = true;
+        }
+
+        return true;
+    }
+
+    // Derreteu / quebrou o gelo antes da hora.
+    public void ReleaseHold()
+    {
+        if (holdTime > 0f)
+        {
+            holdTime = 0f;
+            EndHold();
+        }
+    }
+
+    // Atacado de longe (bola de fogo, raio...): reage como se tivesse acabado de ver o jogador.
+    public void Provoke()
+    {
+        if (enabled && state == State.Wandering && holdTime <= 0f && agent.enabled && agent.isOnNavMesh)
+        {
+            EnterAlert();
+        }
+    }
+
+    private void UpdateHold()
+    {
+        holdTime -= Time.deltaTime;
+        if (agent.enabled && agent.isOnNavMesh && agent.hasPath)
+        {
+            agent.ResetPath();
+        }
+
+        if (body != null)
+        {
+            if (holdKind == Hold.Choque)
+            {
+                // Tremedeira: o corpo sacode em volta do lugar.
+                body.localRotation = Quaternion.Euler(Random.Range(-7f, 7f), Random.Range(-4f, 4f), Random.Range(-7f, 7f));
+                body.localPosition = bodyRestPosition + new Vector3(Random.Range(-0.03f, 0.03f), Random.Range(0f, 0.05f), Random.Range(-0.03f, 0.03f));
+            }
+            else
+            {
+                body.localRotation = Quaternion.identity;
+                body.localPosition = bodyRestPosition;
+            }
+        }
+
+        if (holdTime <= 0f)
+        {
+            EndHold();
+        }
+    }
+
+    private void EndHold()
+    {
+        if (body != null)
+        {
+            body.localRotation = Quaternion.identity;
+            body.localPosition = bodyRestPosition;
+        }
+
+        if (enabled && state == State.Wandering && agent.enabled && agent.isOnNavMesh)
+        {
+            EnterAlert(); // voltou a si: foge (civil) ou vem para cima (policial procurando você)
+        }
+    }
 
     // Pancadas (para a animação): sobe a cada pancada que não derruba; "forte" = cabeça, fraca = peito.
     public int StruckCount { get; private set; }
@@ -291,7 +445,7 @@ public sealed class AlienBrain : MonoBehaviour
         UpdateScareHop();
 
         // Qualquer coisa fora do passeio (susto, telecinese, pancada) interrompe a atividade.
-        if ((state != State.Wandering || staggerTime > 0f || !enabled) && (CurrentActivity != Activity.Nenhuma || walkingToBench))
+        if ((state != State.Wandering || staggerTime > 0f || holdTime > 0f || !enabled) && (CurrentActivity != Activity.Nenhuma || walkingToBench))
         {
             StopActivity(true);
         }
@@ -312,6 +466,12 @@ public sealed class AlienBrain : MonoBehaviour
         if (state == State.Tumbling)
         {
             UpdateTumble();
+            return;
+        }
+
+        if (holdTime > 0f)
+        {
+            UpdateHold();
             return;
         }
 
@@ -483,7 +643,7 @@ public sealed class AlienBrain : MonoBehaviour
     private void EnterWander()
     {
         state = State.Wandering;
-        agent.speed = wanderSpeed;
+        SetSpeed(wanderSpeed);
         agent.autoBraking = true;
         agent.updateRotation = true;
         idleTimer = Random.Range(idleTimeRange.x, idleTimeRange.y);
@@ -529,9 +689,12 @@ public sealed class AlienBrain : MonoBehaviour
             return;
         }
 
-        if (aquatic && TryWaterWander())
+        // Aquática: passeia SÓ dentro d'água. Sem água à vista, ela espera (nunca sai andando em terra).
+        if (aquatic)
         {
-            idleTimer = Random.Range(idleTimeRange.x, idleTimeRange.y) * 0.4f; // na água ela para pouco
+            idleTimer = TryWaterWander()
+                ? Random.Range(idleTimeRange.x, idleTimeRange.y) * 0.4f // na água ela para pouco
+                : 0.5f;
             return;
         }
 
@@ -545,27 +708,67 @@ public sealed class AlienBrain : MonoBehaviour
         idleTimer = Random.Range(idleTimeRange.x, idleTimeRange.y);
     }
 
-    // Aquática: escolhe um ponto do fundo com água funda (mais longe que o passeio comum).
+    // Passeio da aquática: só pontos de água funda (mais longe que o passeio comum).
+    // Se ela estiver fora d'água — arremessada na praia, por exemplo — volta para o lago.
     private bool TryWaterWander()
     {
-        for (int i = 0; i < 8; i++)
+        bool beached = AquaticAlien.WaterDepth(transform.position) < 0.4f;
+        if (beached && TryWaterPoint(home, wanderRadius * 2f, true, out Vector3 back))
         {
-            Vector2 offset = Random.insideUnitCircle * wanderRadius * 2f;
-            Vector3 randomPoint = home + new Vector3(offset.x, 0f, offset.y);
-            if (AquaticAlien.WaterDepth(randomPoint) < 0.9f)
+            agent.SetDestination(back);
+            return true;
+        }
+
+        if (TryWaterPoint(home, wanderRadius * 2f, false, out Vector3 spot))
+        {
+            agent.SetDestination(spot);
+            return true;
+        }
+
+        // Nem perto de onde nasceu achou água: procura em volta dela mesma.
+        return TryWaterPoint(transform.position, wanderRadius * 2f, true, out Vector3 near) && GoTo(near);
+    }
+
+    // Um ponto de água funda em volta de "center", sobre o NavMesh.
+    // "nearest": o mais perto dela (para voltar para a água); senão, o primeiro que servir.
+    private bool TryWaterPoint(Vector3 center, float radius, bool nearest, out Vector3 point)
+    {
+        point = Vector3.zero;
+        float best = float.MaxValue;
+        bool found = false;
+        for (int i = 0; i < 12; i++)
+        {
+            Vector2 offset = Random.insideUnitCircle * radius;
+            Vector3 guess = center + new Vector3(offset.x, 0f, offset.y);
+            if (AquaticAlien.WaterDepth(guess) < AquaticWanderDepth ||
+                !NavMesh.SamplePosition(guess, out NavMeshHit hit, 3f, NavMesh.AllAreas) ||
+                AquaticAlien.WaterDepth(hit.position) < AquaticWanderDepth)
             {
                 continue;
             }
 
-            if (NavMesh.SamplePosition(randomPoint, out NavMeshHit hit, 3f, NavMesh.AllAreas) &&
-                AquaticAlien.WaterDepth(hit.position) >= 0.9f)
+            if (!nearest)
             {
-                agent.SetDestination(hit.position);
+                point = hit.position;
                 return true;
+            }
+
+            float distance = (hit.position - transform.position).sqrMagnitude;
+            if (distance < best)
+            {
+                best = distance;
+                point = hit.position;
+                found = true;
             }
         }
 
-        return false;
+        return found;
+    }
+
+    private bool GoTo(Vector3 point)
+    {
+        agent.SetDestination(point);
+        return true;
     }
 
     // ---------- Fuga (civil) ----------
@@ -573,7 +776,7 @@ public sealed class AlienBrain : MonoBehaviour
     private void EnterFlee()
     {
         state = State.Fleeing;
-        agent.speed = fleeSpeed;
+        SetSpeed(fleeSpeed);
         agent.acceleration = Mathf.Max(agent.acceleration, 20f);
         agent.autoBraking = false; // não freia perto do destino (o destino é trocado o tempo todo)
         lastFleeDirection = Vector3.zero;
@@ -602,6 +805,13 @@ public sealed class AlienBrain : MonoBehaviour
         }
 
         away.Normalize();
+
+        // Aquática: foge pela água, nunca para a praia.
+        if (aquatic)
+        {
+            AquaticFlee(away);
+            return;
+        }
 
         // Escolhe a direção com caminho LIVRE em linha reta (sem atravessar casas), preferindo
         // "para longe do jogador". Antes, um ponto atrás de uma casa fazia o alien dar a volta
@@ -657,6 +867,56 @@ public sealed class AlienBrain : MonoBehaviour
         }
     }
 
+    // Fuga da aquática: procura o fundo mais longe do jogador, sempre dentro d'água.
+    private void AquaticFlee(Vector3 away)
+    {
+        Vector3 best = Vector3.zero;
+        float bestScore = float.MinValue;
+        bool found = false;
+        for (int i = 0; i < 14; i++)
+        {
+            Vector2 offset = Random.insideUnitCircle.normalized * Random.Range(fleeDistance * 0.5f, fleeDistance * 1.5f);
+            Vector3 guess = transform.position + new Vector3(offset.x, 0f, offset.y);
+            if (AquaticAlien.WaterDepth(guess) < AquaticWanderDepth ||
+                !NavMesh.SamplePosition(guess, out NavMeshHit hit, 3f, NavMesh.AllAreas))
+            {
+                continue;
+            }
+
+            float depth = AquaticAlien.WaterDepth(hit.position);
+            if (depth < AquaticWanderDepth)
+            {
+                continue;
+            }
+
+            Vector3 direction = hit.position - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.01f)
+            {
+                continue;
+            }
+
+            // Vale afastar-se de você E ir para o fundo: é lá que ela se esconde.
+            float score = Vector3.Dot(direction.normalized, away) * 2f + Mathf.Min(depth, 6f) * 0.3f;
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = hit.position;
+                found = true;
+            }
+        }
+
+        if (found)
+        {
+            lastFleeDirection = (best - transform.position).normalized;
+            agent.SetDestination(best);
+        }
+        else if (TryWaterPoint(home, wanderRadius * 2f, true, out Vector3 back))
+        {
+            agent.SetDestination(back); // encurralada: volta para o fundo de onde veio
+        }
+    }
+
     // ---------- Ataque (policial) ----------
 
     private void EnterAttack()
@@ -665,7 +925,7 @@ public sealed class AlienBrain : MonoBehaviour
         meleeMode = WantedStars == 1;
         meleeTimer = 0.4f;
         pendingHit = -1f;
-        agent.speed = meleeMode ? attackMoveSpeed * 1.25f : attackMoveSpeed;
+        SetSpeed(meleeMode ? attackMoveSpeed * 1.25f : attackMoveSpeed);
         agent.updateRotation = false; // ele mesmo gira para encarar o jogador
         repathTimer = 0f;
         StartScare();
@@ -815,7 +1075,7 @@ public sealed class AlienBrain : MonoBehaviour
         state = State.Hunting;
         searchTimer = 0f;
         lostSightTime = 0f;
-        agent.speed = attackMoveSpeed * 1.2f;
+        SetSpeed(attackMoveSpeed * 1.2f);
         agent.updateRotation = true;
         repathTimer = 0f;
         if (alertIcon != null)
@@ -905,6 +1165,7 @@ public sealed class AlienBrain : MonoBehaviour
 
     public void OnTelekinesisGrab()
     {
+        holdTime = 0f; // segurado no ar: o atordoamento/gelo deixa de prender os pés
         state = State.Tumbling;
         GameFeel.AlienScream(transform.position + Vector3.up * 1.8f);
         isHeld = true;
@@ -1263,6 +1524,7 @@ public sealed class AlienBrain : MonoBehaviour
         isHeld = false;
         settleTimer = 0f;
         staggerTime = 0f;
+        holdTime = 0f;
         hopTime = -1f;
         agent.enabled = false;
         physicsBody.isKinematic = false;

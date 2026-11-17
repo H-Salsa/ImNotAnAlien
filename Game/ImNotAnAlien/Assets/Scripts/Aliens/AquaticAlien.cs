@@ -28,6 +28,7 @@ public sealed class AquaticAlien : MonoBehaviour
 
     private NavMeshAgent agent;
     private AlienAnimator body;
+    private AlienBrain brain;
     private float baseSpeed;
     private float lastSet = -1f;
 
@@ -48,6 +49,7 @@ public sealed class AquaticAlien : MonoBehaviour
         transform.localScale = Vector3.one * alienScale * (1f + Random.Range(-sizeVariation, sizeVariation));
         agent = GetComponent<NavMeshAgent>();
         body = GetComponent<AlienAnimator>();
+        brain = GetComponent<AlienBrain>();
     }
 
     private void Start()
@@ -95,18 +97,26 @@ public sealed class AquaticAlien : MonoBehaviour
 
     private void Update()
     {
+        bool swimming = body != null && body.IsSwimming;
+        if (brain != null)
+        {
+            // O AlienBrain junta este multiplicador com os outros (ex.: o frio do gelo deixa lento).
+            brain.WaterSpeedFactor = swimming ? waterSpeedMultiplier : 1f;
+            return;
+        }
+
         if (agent == null || !agent.enabled)
         {
             return;
         }
 
-        // O AlienBrain troca a velocidade ao mudar de estado: guarda essa como base.
+        // Sem AlienBrain: guarda a velocidade que o dono do agente escolheu como base.
         if (!Mathf.Approximately(agent.speed, lastSet))
         {
             baseSpeed = agent.speed;
         }
 
-        float want = baseSpeed * (body != null && body.IsSwimming ? waterSpeedMultiplier : 1f);
+        float want = baseSpeed * (swimming ? waterSpeedMultiplier : 1f);
         if (!Mathf.Approximately(agent.speed, want))
         {
             agent.speed = want;

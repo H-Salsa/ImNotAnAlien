@@ -16,6 +16,7 @@ public static class BuildShadersSetup
         "ImNotAnAlien/Grass Wind",
         "ImNotAnAlien/Water",
         "ImNotAnAlien/Sky Planet",
+        "ImNotAnAlien/Elemental FX",
         "ImNotAnAlien/Globe Relief",
         "ImNotAnAlien/Globe Mini",
         "ImNotAnAlien/Globe Atmosphere",

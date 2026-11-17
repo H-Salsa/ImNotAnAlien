@@ -500,6 +500,9 @@ public static class ProtagonistSetupTool
         // Pulo completo (Missão 19): impulso e aterrissagem.
         ProtagonistJumpSetup.Add(controller);
 
+        // Poderes elementais (Missão 21): animações de carregar e disparar fogo, gelo e raio.
+        ElementalPowersSetupTool.AddToController(controller);
+
         EditorUtility.SetDirty(controller);
         return controller;
     }

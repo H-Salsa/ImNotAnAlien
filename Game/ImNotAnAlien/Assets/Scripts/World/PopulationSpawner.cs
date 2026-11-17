@@ -47,11 +47,18 @@ public sealed class PopulationSpawner : MonoBehaviour
     [Tooltip("Vazio = Resources/Alienigena_Aquatica (criado por 'Preparar Alien Aquatico').")]
     [SerializeField] private GameObject aquaticPrefab;
     [Tooltip("Aliens aquáticas por perto, na água funda (não entram na conta dos civis; contam para a cota).")]
-    [SerializeField, Min(0)] private int nearbyAquatics = 4;
+    [SerializeField, Min(0)] private int nearbyAquatics = 9;
     [Tooltip("Profundidade mínima (m) para uma aquática surgir.")]
     [SerializeField, Min(0.5f)] private float aquaticSpawnDepth = 1.0f;
-    [Tooltip("De quanto em quanto tempo (s) procura água para soltar uma aquática.")]
-    [SerializeField, Min(0.2f)] private float aquaticCheckInterval = 1.5f;
+    [Tooltip("Água mais funda que isto (m) ESCONDE: ali elas podem surgir mesmo à vista (lago aberto não " +
+             "tem parede para se esconder atrás). Mais raso que isto, só fora da sua vista.")]
+    [SerializeField, Min(1f)] private float aquaticHideDepth = 2.2f;
+    [Tooltip("Distância mínima (m) para uma aquática surgir. Menor que a dos civis: um lago é bem menor que um bairro.")]
+    [SerializeField, Min(5f)] private float aquaticMinDistance = 18f;
+    [Tooltip("Quantas surgem juntas (cardume): sorteia entre estes dois valores.")]
+    [SerializeField] private Vector2Int aquaticSchool = new Vector2Int(2, 3);
+    [Tooltip("De quanto em quanto tempo (s) procura água para soltar aquáticas.")]
+    [SerializeField, Min(0.2f)] private float aquaticCheckInterval = 0.7f;
     private bool aquaticLoaded;
     private float aquaticTimer;
 
@@ -120,10 +127,7 @@ public sealed class PopulationSpawner : MonoBehaviour
             }
         }
 
-        for (int i = 0; i < nearbyAquatics * 2; i++)
-        {
-            TrySpawnAquatic(true);
-        }
+        TrySpawnAquatics(true, nearbyAquatics);
     }
 
     private void Update()
@@ -140,7 +144,7 @@ public sealed class PopulationSpawner : MonoBehaviour
         if (aquaticTimer <= 0f)
         {
             aquaticTimer = aquaticCheckInterval;
-            TrySpawnAquatic(false);
+            TrySpawnAquatics(false, 3);
         }
 
         for (int i = 0; i < maxSpawnsPerCheck; i++)
@@ -354,54 +358,90 @@ public sealed class PopulationSpawner : MonoBehaviour
         return count;
     }
 
-    // Solta uma aquática no fundo de uma água funda por perto (só se faltar e se ainda houver cota).
-    private bool TrySpawnAquatic(bool initial)
+    // Solta aquáticas no fundo das águas fundas por perto (só as que faltam e se o setor tiver cota).
+    // Elas surgem em cardume e mais perto que os civis: um lago é pequeno, e espalhadas num anel
+    // de 40 m como os civis quase nenhuma caía dentro da água.
+    private int TrySpawnAquatics(bool initial, int max)
     {
-        if (tracker.IsCleared || AquaticPrefab == null || CountAquatics() >= nearbyAquatics)
+        if (tracker.IsCleared || AquaticPrefab == null)
         {
-            return false;
+            return 0;
         }
 
-        float minDistance = initial ? initialMinDistance : spawnMinDistance;
+        int missing = nearbyAquatics - CountAquatics();
+        if (missing <= 0)
+        {
+            return 0;
+        }
+
+        // Dentro d'água elas chegam mais perto (é o lugar delas).
+        bool inWater = AquaticAlien.WaterDepth(player.position) > 0.5f;
+        float minDistance = initial
+            ? Mathf.Min(initialMinDistance, aquaticMinDistance)
+            : aquaticMinDistance * (inWater ? 0.6f : 1f);
         float maxDistance = Mathf.Max(spawnMaxDistance, minDistance + 15f);
-        for (int attempt = 0; attempt < 10; attempt++)
+
+        int spawned = 0;
+        for (int attempt = 0; attempt < 16 && spawned < max && spawned < missing; attempt++)
         {
             Vector2 direction = Random.insideUnitCircle.normalized;
             Vector3 guess = player.position + new Vector3(direction.x, 0f, direction.y) * Random.Range(minDistance, maxDistance);
-            if (AquaticAlien.WaterDepth(guess) < aquaticSpawnDepth ||
-                !NavMesh.SamplePosition(guess, out NavMeshHit hit, 4f, NavMesh.AllAreas))
-            {
-                continue;
-            }
-
-            Vector3 point = hit.position;
-            float ground = PlanetTerrain.SurfaceY(point);
-            if (AquaticAlien.WaterDepth(point) < aquaticSpawnDepth || point.y < ground - 0.5f || point.y > ground + 1f)
-            {
-                continue; // tem que ser o fundo da água (não uma ponte ou cais)
-            }
-
-            if (streamer != null && !streamer.IsLoaded(point, 8f))
-            {
-                continue;
-            }
-
-            int sector = tracker.SectorAt(point);
-            if (sector < 0 || tracker.IsSectorCleared(sector) || tracker.AliveCountingIn(sector) >= tracker.Sectors[sector].Remaining)
-            {
-                continue;
-            }
-
-            if (!initial && IsVisible(point + Vector3.up * 1.2f))
+            if (!TryAquaticSpot(guess, initial, out Vector3 point, out int sector))
             {
                 continue;
             }
 
             Spawn(false, true, point, sector, AquaticPrefab, "Aquatica");
-            return true;
+            spawned++;
+
+            // Cardume: mais uma ou duas do lado, no mesmo trecho de água.
+            int friends = Mathf.Max(0, Random.Range(aquaticSchool.x, aquaticSchool.y + 1) - 1);
+            for (int i = 0; i < friends && spawned < missing; i++)
+            {
+                Vector2 side = Random.insideUnitCircle.normalized * Random.Range(2f, 5f);
+                if (TryAquaticSpot(point + new Vector3(side.x, 0f, side.y), true, out Vector3 near, out int nearSector))
+                {
+                    Spawn(false, true, near, nearSector, AquaticPrefab, "Aquatica");
+                    spawned++;
+                }
+            }
         }
 
-        return false;
+        return spawned;
+    }
+
+    // Este ponto serve para uma aquática? (fundo de água funda, bloco carregado, setor com cota)
+    private bool TryAquaticSpot(Vector3 guess, bool ignoreSight, out Vector3 point, out int sector)
+    {
+        point = Vector3.zero;
+        sector = -1;
+        if (AquaticAlien.WaterDepth(guess) < aquaticSpawnDepth ||
+            !NavMesh.SamplePosition(guess, out NavMeshHit hit, 4f, NavMesh.AllAreas))
+        {
+            return false;
+        }
+
+        point = hit.position;
+        float depth = AquaticAlien.WaterDepth(point);
+        float ground = PlanetTerrain.SurfaceY(point);
+        if (depth < aquaticSpawnDepth || point.y < ground - 0.5f || point.y > ground + 1f)
+        {
+            return false; // tem que ser o fundo da água (não uma ponte ou um cais)
+        }
+
+        if (streamer != null && !streamer.IsLoaded(point, 8f))
+        {
+            return false;
+        }
+
+        sector = tracker.SectorAt(point);
+        if (sector < 0 || tracker.IsSectorCleared(sector) || tracker.AliveCountingIn(sector) >= tracker.Sectors[sector].Remaining)
+        {
+            return false;
+        }
+
+        // Água funda esconde: ali pode surgir à vista. No raso, só fora da sua vista.
+        return ignoreSight || depth >= aquaticHideDepth || !IsVisible(point + Vector3.up * 1.2f);
     }
 
     private void Spawn(bool police, bool counts, Vector3 spot, int sector, GameObject prefabOverride = null, string label = null)

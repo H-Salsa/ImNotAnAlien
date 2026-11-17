@@ -8,6 +8,8 @@ using UnityEngine;
 // - Grounded (no chão), Swimming (água funda), Dead (derrotado).
 // - Holding: a telecinese está segurando algo (braços erguidos).
 // - Throw: arremesso da telecinese ou Onda de Impacto. Hit: levou dano.
+// - Poder elemental (Missão 21): Element (0 fogo, 1 gelo, 2 raio), ElCharging (carregando) e
+//   ElCast (disparou). O tronco vira para a mira e o braço acerta a altura do alvo.
 [DisallowMultipleComponent]
 [RequireComponent(typeof(CharacterController))]
 public sealed class PlayerAnimator : MonoBehaviour
@@ -20,6 +22,9 @@ public sealed class PlayerAnimator : MonoBehaviour
     private static readonly int ThrowId = Animator.StringToHash("Throw");
     private static readonly int HitId = Animator.StringToHash("Hit");
     private static readonly int JumpId = Animator.StringToHash("Jump");
+    private static readonly int ElChargingId = Animator.StringToHash("ElCharging");
+    private static readonly int ElCastId = Animator.StringToHash("ElCast");
+    private static readonly int ElementId = Animator.StringToHash("Element");
 
     [Tooltip("Animator do modelo (filho do jogador).")]
     [SerializeField] private Animator animator;
@@ -96,6 +101,15 @@ public sealed class PlayerAnimator : MonoBehaviour
     private Vector3 aimTarget;
     private bool aimWithRightHand = true;
 
+    // Poder elemental (Missão 21).
+    private ElementalPower elemental;
+    private float elementalSearch;
+    private bool elementalParamsChecked;
+    private bool hasElementalParams;
+    private int lastCast;
+    private float castWeight;
+    private Vector3 castTarget;
+
     private float flinchTime = 100f;
     private Vector3 flinchAway;
     private float flinchTwist;
@@ -142,6 +156,7 @@ public sealed class PlayerAnimator : MonoBehaviour
     private void OnOriginShifted(Vector3 delta)
     {
         aimTarget -= delta;
+        castTarget -= delta;
     }
 
     private void OnEnable()
@@ -210,6 +225,7 @@ public sealed class PlayerAnimator : MonoBehaviour
         UpdateWater(dt);
         UpdateTelekinesis();
         UpdateShockwave();
+        UpdateElemental(dt);
     }
 
     private bool HasParameter(int id)
@@ -363,6 +379,72 @@ public sealed class PlayerAnimator : MonoBehaviour
         lastShockwaveCooldown = cooldown;
     }
 
+    // Poder elemental: escolhe a animação do braço e vira o corpo para a mira.
+    private void UpdateElemental(float dt)
+    {
+        if (elemental == null)
+        {
+            // O ElementalPower entra sozinho no jogador logo depois de a cena carregar.
+            elementalSearch -= dt;
+            if (elementalSearch <= 0f)
+            {
+                elementalSearch = 0.5f;
+                elemental = GetComponent<ElementalPower>();
+            }
+
+            if (elemental == null)
+            {
+                return;
+            }
+
+            lastCast = elemental.CastCount;
+        }
+
+        if (!elementalParamsChecked)
+        {
+            elementalParamsChecked = true;
+            hasElementalParams = HasParameter(ElChargingId) && HasParameter(ElCastId) && HasParameter(ElementId);
+            if (!hasElementalParams)
+            {
+                Debug.LogWarning("PlayerAnimator: o Animator ainda não tem as animações dos poderes elementais. " +
+                                 "Rode 'ImNotAnAlien > Preparar Poderes Elementais (Missao 21)'. Por enquanto usa o gesto antigo.", this);
+            }
+        }
+
+        bool cast = elemental.CastCount != lastCast;
+        lastCast = elemental.CastCount;
+        if (hasElementalParams)
+        {
+            animator.SetInteger(ElementId, (int)elemental.Element);
+            animator.SetBool(ElChargingId, elemental.IsCharging);
+            if (cast)
+            {
+                animator.SetTrigger(ElCastId);
+            }
+        }
+        else if (cast)
+        {
+            animator.SetTrigger(ThrowId);
+        }
+
+        bool aiming = elemental.AimActive;
+        castWeight = Mathf.MoveTowards(castWeight, aiming ? 1f : 0f, (aiming ? 10f : 4f) * dt);
+        if (!aiming)
+        {
+            return;
+        }
+
+        castTarget = elemental.AimPoint;
+
+        // Parado: o corpo inteiro vira para a mira (andando, só o tronco torce).
+        Vector3 flat = Vector3.ProjectOnPlane(castTarget - transform.position, Vector3.up);
+        if (smoothedSpeed < 0.5f && flat.sqrMagnitude > 0.01f)
+        {
+            Quaternion facing = Quaternion.LookRotation(flat, Vector3.up);
+            transform.rotation = Quaternion.Slerp(transform.rotation, facing, 1f - Mathf.Exp(-14f * dt));
+        }
+    }
+
     // ---------- Vida ----------
 
     private void OnDamaged(Vector3 source)
@@ -394,6 +476,7 @@ public sealed class PlayerAnimator : MonoBehaviour
 
         ApplyFlinch();
         ApplyAim();
+        ApplyCastAim();
     }
 
     // Tranco: o tronco é jogado para trás (longe do tiro) e volta, com a cabeça acompanhando.
@@ -462,6 +545,52 @@ public sealed class PlayerAnimator : MonoBehaviour
         float armWeight = armAimWeight * weight;
         AimBone(upper, hand.position, armTarget, armWeight);
         AimBone(lower, hand.position, armTarget, armWeight * 0.7f);
+    }
+
+    // Poder elemental: o tronco torce para a mira e, na hora do disparo, os braços sobem ou descem
+    // até a altura do alvo (as animações apontam sempre para a frente, na horizontal).
+    private void ApplyCastAim()
+    {
+        if (castWeight <= 0.001f || elemental == null)
+        {
+            return;
+        }
+
+        float weight = Mathf.SmoothStep(0f, 1f, castWeight);
+        Vector3 flatTarget = Vector3.ProjectOnPlane(castTarget - transform.position, Vector3.up);
+        if (flatTarget.sqrMagnitude < 0.01f)
+        {
+            return;
+        }
+
+        if (chest != null)
+        {
+            float yaw = Mathf.Clamp(Vector3.SignedAngle(transform.forward, flatTarget, Vector3.up), -maxTorsoYaw, maxTorsoYaw) * weight;
+            Rotate(spine, Quaternion.AngleAxis(yaw * 0.5f, Vector3.up));
+            Rotate(chest, Quaternion.AngleAxis(yaw * 0.5f, Vector3.up));
+        }
+
+        float armWeight = elemental.ArmAim01 * weight;
+        if (armWeight <= 0.01f || rightUpperArm == null || leftUpperArm == null)
+        {
+            return;
+        }
+
+        Vector3 shoulders = (rightUpperArm.position + leftUpperArm.position) * 0.5f;
+        Vector3 toTarget = castTarget - shoulders;
+        if (toTarget.sqrMagnitude < 0.25f)
+        {
+            return;
+        }
+
+        float pitch = Mathf.Clamp(Mathf.Asin(Mathf.Clamp(toTarget.normalized.y, -1f, 1f)) * Mathf.Rad2Deg, -60f, 70f);
+        Vector3 flatDirection = flatTarget.normalized;
+        Quaternion lift = Quaternion.AngleAxis(-pitch * armWeight, Vector3.Cross(Vector3.up, flatDirection));
+        Rotate(rightUpperArm, lift);
+        if (elemental.Element == ElementKind.Ice)
+        {
+            Rotate(leftUpperArm, lift); // o gelo sai das duas mãos
+        }
     }
 
     // "outward" aponta para o lado de fora do braço (direita do peito para o braço direito).
@@ -538,5 +667,9 @@ public sealed class PlayerAnimator : MonoBehaviour
         animator.SetBool(DeadId, false);
         animator.ResetTrigger(HitId);
         animator.ResetTrigger(ThrowId);
+        if (hasElementalParams)
+        {
+            animator.ResetTrigger(ElCastId);
+        }
     }
 }

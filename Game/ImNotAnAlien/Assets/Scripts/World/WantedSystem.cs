@@ -36,6 +36,8 @@ public sealed class WantedSystem : MonoBehaviour
     [SerializeField, Min(0f)] private float policeKillHeat = 15f;
     [SerializeField, Min(0f)] private float devourHeat = 15f;
     [SerializeField, Min(0f)] private float destructionHeat = 20f;
+    [Tooltip("Atacar um alienígena com um poder (fogo, gelo, raio) na frente de testemunhas. Menos que matar.")]
+    [SerializeField, Min(0f)] private float assaultHeat = 3f;
     [Tooltip("Fugir das algemas também é crime (resistir à prisão).")]
     [SerializeField, Min(0f)] private float resistArrestHeat = 60f;
 
@@ -286,6 +288,15 @@ public sealed class WantedSystem : MonoBehaviour
             Instance.heat = Mathf.Min(Instance.heatCap, Instance.heat + Instance.resistArrestHeat);
             Instance.LastKnownPosition = position;
             Instance.lastSeenTime = Time.time;
+        }
+    }
+
+    // Missão 21: acertou um alienígena com um poder elemental (sem matar ainda).
+    public static void ReportAssault(Vector3 position)
+    {
+        if (Instance != null)
+        {
+            Instance.ReportCrime(position, Instance.assaultHeat);
         }
     }
 
