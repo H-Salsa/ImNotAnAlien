@@ -225,6 +225,16 @@ public sealed class ExplosiveVehicle : MonoBehaviour
         }
     }
 
+    // Conserto 18/11: Collider.ClosestPoint só funciona com caixa, esfera, cápsula e malha convexa.
+    // Casas, chão e prédios usam malha não convexa (ou terreno): aí usa a caixa em volta do objeto,
+    // senão o Unity reclama no Console a cada explosão.
+    private static Vector3 ClosestPointSafe(Collider hit, Vector3 point)
+    {
+        bool supported = hit is BoxCollider || hit is SphereCollider || hit is CapsuleCollider ||
+                         (hit is MeshCollider mesh && mesh.convex);
+        return supported ? hit.ClosestPoint(point) : hit.bounds.ClosestPoint(point);
+    }
+
     private void ApplyBlast(Vector3 center)
     {
         HashSet<Rigidbody> bodies = new HashSet<Rigidbody>();
@@ -238,7 +248,7 @@ public sealed class ExplosiveVehicle : MonoBehaviour
                 continue;
             }
 
-            Vector3 closest = hit.ClosestPoint(center);
+            Vector3 closest = ClosestPointSafe(hit, center);
             float falloff = Mathf.Clamp01(1f - Vector3.Distance(center, closest) / radius);
 
             DestructibleStructure structure = hit.GetComponentInParent<DestructibleStructure>();

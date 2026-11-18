@@ -117,6 +117,27 @@ public sealed class DnaOrbSystem : MonoBehaviour
         }
     }
 
+    // Chuva de DNA da recompensa de setor (Missão 22): os orbes caem do céu em volta do jogador
+    // e voam até ele. Não vieram de alienígena nenhum (id 0), então não mexem na contagem do
+    // setor nem na barra de ar.
+    public void SpawnRain(Vector3 center, int totalValue, int orbCount, float radius, float height)
+    {
+        if (totalValue <= 0)
+        {
+            return;
+        }
+
+        int count = Mathf.Clamp(orbCount, 1, totalValue);
+        for (int i = 0; i < count; i++)
+        {
+            int value = totalValue / count + (i < totalValue % count ? 1 : 0);
+            Vector2 spread = Random.insideUnitCircle * radius;
+            Vector3 position = center + new Vector3(spread.x, height + Random.Range(0f, 3f), spread.y);
+            Vector3 velocity = new Vector3(Random.Range(-1.5f, 1.5f), Random.Range(-1f, 2f), Random.Range(-1.5f, 1.5f));
+            DnaOrb.Create(this, 0, value, position, velocity);
+        }
+    }
+
     // Chamado pelo orbe quando chega ao jogador.
     public void Absorb(DnaOrb orb)
     {

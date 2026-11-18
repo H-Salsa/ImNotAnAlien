@@ -61,6 +61,10 @@ public sealed class GameHud : MonoBehaviour
     private float wantedPunch;
     private int lastStars;
     private Text bannerText;
+    private Image celebrationFlash;
+    private float celebrationAlpha;
+    private float bannerDuration = 3.5f;
+    private bool bannerCelebrate;
     private RectTransform alienRow;
     private RectTransform dnaRow;
     private float alienPunch;
@@ -180,15 +184,58 @@ public sealed class GameHud : MonoBehaviour
         UpdateWanted(dt);
         UpdateAbilities();
 
-        if (bannerTimer > 0f)
+        UpdateBanner(dt);
+        UpdateCelebrationFlash(dt);
+    }
+
+    private void UpdateBanner(float dt)
+    {
+        if (bannerTimer <= 0f)
         {
-            bannerTimer -= dt;
-            Color color = bannerColor;
-            color.a = Mathf.Clamp01(bannerTimer / 0.8f); // some nos últimos 0,8 s
-            bannerText.color = color;
-            float pop = Mathf.Clamp01((3.5f - bannerTimer) / 0.25f); // cresce nos primeiros 0,25 s
-            bannerText.rectTransform.localScale = Vector3.one * Mathf.Lerp(1.6f, 1f, pop);
-            bannerText.enabled = bannerTimer > 0f;
+            return;
+        }
+
+        bannerTimer -= dt;
+        float age = bannerDuration - bannerTimer;
+        Color color = bannerColor;
+        color.a = Mathf.Clamp01(bannerTimer / 0.8f); // some nos últimos 0,8 s
+        float pop = Mathf.Clamp01(age / 0.25f);      // cresce nos primeiros 0,25 s
+        float scale = Mathf.Lerp(1.6f, 1f, pop);
+
+        // Comemoração (setor limpo): o aviso pulsa e brilha de dourado a branco.
+        if (bannerCelebrate)
+        {
+            scale *= 1f + 0.06f * Mathf.Sin(age * 7f);
+            color = Color.Lerp(color, new Color(1f, 1f, 0.85f, color.a), 0.5f + 0.5f * Mathf.Sin(age * 9f));
+            color.a = Mathf.Clamp01(bannerTimer / 0.8f);
+        }
+
+        bannerText.color = color;
+        bannerText.rectTransform.localScale = Vector3.one * scale;
+        bannerText.enabled = bannerTimer > 0f;
+    }
+
+    // Clarão dourado na tela inteira ao limpar um setor.
+    private void UpdateCelebrationFlash(float dt)
+    {
+        if (celebrationAlpha <= 0f)
+        {
+            return;
+        }
+
+        celebrationAlpha = Mathf.MoveTowards(celebrationAlpha, 0f, dt * 1.6f);
+        celebrationFlash.color = new Color(1f, 0.92f, 0.5f, celebrationAlpha * 0.35f);
+        celebrationFlash.enabled = celebrationAlpha > 0f;
+    }
+
+    // Chamado pela recompensa de setor (SectorReward).
+    public void FlashCelebration(float strength)
+    {
+        celebrationAlpha = Mathf.Clamp01(strength);
+        if (celebrationFlash != null)
+        {
+            celebrationFlash.enabled = true;
+            celebrationFlash.color = new Color(1f, 0.92f, 0.5f, celebrationAlpha * 0.35f);
         }
     }
 
@@ -314,7 +361,7 @@ public sealed class GameHud : MonoBehaviour
     {
         SectorTracker.SectorInfo sector = tracker.Sectors[index];
         string where = tracker.SingleSectorMode ? "" : sector.name + ": ";
-        ShowBanner($"SETOR LIMPO!\n<size=30>{where}+{sector.clearBonusDna} DNA de bônus</size>", 3.5f);
+        ShowBanner($"SETOR LIMPO!\n<size=30>{where}+{sector.clearBonusDna} DNA de bônus</size>", 3.5f, true);
     }
 
     private void OnRegionCleared()
@@ -324,7 +371,7 @@ public sealed class GameHud : MonoBehaviour
             return; // no modo antigo, o aviso de setor já basta
         }
 
-        ShowBanner($"{tracker.RegionName.ToUpperInvariant()} LIMPO!\n<size=30>Região completa! DNA de bônus extra</size>", 5f);
+        ShowBanner($"{tracker.RegionName.ToUpperInvariant()} LIMPO!\n<size=30>Região completa! DNA de bônus extra</size>", 5f, true);
     }
 
     private void OnSectorEntered(int index)
@@ -341,11 +388,13 @@ public sealed class GameHud : MonoBehaviour
         sectorEnterTimer = 2.5f;
     }
 
-    public void ShowBanner(string text, float duration)
+    public void ShowBanner(string text, float duration, bool celebrate = false)
     {
         bannerText.text = text;
         bannerText.enabled = true;
         bannerTimer = duration;
+        bannerDuration = Mathf.Max(0.3f, duration);
+        bannerCelebrate = celebrate;
     }
 
     private void UpdateSectorEnterText(float dt)
@@ -615,6 +664,16 @@ public sealed class GameHud : MonoBehaviour
         damageFlash.raycastTarget = false;
         damageFlash.enabled = false;
         flash.SetAsFirstSibling(); // atrás do resto da interface
+
+        // Clarão dourado da comemoração (setor limpo), também atrás do resto.
+        RectTransform celebration = NewRect("Flash_Comemoracao", canvasObject.transform);
+        celebration.anchorMin = Vector2.zero;
+        celebration.anchorMax = Vector2.one;
+        celebration.offsetMin = celebration.offsetMax = Vector2.zero;
+        celebrationFlash = celebration.gameObject.AddComponent<Image>();
+        celebrationFlash.raycastTarget = false;
+        celebrationFlash.enabled = false;
+        celebration.SetAsFirstSibling();
 
         // Aviso de derrota.
         deathText = NewText("Aviso_Derrota", canvasObject.transform, 72, new Color(1f, 0.3f, 0.3f, 1f), TextAnchor.MiddleCenter);

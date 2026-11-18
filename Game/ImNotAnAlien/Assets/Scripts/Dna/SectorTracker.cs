@@ -403,7 +403,9 @@ public sealed class SectorTracker : MonoBehaviour
 
         // Setor limpo.
         info.cleared = true;
-        if (DnaInventory.Instance != null)
+
+        // Missão 22: o bônus vem em forma de chuva de DNA (SectorReward). Sem ela, entra direto.
+        if (!SectorReward.Celebrate(info.name, info.clearBonusDna, false) && DnaInventory.Instance != null)
         {
             DnaInventory.Instance.Add(info.clearBonusDna);
         }
@@ -421,7 +423,7 @@ public sealed class SectorTracker : MonoBehaviour
             }
 
             regionCleared[region] = true;
-            if (DnaInventory.Instance != null)
+            if (!SectorReward.Celebrate(Planet.RegionName(region), planetRegionBonus, true) && DnaInventory.Instance != null)
             {
                 DnaInventory.Instance.Add(planetRegionBonus);
             }
@@ -441,7 +443,7 @@ public sealed class SectorTracker : MonoBehaviour
 
         // Região inteira limpa.
         singleRegionCleared = true;
-        if (!singleSectorMode && DnaInventory.Instance != null)
+        if (!singleSectorMode && !SectorReward.Celebrate(sectorName, clearBonusDna, true) && DnaInventory.Instance != null)
         {
             DnaInventory.Instance.Add(clearBonusDna);
         }

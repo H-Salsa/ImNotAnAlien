@@ -1,0 +1,87 @@
+﻿MEDIÇÃO DE DESEMPENHO — I'm Not an Alien
+Data: 17/11/2026 01:28:45   ·   dentro do Editor (fica mais lento que a build)
+Duração: 30,0 s · 2885 quadros (pausa do menu não conta)
+
+NOTA: BOM
+FPS médio ............ 96,2
+FPS mediano .......... 109,8
+1% baixo ............. 30,7 FPS   (média dos 1% piores quadros: é o que se sente como 'travadinha')
+0,1% baixo ........... 19,1 FPS
+Pior quadro .......... 61,1 ms
+Quadros acima de 16,7 ms (abaixo de 60 FPS): 239 (8,3%)
+Quadros acima de 33,3 ms (abaixo de 30 FPS): 7 (0,2%)
+Engasgos (acima de 50 ms): 2
+
+Tempo médio — CPU scripts/física: 6.7 ms · CPU preparando desenho: 2.5 ms · GPU: 1.8 ms
+Quem segura o jogo: PROCESSADOR — scripts e física (aliens, trânsito, destruição, mundo carregando)
+
+Média / máximo por segundo:
+  batches: 3368,7 / 4756,8
+  setpass: 133,9 / 303,4
+  triângulos (mil): 5074,6 / 7730,3
+  partículas: 222,5 / 462
+  efeitos de partícula ativos: 11,7 / 33
+  luzes: 1,4 / 3
+  luzes com sombra: 1 / 1
+  objetos na tela: 1099,1 / 1655
+  aliens: 56,2 / 66
+  orbes de DNA: 30 / 53
+  física acordada: 47,1 / 97
+  blocos do mundo: 19,6 / 21
+  lixo GC (KB/quadro): 49,8 / 212,5
+
+10 piores quadros (segundo da medição → tempo):
+  4,5 s → 61,1 ms
+  28,9 s → 53,8 ms
+  8,6 s → 41,8 ms
+  13,5 s → 39,7 ms
+  29,9 s → 35,1 ms
+  4,6 s → 34,0 ms
+  9,9 s → 33,7 ms
+  27,9 s → 33,2 ms
+  19,9 s → 32,7 ms
+  3,6 s → 32,4 ms
+
+Segundo a segundo (FPS · pior ms · partículas · luzes · aliens):
+    1s    130 FPS    11,5 ms    120 part.    1 luzes   66 aliens
+    2s    110 FPS    27,7 ms    133 part.    1 luzes   66 aliens
+    3s    109 FPS    29,3 ms    272 part.    1 luzes   65 aliens
+    4s    105 FPS    32,4 ms    122 part.    1 luzes   62 aliens
+    5s     86 FPS    61,1 ms    120 part.    1 luzes   60 aliens
+    6s    100 FPS    29,4 ms    117 part.    1 luzes   58 aliens
+    7s     91 FPS    29,5 ms    123 part.    1 luzes   57 aliens
+    8s     88 FPS    26,5 ms    119 part.    1 luzes   56 aliens
+    9s     91 FPS    41,8 ms    144 part.    1 luzes   56 aliens
+   10s     79 FPS    33,7 ms    379 part.    1 luzes   56 aliens
+   11s     90 FPS    26,1 ms    257 part.    1 luzes   59 aliens
+   12s    109 FPS    23,3 ms    185 part.    1 luzes   58 aliens
+   13s    109 FPS    25,0 ms    118 part.    1 luzes   57 aliens
+   14s     93 FPS    39,7 ms     95 part.    1 luzes   57 aliens
+   15s     97 FPS    25,3 ms     96 part.    1 luzes   55 aliens
+   16s     89 FPS    29,3 ms    249 part.    2 luzes   57 aliens
+   17s     83 FPS    26,2 ms    422 part.    2 luzes   57 aliens
+   18s     92 FPS    26,8 ms    227 part.    1 luzes   57 aliens
+   19s    102 FPS    23,9 ms    238 part.    1 luzes   57 aliens
+   20s    104 FPS    32,7 ms    325 part.    2 luzes   57 aliens
+   21s     93 FPS    29,6 ms    173 part.    1 luzes   57 aliens
+   22s     80 FPS    30,5 ms    153 part.    1 luzes   56 aliens
+   23s     94 FPS    30,2 ms    149 part.    2 luzes   51 aliens
+   24s     96 FPS    27,8 ms    314 part.    2 luzes   53 aliens
+   25s    100 FPS    21,4 ms    208 part.    2 luzes   53 aliens
+   26s     96 FPS    25,0 ms    247 part.    2 luzes   51 aliens
+   27s     89 FPS    24,0 ms    315 part.    2 luzes   49 aliens
+   28s     93 FPS    33,2 ms    351 part.    3 luzes   48 aliens
+   29s     97 FPS    53,8 ms    462 part.    2 luzes   49 aliens
+   30s     92 FPS    35,1 ms    441 part.    2 luzes   47 aliens
+
+Máquina e configuração:
+  Placa de vídeo: AMD Radeon RX 9060 XT (16253 MB, Direct3D12)
+  Processador: AMD Ryzen 5 5600X 6-Core Processor  (12 núcleos) · RAM 16328 MB
+  Resolução do jogo: 1455x598 · tela 144 Hz
+  Qualidade: PC · VSync normal: desligado (desligado durante a medição)
+  URP: PC_RPAsset · escala de render 1,00 · distância da sombra 50 m · MSAA 1x · HDR sim
+  Posição do jogador no fim: 3798, 1, -2977
+  Custo da contagem de objetos do medidor: 2,7 ms (tirado do quadro seguinte)
+
+O que você estava fazendo durante a medição? (anote aqui embaixo antes de mandar)
+> 

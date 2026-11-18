@@ -591,7 +591,7 @@ public sealed class TrafficSystem : MonoBehaviour
     private TrafficCar BuildCar(Vector3 position, Vector3 direction, bool police = false)
     {
         GameObject car = new GameObject(police ? "Viatura" : "Carro_Transito");
-        position.y += PlanetTerrain.SurfaceY(position); // Missão 20: rua no morro
+        position.y += TrafficCar.RoadY(position, 0f); // Missão 20: rua no morro (18/11: e em cima da ponte)
         car.transform.SetPositionAndRotation(position, Quaternion.LookRotation(direction));
         car.transform.SetParent(transform, true);
 

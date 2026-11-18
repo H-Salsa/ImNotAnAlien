@@ -920,6 +920,10 @@ public static class PlanetTerrain
 
                 if (drop)
                 {
+                    // Some na hora (18/11): senão a árvore/pedra que caiu dentro d'água ainda entra no
+                    // NavMesh do começo do jogo (vira "ilha" invisível para os aliens).
+                    item.gameObject.SetActive(false);
+                    item.SetParent(null, false);
                     Object.Destroy(item.gameObject);
                     continue;
                 }
@@ -1114,7 +1118,10 @@ public static class PlanetTerrain
     public static void AddWater(Transform staticRoot, Transform triggerRoot, Material water, BlockAssets assets)
     {
         GameObject sheet = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Object.Destroy(sheet.GetComponent<Collider>());
+        // Conserto 18/11: era Destroy (só some no fim do quadro). No começo do jogo o NavMesh é montado
+        // no MESMO quadro em que os blocos nascem, então a lâmina de água ainda tinha colisor e virava
+        // chão de NavMesh: os aliens andavam POR CIMA da água. DestroyImmediate tira na hora.
+        Object.DestroyImmediate(sheet.GetComponent<Collider>());
         sheet.name = "Agua_Mar";
         sheet.transform.SetParent(staticRoot, false);
         sheet.transform.localPosition = new Vector3(BlockSize * 0.5f, WaterLevel - 0.01f, BlockSize * 0.5f);

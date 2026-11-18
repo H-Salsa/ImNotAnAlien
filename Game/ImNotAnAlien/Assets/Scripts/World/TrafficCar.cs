@@ -24,6 +24,34 @@ public sealed class TrafficCar : MonoBehaviour
     private readonly List<float> pathSpeeds = new List<float>();
     private float rideHeight; // altura do carro acima do chão (Missão 20: ruas com morro)
     private readonly RaycastHit[] hits = new RaycastHit[12];
+    private static readonly RaycastHit[] roadHits = new RaycastHit[8];
+
+    // Altura da RUA num ponto (conserto 18/11). A altura do relevo (PlanetTerrain.SurfaceY) não sabe das
+    // pontes: embaixo delas o rio é cavado, e o carro "mergulhava" na ponte como se ela fosse uma rampa.
+    // Um raio de cima para baixo acha o tabuleiro da ponte; onde não há nada acima do relevo, vale o relevo.
+    // "probeFromY": altura de onde começar a procurar (o chão em que o carro já está, ou 0 ao nascer).
+    public static float RoadY(Vector3 point, float probeFromY)
+    {
+        float terrain = PlanetTerrain.SurfaceY(point);
+        float top = Mathf.Max(probeFromY, terrain) + 3f;
+        int count = Physics.RaycastNonAlloc(new Vector3(point.x, top, point.z), Vector3.down, roadHits, top - terrain + 1f,
+            Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+
+        float best = terrain;
+        for (int i = 0; i < count; i++)
+        {
+            Collider hit = roadHits[i].collider;
+            // Só o que é fixo: pula carros, aliens, caixas, pedaços (têm Rigidbody) e o jogador.
+            if (hit == null || hit.attachedRigidbody != null || hit is CharacterController)
+            {
+                continue;
+            }
+
+            best = Mathf.Max(best, roadHits[i].point.y);
+        }
+
+        return best;
+    }
 
     private TrafficSystem system;
     private Rigidbody body;
@@ -135,7 +163,7 @@ public sealed class TrafficCar : MonoBehaviour
         fromNode = from;
         toNode = to;
         speed = owner.CruiseSpeed * 0.6f;
-        rideHeight = transform.position.y - PlanetTerrain.SurfaceY(transform.position);
+        rideHeight = transform.position.y - RoadY(transform.position, 0f);
         PlanLeg(transform.position);
     }
 
@@ -230,11 +258,12 @@ public sealed class TrafficCar : MonoBehaviour
         Vector3 direction = toTarget.normalized;
         // Missão 20: as ruas sobem e descem os morros — o carro acompanha a altura do chão e inclina.
         Vector3 next = position + direction * step;
-        next.y = PlanetTerrain.SurfaceY(next) + rideHeight;
+        float groundNow = position.y - rideHeight; // a rua (ou ponte) em que ele está agora
+        next.y = RoadY(next, groundNow) + rideHeight;
         body.MovePosition(next);
         Vector3 ahead = position + direction * 2f;
         Vector3 slope = direction * 2f;
-        slope.y = PlanetTerrain.SurfaceY(ahead) - PlanetTerrain.SurfaceY(position - direction * 2f);
+        slope.y = RoadY(ahead, groundNow) - RoadY(position - direction * 2f, groundNow);
         slope.y *= 0.5f;
         Quaternion facing = Quaternion.LookRotation(slope.sqrMagnitude > 0.0001f ? slope : direction, Vector3.up);
         body.MoveRotation(Quaternion.Slerp(body.rotation, facing, 8f * dt));

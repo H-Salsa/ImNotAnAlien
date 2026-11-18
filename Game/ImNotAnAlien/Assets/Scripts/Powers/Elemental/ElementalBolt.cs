@@ -209,9 +209,16 @@ public sealed class ElementalBolt : MonoBehaviour
         {
             float t = i / (float)(pointCount - 1);
             drift = Vector2.Lerp(drift, Random.insideUnitCircle, 0.75f);
-            float envelope = Mathf.Sin(t * Mathf.PI); // preso nas duas pontas
+            // Preso nas duas pontas. Conserto 18/11: no último ponto, Sin(PI) dá um número NEGATIVO
+            // minúsculo (-0,00000009) e Pow(negativo, 0,6) = NaN: a linha ficava com um ponto inválido
+            // e o Unity enchia o Console de "IsFinite(distanceAlongView)". O Max segura em zero.
+            float envelope = Mathf.Max(0f, Mathf.Sin(t * Mathf.PI));
             points[i] = Vector3.Lerp(a, b, t) + (side * drift.x + up * drift.y) * amplitude * Mathf.Pow(envelope, 0.6f);
         }
+
+        // As pontas ficam exatamente nos dois pontos.
+        points[0] = a;
+        points[pointCount - 1] = b;
 
         core.positionCount = pointCount;
         core.SetPositions(points);
