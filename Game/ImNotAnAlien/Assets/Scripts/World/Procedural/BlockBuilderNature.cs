@@ -369,48 +369,11 @@ public static partial class BlockBuilder
             return false;
         }
 
-        float density;
-        switch (c.spec.type)
-        {
-            case BlockType.Campo:
-            case BlockType.Lagoa: density = 3.6f; break;
-            case BlockType.Floresta: density = 3.2f; break;
-            case BlockType.Parque: density = 2.6f; break;
-            case BlockType.Lago: density = 2.4f; break;
-            case BlockType.Rio: density = 2f; break;
-            case BlockType.Fazenda: density = 2f; break;
-            case BlockType.Bairro:
-            case BlockType.Praca:
-            case BlockType.Esquina: density = 1.2f; break;
-            case BlockType.Predios:
-            case BlockType.Galpoes: density = 0.6f; break;
-            default: return false;
-        }
-
-        density *= 6f; // folhas baixinhas: precisa de bem mais para fechar o gramado (pedido do autor; teste com o dobro)
         Planet.Biome biome = NatureBiome(c);
-        float tall = 1f;
-        switch (biome)
+        float density = GrassDensity(c.spec.type, biome, out float tall);
+        if (density <= 0f)
         {
-            case Planet.Biome.Gelo:
-            case Planet.Biome.Geleira:
-            case Planet.Biome.Picos:
-                return false;
-            case Planet.Biome.Dunas:
-            case Planet.Biome.Cratera:
-            case Planet.Biome.Antenas:
-                density *= 0.15f; tall = 0.8f; break;
-            case Planet.Biome.Tundra:
-                density *= 0.6f; tall = 0.7f; break;
-            case Planet.Biome.Pantano:
-                density *= 1.1f; tall = 1.3f; break;
-            case Planet.Biome.Estepe:
-                tall = 1.3f; break;
-            case Planet.Biome.Planicie:
-            case Planet.Biome.Campos:
-                tall = 1.15f; break;
-            case Planet.Biome.Cidade:
-                tall = 0.7f; break;
+            return false;
         }
 
         Color pe, ponta;
@@ -442,8 +405,100 @@ public static partial class BlockBuilder
             // Missão 20: cor da grama misturada com o bioma vizinho perto da divisa.
             field.BlendBiomes(new Vector2(Planet.GridOrigin.x + c.coord.x * 100f, Planet.GridOrigin.y + c.coord.y * 100f),
                 QualitySettings.activeColorSpace == ColorSpace.Linear);
+            BlendGrassWithNeighbors(c, field, density, tall);
         }
         return true;
+    }
+
+    // Quantidade (folhas por m²) e altura da grama de triângulos de um tipo de bloco num bioma.
+    // 0 = sem grama de triângulos (fica a grama de modelos).
+    private static float GrassDensity(BlockType type, Planet.Biome biome, out float tall)
+    {
+        tall = 1f;
+        float density;
+        switch (type)
+        {
+            case BlockType.Campo:
+            case BlockType.Lagoa: density = 3.6f; break;
+            case BlockType.Floresta: density = 3.2f; break;
+            case BlockType.Parque: density = 2.6f; break;
+            case BlockType.Lago: density = 2.4f; break;
+            case BlockType.Rio: density = 2f; break;
+            case BlockType.Fazenda: density = 2f; break;
+            case BlockType.Bairro:
+            case BlockType.Praca:
+            case BlockType.Esquina: density = 1.2f; break;
+            case BlockType.Predios:
+            case BlockType.Galpoes: density = 0.6f; break;
+            default: return 0f;
+        }
+
+        density *= 6f; // folhas baixinhas: precisa de bem mais para fechar o gramado (pedido do autor; teste com o dobro)
+        switch (biome)
+        {
+            case Planet.Biome.Gelo:
+            case Planet.Biome.Geleira:
+            case Planet.Biome.Picos:
+                return 0f;
+            case Planet.Biome.Dunas:
+            case Planet.Biome.Cratera:
+            case Planet.Biome.Antenas:
+                density *= 0.15f; tall = 0.8f; break;
+            case Planet.Biome.Tundra:
+                density *= 0.6f; tall = 0.7f; break;
+            case Planet.Biome.Pantano:
+                density *= 1.1f; tall = 1.3f; break;
+            case Planet.Biome.Estepe:
+                tall = 1.3f; break;
+            case Planet.Biome.Planicie:
+            case Planet.Biome.Campos:
+                tall = 1.15f; break;
+            case Planet.Biome.Cidade:
+                tall = 0.7f; break;
+        }
+
+        return density;
+    }
+
+    // 20/11 (pedido do autor): a quantidade e a altura da grama mudavam de uma vez na divisa dos blocos
+    // (ex.: campo cheio ao lado de bairro ralo), e o chão aparecia em "quadrados" de cor diferente.
+    // Agora cada folha usa a mistura dos 3 × 3 blocos em volta, como a cor do bioma: a troca é gradual.
+    private static void BlendGrassWithNeighbors(Ctx c, GrassField field, float ownDensity, float ownTall)
+    {
+        WorldLayout layout = WorldStreamer.Instance != null ? WorldStreamer.Instance.Layout : null;
+        if (layout == null)
+        {
+            return;
+        }
+
+        float[] densities = new float[9];
+        float[] talls = new float[9];
+        for (int dz = -1; dz <= 1; dz++)
+        {
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                int i = (dz + 1) * 3 + (dx + 1);
+                if (dx == 0 && dz == 0)
+                {
+                    densities[i] = ownDensity;
+                    talls[i] = ownTall;
+                    continue;
+                }
+
+                Vector2Int n = new Vector2Int(c.coord.x + dx, c.coord.y + dz);
+                if (!Planet.InsideLatitude(n.y))
+                {
+                    densities[i] = 0f; // polo: sem grama
+                    talls[i] = ownTall;
+                    continue;
+                }
+
+                densities[i] = GrassDensity(layout.Get(n).type, PlanetTerrain.BiomeOfBlock(n), out float tall);
+                talls[i] = densities[i] > 0f ? tall : ownTall;
+            }
+        }
+
+        field.BlendDensity(densities, talls);
     }
 
     private static void Cover(Ctx c, Transform parent, GameObject[] pool, int count, float min, float max, bool byHeight)

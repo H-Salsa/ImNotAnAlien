@@ -825,6 +825,32 @@ public static class PlanetTerrain
         assets.Add(mesh);
         markMesh.Dispose();
 
+        Material material = GroundMaterial(d, coord, template, assets);
+
+        GameObject ground = new GameObject("Chao");
+        ground.transform.SetParent(parent, false);
+        ground.AddComponent<MeshFilter>().sharedMesh = mesh;
+        ground.AddComponent<MeshRenderer>().sharedMaterial = material;
+        if (wild)
+        {
+            using (PerfMarks.Time("Chão > colisor da malha"))
+            {
+                ground.AddComponent<MeshCollider>().sharedMesh = mesh;
+            }
+        }
+        else
+        {
+            BoxCollider box = ground.AddComponent<BoxCollider>();
+            box.center = new Vector3(BlockSize * 0.5f, -0.1f, BlockSize * 0.5f);
+            box.size = new Vector3(BlockSize, 0.2f, BlockSize);
+        }
+
+        return ground;
+    }
+
+    // Textura do chão (cores já calculadas) + material com ela.
+    private static Material GroundMaterial(GroundData d, Vector2Int coord, Material template, BlockAssets assets)
+    {
         Texture2D texture = new Texture2D(GroundTextureSize, GroundTextureSize, TextureFormat.RGBA32, true)
         {
             name = $"Chao_{coord.x}_{coord.y}",
@@ -854,26 +880,58 @@ public static class PlanetTerrain
         }
 
         assets.Add(material);
+        return material;
+    }
 
-        GameObject ground = new GameObject("Chao");
-        ground.transform.SetParent(parent, false);
-        ground.AddComponent<MeshFilter>().sharedMesh = mesh;
-        ground.AddComponent<MeshRenderer>().sharedMaterial = material;
-        if (wild)
+    // 20/11: os blocos do Vilarejo (prefabs) tinham o gramado em caixas com a cor fixa do kit (M_Grama),
+    // diferente do chão com a cor do bioma dos blocos em volta: ficava um "quadrado" de outra cor.
+    // Agora essas caixas usam a mesma textura do chão (cor pela posição no planeta), com a coordenada da
+    // textura pela posição no bloco: emenda com os vizinhos sem degrau.
+    public static void RetextureFlatGrass(Transform blockRoot, Transform staticRoot, Vector2Int coord, Material grass, BlockAssets assets)
+    {
+        if (!Active || blockRoot == null || staticRoot == null || grass == null || assets == null)
         {
-            using (PerfMarks.Time("Chão > colisor da malha"))
+            return;
+        }
+
+        Material material = null;
+        foreach (MeshRenderer renderer in staticRoot.GetComponentsInChildren<MeshRenderer>(true))
+        {
+            Material current = renderer.sharedMaterial;
+            if (current == null || renderer.sharedMaterials.Length != 1 || !current.name.StartsWith(grass.name))
             {
-                ground.AddComponent<MeshCollider>().sharedMesh = mesh;
+                continue;
             }
-        }
-        else
-        {
-            BoxCollider box = ground.AddComponent<BoxCollider>();
-            box.center = new Vector3(BlockSize * 0.5f, -0.1f, BlockSize * 0.5f);
-            box.size = new Vector3(BlockSize, 0.2f, BlockSize);
-        }
 
-        return ground;
+            MeshFilter filter = renderer.GetComponent<MeshFilter>();
+            Mesh src = filter != null ? filter.sharedMesh : null;
+            if (src == null || !src.isReadable)
+            {
+                continue;
+            }
+
+            if (material == null)
+            {
+                GroundData d = GroundPrefetch.TryTake(coord, 0, out GroundData ready) ? ready : ComputeGround(coord, 0);
+                material = GroundMaterial(d, coord, grass, assets);
+            }
+
+            Mesh mesh = Object.Instantiate(src);
+            mesh.name = src.name + "_Bioma";
+            Vector3[] vertices = mesh.vertices;
+            Vector2[] uvs = new Vector2[vertices.Length];
+            Transform t = renderer.transform;
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                Vector3 local = blockRoot.InverseTransformPoint(t.TransformPoint(vertices[i]));
+                uvs[i] = new Vector2(local.x / BlockSize, local.z / BlockSize);
+            }
+
+            mesh.uv = uvs;
+            assets.Add(mesh);
+            filter.sharedMesh = mesh;
+            renderer.sharedMaterial = material;
+        }
     }
 
     private static float GridHeight(Vector3[] vertices, int row, float step, float lx, float lz)

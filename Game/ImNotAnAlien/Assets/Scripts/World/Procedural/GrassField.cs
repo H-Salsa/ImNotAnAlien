@@ -45,6 +45,10 @@ public sealed class GrassField : MonoBehaviour
     private Vector2 logicalOrigin;
     private bool linearColors;
 
+    private float[] blendDensity; // 3 × 3 blocos em volta (null = só a deste bloco)
+    private float[] blendTall;
+    private float maxDensity;
+
     private Transform holder;
     private readonly List<Mesh> meshes = new List<Mesh>();
     private int next = -1;       // próximo pedaço a montar (-1 = desmontado)
@@ -81,6 +85,36 @@ public sealed class GrassField : MonoBehaviour
         blendBiomes = true;
         logicalOrigin = blockLogicalOrigin;
         linearColors = linear;
+    }
+
+    // Quantidade e altura da grama dos 3 × 3 blocos em volta (índice (dz + 1) * 3 + (dx + 1)): cada folha
+    // usa a mistura pela posição, para a grama não mudar de uma vez na divisa dos blocos.
+    public void BlendDensity(float[] densities, float[] talls)
+    {
+        blendDensity = densities;
+        blendTall = talls;
+        maxDensity = 0f;
+        foreach (float d in densities)
+        {
+            maxDensity = Mathf.Max(maxDensity, d);
+        }
+    }
+
+    // Mistura entre os centros dos blocos (curva suave): no meio do bloco vale o dele, na divisa a média.
+    private float Mix(float[] values, float x, float z)
+    {
+        float u = (x - BlockSize * 0.5f) / BlockSize;
+        float v = (z - BlockSize * 0.5f) / BlockSize;
+        int i0 = u < 0f ? -1 : 0;
+        int j0 = v < 0f ? -1 : 0;
+        float tx = u - i0, tz = v - j0;
+        tx = tx * tx * (3f - 2f * tx);
+        tz = tz * tz * (3f - 2f * tz);
+        float a = values[(j0 + 1) * 3 + (i0 + 1)];
+        float b = values[(j0 + 1) * 3 + (i0 + 2)];
+        float c = values[(j0 + 2) * 3 + (i0 + 1)];
+        float d = values[(j0 + 2) * 3 + (i0 + 2)];
+        return Mathf.Lerp(Mathf.Lerp(a, b, tx), Mathf.Lerp(c, d, tx), tz);
     }
 
     private void Update()
@@ -136,7 +170,8 @@ public sealed class GrassField : MonoBehaviour
         int cx = k % Chunks;
         int cz = k / Chunks;
         System.Random rng = new System.Random(seed + k * 7919);
-        int attempts = Mathf.RoundToInt(density * ChunkSize * ChunkSize);
+        bool blend = blendDensity != null && maxDensity > 0f;
+        int attempts = Mathf.RoundToInt((blend ? maxDensity : density) * ChunkSize * ChunkSize);
 
         List<Vector3> vertices = sharedVertices;
         List<Color32> colors = sharedColors;
@@ -175,6 +210,19 @@ public sealed class GrassField : MonoBehaviour
                 continue;
             }
 
+            float bladeScale = heightScale;
+            if (blend)
+            {
+                // Sorteia com a quantidade máxima e fica só com a parte que cabe aqui.
+                float local = Mix(blendDensity, x, z);
+                if (rng.NextDouble() * maxDensity >= local)
+                {
+                    continue;
+                }
+
+                bladeScale = Mix(blendTall, x, z);
+            }
+
             float h = HeightAt(x, z);
             if (h < minHeight)
             {
@@ -183,7 +231,7 @@ public sealed class GrassField : MonoBehaviour
 
             float angle = (float)rng.NextDouble() * Mathf.PI * 2f;
             float width = 0.08f + (float)rng.NextDouble() * 0.07f;
-            float tall = (0.13f + (float)rng.NextDouble() * 0.18f) * heightScale; // 13–31 cm (metade da 1ª versão)
+            float tall = (0.13f + (float)rng.NextDouble() * 0.18f) * bladeScale; // 13–31 cm (metade da 1ª versão)
             Vector3 side = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (width * 0.5f);
             Vector3 lean = new Vector3(-side.z, 0f, side.x).normalized * ((float)rng.NextDouble() - 0.5f) * tall * 0.5f;
             Vector3 root = new Vector3(x, h - 0.03f, z);

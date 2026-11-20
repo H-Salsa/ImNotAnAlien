@@ -451,9 +451,14 @@ public sealed class WorldStreamer : MonoBehaviour
         float reach = LoadRadius + blockSize * 1.5f;
         foreach (Vector2Int coord in CandidateCoords(reach))
         {
-            if (loaded.ContainsKey(coord) || !Planet.InsideLatitude(coord.y) || entries.ContainsKey(Planet.Wrap(coord))
-                || DistanceTo(coord) > reach)
+            if (loaded.ContainsKey(coord) || !Planet.InsideLatitude(coord.y) || DistanceTo(coord) > reach)
             {
+                continue;
+            }
+
+            if (entries.ContainsKey(Planet.Wrap(coord)))
+            {
+                GroundPrefetch.Request(coord, 0); // Vilarejo: textura do gramado plano (RetextureFlatGrass)
                 continue;
             }
 
@@ -543,6 +548,20 @@ public sealed class WorldStreamer : MonoBehaviour
             using (PerfMarks.Time("Bloco: horizonte curvo"))
             {
                 CurvedHorizon.PrepareBlock(go); // peças compridas entortam direito com o horizonte curvo
+            }
+
+            if (kit != null && entries.ContainsKey(key))
+            {
+                using (PerfMarks.Time("Bloco: gramado do Vilarejo com a cor do bioma"))
+                {
+                    BlockAssets assets = go.GetComponent<BlockAssets>();
+                    if (assets == null)
+                    {
+                        assets = go.AddComponent<BlockAssets>();
+                    }
+
+                    PlanetTerrain.RetextureFlatGrass(go.transform, block.StaticRoot, coord, kit.grass, assets);
+                }
             }
         }
 
