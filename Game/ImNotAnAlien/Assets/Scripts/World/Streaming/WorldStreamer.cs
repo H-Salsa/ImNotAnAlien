@@ -560,6 +560,11 @@ public sealed class WorldStreamer : MonoBehaviour
                 CurvedHorizon.PrepareBlock(go); // peças compridas entortam direito com o horizonte curvo
             }
 
+            using (PerfMarks.Time("Bloco: juntar natureza (desenho em lote)"))
+            {
+                NatureInstancer.Setup(go); // 20/11: árvores, pedras e plantas iguais desenhadas de uma vez
+            }
+
             if (kit != null && entries.ContainsKey(key))
             {
                 using (PerfMarks.Time("Bloco: gramado do Vilarejo com a cor do bioma"))

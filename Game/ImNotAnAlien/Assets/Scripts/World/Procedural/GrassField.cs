@@ -16,6 +16,12 @@ public sealed class GrassField : MonoBehaviour
     private const float ChunkSize = BlockSize / Chunks;
     private const float BuildRadius = 110f; // até a borda do bloco (a grama some aos ~105 m)
     private const float KeepRadius = 160f;
+    // 20/11 (item 4): a grama some aos ~105 m pelo shader, mas os pedaços continuavam sendo desenhados até
+    // 160 m (milhões de triângulos invisíveis). Agora cada pedaço desliga o desenho além disso.
+    private const float ChunkVisible = 112f;
+    private readonly List<MeshRenderer> chunkRenderers = new List<MeshRenderer>(Chunks * Chunks);
+    private readonly List<Vector3> chunkCenters = new List<Vector3>(Chunks * Chunks);
+    private float nextVisibilityCheck;
 
     private static readonly int PusherId = Shader.PropertyToID("_GrassPusher");
     private static readonly int OffsetId = Shader.PropertyToID("_GrassWorldOffset");
@@ -148,6 +154,24 @@ public sealed class GrassField : MonoBehaviour
         if (next >= 0 && distance > KeepRadius)
         {
             Clear();
+            return;
+        }
+
+        if (chunkRenderers.Count > 0 && Time.unscaledTime >= nextVisibilityCheck)
+        {
+            nextVisibilityCheck = Time.unscaledTime + 0.25f;
+            float reach = ChunkVisible + ChunkSize * 0.71f; // do centro do pedaço até o canto
+            for (int i = 0; i < chunkRenderers.Count; i++)
+            {
+                if (chunkRenderers[i] == null)
+                {
+                    continue;
+                }
+
+                Vector3 c = transform.TransformPoint(chunkCenters[i]);
+                float dx = c.x - eye.x, dz = c.z - eye.z;
+                chunkRenderers[i].enabled = dx * dx + dz * dz <= reach * reach;
+            }
         }
     }
 
@@ -301,6 +325,8 @@ public sealed class GrassField : MonoBehaviour
         renderer.lightProbeUsage = LightProbeUsage.Off;
         renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
         renderer.allowOcclusionWhenDynamic = false;
+        chunkRenderers.Add(renderer);
+        chunkCenters.Add(new Vector3((k % Chunks + 0.5f) * ChunkSize, 0f, (k / Chunks + 0.5f) * ChunkSize));
     }
 
     // Mesma altura da malha do chão (mesmos triângulos), para a folha não flutuar nem afundar.
@@ -337,6 +363,8 @@ public sealed class GrassField : MonoBehaviour
         }
 
         meshes.Clear();
+        chunkRenderers.Clear();
+        chunkCenters.Clear();
         if (holder != null)
         {
             Destroy(holder.gameObject);
