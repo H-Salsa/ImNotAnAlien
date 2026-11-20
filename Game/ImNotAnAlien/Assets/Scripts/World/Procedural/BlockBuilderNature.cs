@@ -748,6 +748,7 @@ public static partial class BlockBuilder
         }
 
         ReplaceVillageHouses(c);
+        ConvertVillageLamps(c);
         ConvertVillageRiver(c);
 
         List<Transform> trees = new List<Transform>();
@@ -868,13 +869,32 @@ public static partial class BlockBuilder
         Physics.SyncTransforms();
     }
 
+    // Postes do Vilarejo (prefabs antigos) viram postes arrancáveis (StreetLamp, 20/11).
+    private static void ConvertVillageLamps(Ctx c)
+    {
+        List<Transform> lamps = new List<Transform>();
+        foreach (Transform t in c.est.GetComponentsInChildren<Transform>(true))
+        {
+            if (t.name == "Poste" && t.Find("Haste") != null)
+            {
+                lamps.Add(t);
+            }
+        }
+
+        foreach (Transform lamp in lamps)
+        {
+            StreetLamp.Setup(lamp);
+        }
+    }
+
     // Casas e prédios de blockout do Vilarejo viram as casas/prédios retrô do Blender (mesma frente,
     // mesmo lugar). Galpões e o resto ficam como estão (ainda não têm modelo novo).
     private static void ReplaceVillageHouses(Ctx c)
     {
         bool houses = c.kit.retroHouses && c.kit.houseModels != null && c.kit.houseModels.Length > 0;
         bool buildings = c.kit.buildingModels != null && c.kit.buildingModels.Length > 0;
-        if (!houses && !buildings)
+        bool shops = c.kit.shopModels != null && c.kit.shopModels.Length > 0;
+        if (!houses && !buildings && !shops)
         {
             return;
         }
@@ -899,7 +919,8 @@ public static partial class BlockBuilder
             }
 
             bool building = old.name.StartsWith("Predio");
-            if (building ? !buildings : !houses)
+            bool shop = old.name == "Casa_Loja" && shops; // 20/11: loja de blockout vira loja retrô
+            if (!shop && (building ? !buildings : !houses))
             {
                 continue;
             }
@@ -926,9 +947,16 @@ public static partial class BlockBuilder
 
             Transform parent = old.parent;
             float yaw = Quaternion.LookRotation(forward).eulerAngles.y - parent.eulerAngles.y;
-            Vector3 root = b.center + forward * (building ? 0f : 1f); // a casa retrô fica 1 m para trás do ponto
+            Vector3 root = b.center + forward * (building || shop ? 0f : 1f); // a casa retrô fica 1 m para trás do ponto
             Vector3 local = parent.InverseTransformPoint(new Vector3(root.x, b.min.y, root.z));
             Remove(old.gameObject);
+            if (shop)
+            {
+                Shop(c, parent, new Vector2(local.x, local.z), yaw);
+                Transform last = parent.GetChild(parent.childCount - 1);
+                last.localPosition = new Vector3(local.x, local.y, local.z);
+                continue;
+            }
 
             Transform made = building
                 ? RetroHouse.BuildBuilding(parent, new Vector2(local.x, local.z), yaw, c.rng, template, c.kit.buildingModels)

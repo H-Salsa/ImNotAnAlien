@@ -159,6 +159,7 @@ public sealed class WorldStreamer : MonoBehaviour
         {
             RetroHouse.QueueWarmUp(kit.houseModels);
             RetroHouse.QueueWarmUp(kit.buildingModels);
+            RetroHouse.QueueWarmUp(kit.shopModels);
         }
 
         Debug.Log(planet

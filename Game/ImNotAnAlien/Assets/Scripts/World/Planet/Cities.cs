@@ -233,6 +233,11 @@ public static class Cities
             type = roll < 0.72 ? BlockType.Bairro : roll < 0.86 ? BlockType.Galpoes : BlockType.Parque;
         }
 
+        if (type == BlockType.Bairro)
+        {
+            variant = "comercio"; // 20/11: bairros de cidade com lojas na esquina
+        }
+
         BlockSpec spec = BlockSpec.Make(type, north, east, south, west, variant);
         if (type == BlockType.Praca && spec.Count(Socket.Rua) != 4)
         {

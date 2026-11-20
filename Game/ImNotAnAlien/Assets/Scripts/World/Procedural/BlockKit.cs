@@ -79,6 +79,8 @@ public sealed class BlockKit : ScriptableObject
     public GameObject[] houseModels;
     [Tooltip("Prédios modelados no Blender (Assets/Art/Buildings), preenchido pela ferramenta 'Preparar Casas'. Vazio = prédios de blockout.")]
     public GameObject[] buildingModels;
+    [Tooltip("Lojas modeladas no Blender (Assets/Art/Shops): lanchonete, mercadinho, roupas, eletrônicos, oficina. Preenchido pela ferramenta 'Preparar Casas'. Vazio = lojas de blockout.")]
+    public GameObject[] shopModels;
 
     [Header("Natureza (Missão 20)")]
     [Tooltip("Árvores, plantas e pedras do MegaKit + Trees (ferramenta 'Preparar Natureza'). Vazio = árvores de blockout.")]

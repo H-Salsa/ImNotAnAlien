@@ -278,6 +278,11 @@ public static class ElementalCombat
             vehicle.TakeDamage(damage);
         }
 
+        if (target.TryGetComponent(out StreetLamp lamp))
+        {
+            lamp.Hit(falloff); // poste: arranca; o segundo tiro forte parte em dois (quem chamou empurra depois)
+        }
+
         if (target.TryGetComponent(out EnemyQuadShell shell))
         {
             shell.TakeDamage(damage * 0.5f);

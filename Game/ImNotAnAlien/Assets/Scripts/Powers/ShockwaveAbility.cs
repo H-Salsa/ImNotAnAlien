@@ -135,6 +135,12 @@ public sealed class ShockwaveAbility : MonoBehaviour
             trafficCar.Abandon();
         }
 
+        // Poste: perto da onda é arrancado e voa junto; já solto, soma dano até partir (20/11).
+        if (body.TryGetComponent(out StreetLamp lamp))
+        {
+            lamp.Hit(falloff); // perto arranca; duas ondas perto partem em dois
+        }
+
         if (body.isKinematic)
         {
             return; // algo fixo que não deve voar

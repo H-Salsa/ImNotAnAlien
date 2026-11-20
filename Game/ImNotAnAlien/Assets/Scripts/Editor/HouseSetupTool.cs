@@ -14,6 +14,7 @@ public static class HouseSetupTool
 {
     private const string Folder = "Assets/Art/Houses";
     private const string BuildingFolder = "Assets/Art/Buildings";
+    private const string ShopFolder = "Assets/Art/Shops"; // lojas das cidades (Art/Blender/loja_builder.py)
     private const string BlockKitPath = "Assets/Art/BlockKit.asset";
 
     [MenuItem("ImNotAnAlien/Preparar Casas (Missao 20)")] // casas (Assets/Art/Houses) e prédios (Assets/Art/Buildings)
@@ -21,12 +22,14 @@ public static class HouseSetupTool
     {
         List<GameObject> models = Prepare(Folder);
         List<GameObject> buildings = Prepare(BuildingFolder);
+        List<GameObject> shops = Prepare(ShopFolder);
 
         BlockKit kit = AssetDatabase.LoadAssetAtPath<BlockKit>(BlockKitPath);
         if (kit != null)
         {
             kit.houseModels = models.OrderBy(m => m.name).ToArray();
             kit.buildingModels = buildings.OrderBy(m => m.name).ToArray();
+            kit.shopModels = shops.OrderBy(m => m.name).ToArray();
             kit.retroHouses = true;
             EditorUtility.SetDirty(kit);
             AssetDatabase.SaveAssets();
@@ -34,7 +37,8 @@ public static class HouseSetupTool
 
         EditorUtility.DisplayDialog("Casas e prédios",
             $"{models.Count} casa(s): {string.Join(", ", models.Select(m => m.name))}.\n" +
-            $"{buildings.Count} prédio(s): {string.Join(", ", buildings.Select(m => m.name))}." +
+            $"{buildings.Count} prédio(s): {string.Join(", ", buildings.Select(m => m.name))}.\n" +
+            $"{shops.Count} loja(s): {string.Join(", ", shops.Select(m => m.name))}." +
             (kit != null ? "\nLigados ao Kit de Blocos: comece um jogo novo." : "\nNão achei o Kit de Blocos em " + BlockKitPath + "."),
             "OK");
     }

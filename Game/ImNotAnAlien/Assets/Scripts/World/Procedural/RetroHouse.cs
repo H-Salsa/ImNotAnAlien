@@ -869,11 +869,24 @@ public static class RetroHouse
         return building;
     }
 
-    private static Transform BuildFromModel(Transform parent, Vector2 position, float yaw, System.Random rng, Material template, GameObject[] models,
-        float lotBack = LotBack, string name = "Casa")
+    // Lojas retrô (Assets/Art/Shops): mesma receita dos prédios (na calçada, sem recuo), com a loja escolhida
+    // por quem chama e a cor fixa de cada loja.
+    public static Transform BuildShop(Transform parent, Vector2 position, float yaw, System.Random rng, Material template, GameObject model)
     {
-        GameObject model = models[rng.Next(models.Length)];
+        return BuildFromModel(parent, position, yaw, rng, template, null, 0f, "Loja", model);
+    }
+
+    private static Transform BuildFromModel(Transform parent, Vector2 position, float yaw, System.Random rng, Material template, GameObject[] models,
+        float lotBack = LotBack, string name = "Casa", GameObject chosen = null)
+    {
+        GameObject model = chosen != null ? chosen : models[rng.Next(models.Length)];
         int palette = rng.Next(PaletteCount);
+        int fixedPalette = FixedPalette(model);
+        if (fixedPalette >= 0)
+        {
+            palette = fixedPalette;
+        }
+
         bool mirror = rng.NextDouble() < 0.5;
         Variant v = VariantFor(model, palette, mirror);
 
@@ -976,8 +989,14 @@ public static class RetroHouse
                 continue;
             }
 
+            int only = FixedPalette(model); // loja: só a cor dela
             for (int palette = 0; palette < PaletteCount; palette++)
             {
+                if (only >= 0 && palette != only)
+                {
+                    continue;
+                }
+
                 warmQueue.Enqueue((model, palette, false));
                 warmQueue.Enqueue((model, palette, true));
             }
@@ -1171,7 +1190,7 @@ public static class RetroHouse
         foreach (Transform part in jobRoot.GetComponentsInChildren<Transform>(true))
         {
             string name = Clean(part.name);
-            bool prop = name == "LOD0_Carro" || name == "LOD0_Correio" || name == "LOD0_Lixeira";
+            bool prop = IsProp(name);
             if (name.StartsWith("Caco_") || prop)
             {
                 jobParts.Add(part);
@@ -1191,7 +1210,7 @@ public static class RetroHouse
         {
             Transform part = jobParts[jobIndex++];
             string name = Clean(part.name);
-            bool prop = name == "LOD0_Carro" || name == "LOD0_Correio" || name == "LOD0_Lixeira";
+            bool prop = IsProp(name);
             Accumulator a = sharedPiece.Reset(); // 20/11: listas reaproveitadas (antes ~8,8 MB de lixo por prédio)
             a.Append(part, jobRoot, jobPalette, jobMirror);
             if (a.Count > 0)
@@ -1221,6 +1240,29 @@ public static class RetroHouse
         jobRoot = null;
         jobParts.Clear();
         return true;
+    }
+
+    // Objetos soltos (caem inteiros quando a casa desaba): carro, correio, lixeira e, nas lojas,
+    // LOD0_Obj_* (toldo, banquinhos, caixotes de fruta, cúpulas...).
+    private static bool IsProp(string name) =>
+        name == "LOD0_Carro" || name == "LOD0_Correio" || name == "LOD0_Lixeira" || name.StartsWith("LOD0_Obj_");
+
+    // Lojas (Assets/Art/Shops, 20/11): cada uma tem sempre a mesma cor (a da imagem de referência).
+    // -1 = cor sorteada (casas e prédios).
+    public static int FixedPalette(GameObject model)
+    {
+        if (model == null || !model.name.StartsWith("Loja_"))
+        {
+            return -1;
+        }
+
+        string n = model.name;
+        if (n.Contains("Lanchonete")) return 0;  // coral
+        if (n.Contains("Mercadinho")) return 1;  // sálvia (menta)
+        if (n.Contains("Roupas")) return 2;      // azul petróleo
+        if (n.Contains("Eletronicos")) return 3; // mostarda
+        if (n.Contains("Oficina")) return 7;     // laranja
+        return -1;
     }
 
     // O Blender põe ".001", ".002"... quando o nome já existe no arquivo (várias casas no mesmo .blend).

@@ -44,6 +44,7 @@ public static partial class BlockBuilder
         public Material grass;        // grama das caixas (com a cor do bioma no planeta)
         public BlockAssets assets;
         public bool[] blocked;        // Missão 20: onde não nasce planta (BlockedMap), células de 1 m
+        public int shopTurn = -1;     // lojas do bloco em rodízio (sem repetir a mesma lado a lado)
         public bool AnyRoad => arm[0] || arm[1] || arm[2] || arm[3];
     }
 
@@ -478,10 +479,7 @@ public static partial class BlockBuilder
             Local(c, ponte, "Mureta_L", new Vector3(RoadHalf + 0.85f, 0.5f, 0f), new Vector3(0.3f, 1f, deck), c.kit.lampPole);
             for (int side = -1; side <= 1; side += 2)
             {
-                Transform lamp = Child(ponte, "Poste");
-                lamp.localPosition = new Vector3(side * (RoadHalf + 0.85f), 0f, side * 8f);
-                Prim(c, PrimitiveType.Cylinder, "Haste", lamp, new Vector3(0f, 3f, 0f), new Vector3(0.2f, 3f, 0.2f), c.kit.lampPole);
-                NoCollider(Prim(c, PrimitiveType.Sphere, "Luz", lamp, new Vector3(0f, 6.3f, 0f), Vector3.one * 0.7f, c.kit.lampLight));
+                LampAt(c, ponte, new Vector3(side * (RoadHalf + 0.85f), 0f, side * 8f));
             }
 
             // Ruas das duas margens até a ponte (em coordenadas do bloco).
@@ -523,6 +521,13 @@ public static partial class BlockBuilder
     private static void Bairro(Ctx c)
     {
         Transform houses = Child(c.est, "Casas");
+        if (c.spec.variant == "comercio" && c.kit.shopModels != null && c.kit.shopModels.Length > 0)
+        {
+            // 20/11: bairro de cidade: algumas lojas na esquina (antes das casas, que ocupam o que sobrar).
+            Transform shops = Child(c.est, "Lojas");
+            AlongRoads(c, new[] { 14f }, 0.45f, (p, yaw, f) => Shop(c, shops, p, yaw), 12f, 9f, 1.5f);
+        }
+
         if (c.kit.retroHouses)
         {
             // Bairro cheio (pedido do autor): 4 casas por lado de rua, quase sem vão, e uma 2ª fileira atrás.
@@ -937,6 +942,23 @@ public static partial class BlockBuilder
 
     private static void Shop(Ctx c, Transform parent, Vector2 p, float yaw)
     {
+        GameObject[] shopModels = c.kit.shopModels;
+        if (shopModels != null && shopModels.Length > 0)
+        {
+            // 20/11: lojas modeladas (lanchonete, mercadinho, roupas, eletrônicos, oficina), em rodízio.
+            if (c.shopTurn < 0)
+            {
+                c.shopTurn = c.rng.Next(shopModels.Length);
+            }
+
+            GameObject model = shopModels[c.shopTurn++ % shopModels.Length];
+            if (model != null)
+            {
+                RetroHouse.BuildShop(parent, p, yaw, c.rng, c.kit.houseWalls != null && c.kit.houseWalls.Length > 0 ? c.kit.houseWalls[0] : null, model);
+                return;
+            }
+        }
+
         float w = Range(c, 10f, 12f);
         float d = 8.5f;
         float h = Range(c, 5f, 6.5f);
@@ -1070,10 +1092,17 @@ public static partial class BlockBuilder
 
     private static void Lamp(Ctx c, Transform parent, Vector2 p, float baseY = WalkHeight)
     {
+        LampAt(c, parent, new Vector3(p.x, baseY, p.y));
+    }
+
+    // Poste de rua arrancável (StreetLamp, 20/11): quebra com pancadas, voa e dá para pegar com a telecinese.
+    private static void LampAt(Ctx c, Transform parent, Vector3 localPosition)
+    {
         Transform lamp = Child(parent, "Poste");
-        lamp.localPosition = new Vector3(p.x, baseY, p.y);
+        lamp.localPosition = localPosition;
         Prim(c, PrimitiveType.Cylinder, "Haste", lamp, new Vector3(0f, 3f, 0f), new Vector3(0.2f, 3f, 0.2f), c.kit.lampPole);
         NoCollider(Prim(c, PrimitiveType.Sphere, "Luz", lamp, new Vector3(0f, 6.3f, 0f), Vector3.one * 0.7f, c.kit.lampLight));
+        StreetLamp.Setup(lamp);
     }
 
     private static void Crate(Ctx c, Vector3 p)

@@ -239,6 +239,12 @@ public sealed class TelekinesisPower : MonoBehaviour
 
     private void Grab(Rigidbody target)
     {
+        // Poste de pé: a telecinese arranca do chão antes de levantar (20/11).
+        if (target.TryGetComponent(out StreetLamp lamp))
+        {
+            lamp.Uproot();
+        }
+
         held = target;
         heldAlien = target.GetComponent<AlienBrain>();
 
