@@ -27,6 +27,8 @@ public sealed class ElementalFxRunner : MonoBehaviour
     private static ElementalFxRunner instance;
 
     private readonly List<FlashLight> flashes = new List<FlashLight>();
+    // Luzes de clarão guardadas para reaproveitar (18/11): em vez de criar e destruir uma luz a cada tiro.
+    private readonly Stack<Light> freeLights = new Stack<Light>();
     private readonly Dictionary<Sound, AudioClip> clips = new Dictionary<Sound, AudioClip>();
     private AudioSource[] voices;
     private int nextVoice;
@@ -97,11 +99,7 @@ public sealed class ElementalFxRunner : MonoBehaviour
             float t = (Time.time - flash.start) / flash.duration;
             if (t >= 1f || flash.light == null)
             {
-                if (flash.light != null)
-                {
-                    Destroy(flash.light.gameObject);
-                }
-
+                StoreLight(flash.light);
                 flashes.RemoveAt(i);
                 continue;
             }
@@ -117,23 +115,52 @@ public sealed class ElementalFxRunner : MonoBehaviour
         // Poucas luzes ao mesmo tempo: a mais antiga dá lugar.
         if (flashes.Count >= MaxFlashes)
         {
-            if (flashes[0].light != null)
-            {
-                Destroy(flashes[0].light.gameObject);
-            }
-
+            StoreLight(flashes[0].light);
             flashes.RemoveAt(0);
         }
 
-        GameObject go = new GameObject("Clarao_Elemental");
-        go.transform.position = position;
-        Light light = go.AddComponent<Light>();
+        Light light = TakeLight();
+        light.transform.position = position;
         light.type = LightType.Point;
         light.color = color;
         light.intensity = intensity;
         light.range = range;
         light.shadows = LightShadows.None;
         flashes.Add(new FlashLight { light = light, start = Time.time, duration = Mathf.Max(0.05f, duration), intensity = intensity });
+    }
+
+    private Light TakeLight()
+    {
+        while (freeLights.Count > 0)
+        {
+            Light pooled = freeLights.Pop();
+            if (pooled != null)
+            {
+                pooled.gameObject.SetActive(true);
+                return pooled;
+            }
+        }
+
+        // Objeto solto na cena (como antes), para andar junto quando o mundo recentraliza.
+        GameObject go = new GameObject("Clarao_Elemental");
+        return go.AddComponent<Light>();
+    }
+
+    private void StoreLight(Light light)
+    {
+        if (light == null)
+        {
+            return;
+        }
+
+        if (freeLights.Count >= MaxFlashes * 2)
+        {
+            Destroy(light.gameObject);
+            return;
+        }
+
+        light.gameObject.SetActive(false);
+        freeLights.Push(light);
     }
 
     // ---------- Sons ----------

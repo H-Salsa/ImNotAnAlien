@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -34,19 +35,102 @@ public sealed class ElementalBolt : MonoBehaviour
     private Vector3 arcExtents;
     private bool stopping;
 
+    // Caixa de raios (reaproveitamento, 18/11): o raio que termina fica guardado, desligado, e é usado
+    // de novo no próximo disparo com o mesmo número de galhos. Ficam dentro de "Raios_Caixa" na cena.
+    private const int PoolCapPerSize = 16;
+    private static readonly Dictionary<int, Stack<ElementalBolt>> FreeStrikes = new Dictionary<int, Stack<ElementalBolt>>();
+    private static Transform strikeRoot;
+    private bool pooled;
+    private bool inBox;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
+    {
+        FreeStrikes.Clear();
+        strikeRoot = null;
+    }
+
     public static ElementalBolt Strike(Vector3 from, Vector3 to, float width, float seconds, int branchCount, Transform followFrom = null)
     {
-        GameObject go = new GameObject("Raio");
-        ElementalBolt bolt = go.AddComponent<ElementalBolt>();
+        ElementalBolt bolt = TakeStrike(branchCount);
+        if (bolt == null)
+        {
+            GameObject go = new GameObject("Raio");
+            go.transform.SetParent(strikeRoot, false);
+            bolt = go.AddComponent<ElementalBolt>();
+            bolt.pooled = true;
+            bolt.Build(branchCount, true);
+        }
+
         bolt.from = from;
         bolt.to = to;
         bolt.fromAnchor = followFrom;
         bolt.width = width;
         bolt.life = seconds;
         bolt.jitter = 1f;
-        bolt.Build(branchCount, true);
+        bolt.age = 0f;
+        bolt.rejigTimer = 0f;
+        bolt.stopping = false;
+        bolt.inBox = false;
+        bolt.gameObject.SetActive(true);
         bolt.Rejig();
         return bolt;
+    }
+
+    private static ElementalBolt TakeStrike(int branchCount)
+    {
+        if (strikeRoot == null)
+        {
+            FreeStrikes.Clear(); // a cena mudou: os guardados foram embora junto com ela
+            strikeRoot = new GameObject("Raios_Caixa").transform;
+        }
+
+        if (FreeStrikes.TryGetValue(branchCount, out Stack<ElementalBolt> stack))
+        {
+            while (stack.Count > 0)
+            {
+                ElementalBolt bolt = stack.Pop();
+                if (bolt != null)
+                {
+                    return bolt;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // Terminou: volta para a caixa (ou some, se a caixa estiver cheia ou não for um raio da caixa).
+    private void Finish()
+    {
+        if (!pooled || strikeRoot == null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        if (inBox)
+        {
+            return;
+        }
+
+        int key = branches.Length;
+        if (!FreeStrikes.TryGetValue(key, out Stack<ElementalBolt> stack))
+        {
+            stack = new Stack<ElementalBolt>();
+            FreeStrikes[key] = stack;
+        }
+
+        if (stack.Count >= PoolCapPerSize)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        inBox = true;
+        fromAnchor = null;
+        gameObject.SetActive(false);
+        stack.Push(this);
     }
 
     // "center" e "extents" no espaço do dono (meia largura, meia altura, meia profundidade).
@@ -127,7 +211,7 @@ public sealed class ElementalBolt : MonoBehaviour
         age += Time.deltaTime;
         if (age >= life)
         {
-            Destroy(gameObject);
+            Finish();
             return;
         }
 

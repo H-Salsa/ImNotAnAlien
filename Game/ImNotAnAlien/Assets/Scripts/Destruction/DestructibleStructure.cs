@@ -473,24 +473,24 @@ public sealed class DestructibleStructure : MonoBehaviour
         return shardMesh;
     }
 
+    // 18/11: os pedaços vêm da caixa de destroços (DebrisPool) e voltam para ela quando somem.
     private static void SpawnFragment(Material material, Vector3 position, Quaternion rotation, Mesh shape, Vector3 scale, Vector3 velocity)
     {
-        GameObject go = new GameObject("Fragmento");
-        go.transform.SetPositionAndRotation(position, rotation);
-        go.transform.localScale = scale;
-        go.AddComponent<MeshFilter>().sharedMesh = shape;
-        MeshRenderer renderer = go.AddComponent<MeshRenderer>();
-        renderer.sharedMaterial = material;
-        go.AddComponent<BoxCollider>();
+        PooledDebris debris = DebrisPool.Take();
+        debris.ResetForUse("Fragmento", shape, material, scale);
+        Transform t = debris.transform;
+        t.SetParent(null, false);
+        t.SetPositionAndRotation(position, rotation);
+        t.localScale = scale;
 
-        Rigidbody body = go.AddComponent<Rigidbody>();
+        Rigidbody body = debris.Body;
+        // Blocos nascem encostados/sobrepostos; sem o limite do ResetForUse a física os "dispara" para cima.
         body.mass = Mathf.Clamp(scale.x * scale.y * scale.z * 25f, 5f, 200f);
-        // Blocos nascem encostados/sobrepostos; sem este limite a física os "dispara" para cima ao separá-los.
-        body.maxDepenetrationVelocity = 1.5f;
+        debris.gameObject.SetActive(true);
+        body.isKinematic = false;
         body.linearVelocity = velocity;
         body.angularVelocity = Random.insideUnitSphere * 3f;
-
-        go.AddComponent<CollapsingFragment>();
+        debris.Fragment.Begin(false, null);
     }
 
     // Monte baixo de pedaços escurecidos no lugar da casa.

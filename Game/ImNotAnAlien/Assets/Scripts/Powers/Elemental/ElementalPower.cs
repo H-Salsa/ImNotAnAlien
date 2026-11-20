@@ -148,6 +148,9 @@ public sealed class ElementalPower : MonoBehaviour
 
     private void Start()
     {
+        // 18/11: deixa a caixa de efeitos cheia já no carregamento (o primeiro tiro não trava).
+        ElementalFx.Prewarm(64);
+
         inventory = DnaInventory.Instance;
         if (inventory != null)
         {

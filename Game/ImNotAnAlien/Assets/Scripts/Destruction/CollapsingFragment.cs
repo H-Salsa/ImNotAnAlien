@@ -7,6 +7,8 @@ using UnityEngine;
 // Segurança: se ficar preso em algum lugar (ex.: telhado) e não parar, some depois de um tempo máximo.
 // Missão 20: cacos marcados como escombro (StayAsRubble) não afundam: ao pousar, ficam parados no lugar
 // (como parte do monte de entulho da casa) e somem junto com o bloco.
+// 18/11 (reaproveitamento): pedaço da caixa (PooledDebris) começa com Begin e, ao sumir, volta para a
+// caixa (DebrisPool) em vez de ser apagado.
 public sealed class CollapsingFragment : MonoBehaviour
 {
     private const float MinFallTime = 1f;          // tempo mínimo com física, mesmo que pouse antes
@@ -24,6 +26,7 @@ public sealed class CollapsingFragment : MonoBehaviour
     private float extraDelay;
     private bool rubble;
     private Transform rubbleParent;
+    private bool begun;
 
     public void StayAsRubble(Transform parent)
     {
@@ -31,11 +34,32 @@ public sealed class CollapsingFragment : MonoBehaviour
         rubbleParent = parent;
     }
 
+    // Pedaço reaproveitado: começa a cair de novo, do zero.
+    public void Begin(bool asRubble, Transform parent)
+    {
+        rubble = asRubble;
+        rubbleParent = asRubble ? parent : null;
+        Init();
+        enabled = true;
+    }
+
     private void Start()
     {
+        if (!begun)
+        {
+            Init();
+        }
+    }
+
+    private void Init()
+    {
+        begun = true;
         body = GetComponent<Rigidbody>();
         startScale = transform.localScale;
         extraDelay = Random.Range(0f, 0.8f); // nem todos afundam ao mesmo tempo
+        age = 0f;
+        restTime = 0f;
+        sinkStart = -1f;
     }
 
     private void Update()
@@ -68,7 +92,14 @@ public sealed class CollapsingFragment : MonoBehaviour
 
         if (t >= 1f)
         {
-            Destroy(gameObject);
+            if (TryGetComponent(out PooledDebris pooled))
+            {
+                DebrisPool.Return(pooled);
+            }
+            else
+            {
+                Destroy(gameObject);
+            }
         }
     }
 

@@ -1,0 +1,87 @@
+﻿MEDIÇÃO DE DESEMPENHO — I'm Not an Alien
+Data: 18/11/2026 07:30:03   ·   dentro do Editor (fica mais lento que a build)
+Duração: 30,0 s · 2771 quadros (pausa do menu não conta)
+
+NOTA: ACEITÁVEL (dá para melhorar)
+FPS médio ............ 92,3
+FPS mediano .......... 95,7
+1% baixo ............. 26,6 FPS   (média dos 1% piores quadros: é o que se sente como 'travadinha')
+0,1% baixo ........... 19,9 FPS
+Pior quadro .......... 50,7 ms
+Quadros acima de 16,7 ms (abaixo de 60 FPS): 71 (2,6%)
+Quadros acima de 33,3 ms (abaixo de 30 FPS): 19 (0,7%)
+Engasgos (acima de 50 ms): 2
+
+Tempo médio — CPU scripts/física: 8.8 ms · CPU preparando desenho: 2.6 ms · GPU: 2.8 ms
+Quem segura o jogo: PROCESSADOR — scripts e física (aliens, trânsito, destruição, mundo carregando)
+
+Média / máximo por segundo:
+  batches: 4310,8 / 5615,4
+  setpass: 213,6 / 381,3
+  triângulos (mil): 6368,3 / 8929,1
+  partículas: 1012,3 / 2548
+  efeitos de partícula ativos: 40,6 / 79
+  luzes: 2 / 5
+  luzes com sombra: 1 / 1
+  objetos na tela: 1263,4 / 1690
+  aliens: 77,7 / 84
+  orbes de DNA: 78,4 / 134
+  física acordada: 190,9 / 521
+  blocos do mundo: 19,9 / 21
+  lixo GC (KB/quadro): 89,7 / 542,3
+
+10 piores quadros (segundo da medição → tempo):
+  14,3 s → 50,7 ms
+  12,9 s → 50,1 ms
+  12,5 s → 50,0 ms
+  11,7 s → 48,3 ms
+  13,7 s → 47,7 ms
+  13,5 s → 42,5 ms
+  3,9 s → 41,5 ms
+  11,3 s → 41,3 ms
+  14,3 s → 41,0 ms
+  2,6 s → 40,0 ms
+
+Segundo a segundo (FPS · pior ms · partículas · luzes · aliens):
+    1s    134 FPS    11,9 ms    170 part.    1 luzes   73 aliens
+    2s    132 FPS    16,5 ms    168 part.    1 luzes   72 aliens
+    3s    102 FPS    40,0 ms    275 part.    3 luzes   72 aliens
+    4s     97 FPS    41,5 ms   1254 part.    2 luzes   73 aliens
+    5s     99 FPS    23,3 ms   1937 part.    3 luzes   70 aliens
+    6s     98 FPS    13,1 ms   2119 part.    2 luzes   67 aliens
+    7s     86 FPS    20,6 ms   2125 part.    2 luzes   67 aliens
+    8s     80 FPS    38,3 ms   2265 part.    1 luzes   69 aliens
+    9s    113 FPS    35,7 ms   1276 part.    1 luzes   71 aliens
+   10s    105 FPS    36,0 ms    790 part.    3 luzes   73 aliens
+   11s     99 FPS    18,1 ms   1069 part.    2 luzes   75 aliens
+   12s     91 FPS    48,3 ms    842 part.    2 luzes   75 aliens
+   13s     81 FPS    50,1 ms   1496 part.    4 luzes   74 aliens
+   14s     75 FPS    47,7 ms   1839 part.    2 luzes   76 aliens
+   15s     77 FPS    50,7 ms   2463 part.    2 luzes   79 aliens
+   16s     87 FPS    15,9 ms   2548 part.    3 luzes   81 aliens
+   17s     81 FPS    15,9 ms   2229 part.    3 luzes   82 aliens
+   18s     78 FPS    16,0 ms   1745 part.    2 luzes   82 aliens
+   19s     82 FPS    15,8 ms    976 part.    1 luzes   83 aliens
+   20s     80 FPS    15,4 ms    550 part.    1 luzes   83 aliens
+   21s     86 FPS    14,8 ms    213 part.    2 luzes   83 aliens
+   22s     84 FPS    15,1 ms    268 part.    1 luzes   84 aliens
+   23s     86 FPS    15,3 ms    173 part.    2 luzes   84 aliens
+   24s     87 FPS    14,3 ms    227 part.    3 luzes   84 aliens
+   25s     90 FPS    17,3 ms    149 part.    1 luzes   84 aliens
+   26s     72 FPS    36,4 ms    399 part.    5 luzes   84 aliens
+   27s     75 FPS    20,9 ms    139 part.    1 luzes   84 aliens
+   28s     94 FPS    14,6 ms    275 part.    1 luzes   84 aliens
+   29s    112 FPS    12,3 ms    250 part.    1 luzes   84 aliens
+   30s    109 FPS    14,0 ms    141 part.    1 luzes   80 aliens
+
+Máquina e configuração:
+  Placa de vídeo: AMD Radeon RX 9060 XT (16253 MB, Direct3D12)
+  Processador: AMD Ryzen 5 5600X 6-Core Processor  (12 núcleos) · RAM 16328 MB
+  Resolução do jogo: 1920x1080 · tela 144 Hz
+  Qualidade: PC · VSync normal: desligado (desligado durante a medição)
+  URP: PC_RPAsset · escala de render 1,00 · distância da sombra 50 m · MSAA 1x · HDR sim
+  Posição do jogador no fim: 188, 1, 103
+  Custo da contagem de objetos do medidor: 4,9 ms (tirado do quadro seguinte)
+
+O que você estava fazendo durante a medição? (anote aqui embaixo antes de mandar)
+> 

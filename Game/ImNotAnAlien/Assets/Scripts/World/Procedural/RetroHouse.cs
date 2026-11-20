@@ -964,39 +964,171 @@ public static class RetroHouse
         return v;
     }
 
-    // Cacos da versão pré-fraturada (feitos só quando a primeira casa daquela cor desmorona).
-    public static List<Piece> PiecesFor(HouseBreakable h)
+    // Cacos da versão pré-fraturada. Desde 18/11 eles são montados AOS POUCOS, antes do golpe, para as casas
+    // perto do jogador (DebrisPool chama PreparePiecesStep a cada quadro, com um limite de tempo). Montar tudo
+    // na hora do primeiro golpe criava muito lixo de memória de uma vez e travava o jogo.
+    // Se a casa for atingida antes de ficar pronta, termina aqui na hora (como era antes).
+    public static List<Piece> PiecesFor(HouseBreakable h) => PiecesFor(h.source, h.palette, h.mirror);
+
+    private static List<Piece> PiecesFor(GameObject model, int palette, bool mirror)
     {
-        Variant v = VariantFor(h.source, h.palette, h.mirror);
+        Variant v = VariantFor(model, palette, mirror);
         if (v.pieces != null)
         {
             return v.pieces;
         }
 
-        v.pieces = new List<Piece>();
-        Transform root = h.source.transform;
-        float roofLine = v.body.max.y - 0.6f;
-        foreach (Transform part in root.GetComponentsInChildren<Transform>(true))
+        StartPieceJob(model, palette, mirror, v);
+        while (!PieceJobStep())
         {
-            string name = Clean(part.name);
-            bool prop = name == "LOD0_Carro" || name == "LOD0_Correio" || name == "LOD0_Lixeira";
-            if (!name.StartsWith("Caco_") && !prop)
-            {
-                continue;
-            }
-
-            Accumulator a = new Accumulator();
-            a.Append(part, root, h.palette, h.mirror);
-            if (a.Count == 0)
-            {
-                continue;
-            }
-
-            Mesh mesh = a.ToMesh(part.name, true, out Vector3 center);
-            v.pieces.Add(new Piece { mesh = mesh, center = center, prop = prop, roof = !prop && center.y > roofLine });
         }
 
         return v.pieces;
+    }
+
+    // ---------- Preparo dos cacos em segundo plano ----------
+
+    private static readonly Queue<(GameObject, int, bool)> pieceQueue = new Queue<(GameObject, int, bool)>();
+    private static readonly HashSet<(GameObject, int, bool)> pieceQueued = new HashSet<(GameObject, int, bool)>();
+    private static readonly List<Transform> jobParts = new List<Transform>();
+    private static Variant jobVariant;
+    private static List<Piece> jobPieces;
+    private static Transform jobRoot;
+    private static int jobIndex;
+    private static int jobPalette;
+    private static bool jobMirror;
+    private static float jobRoofLine;
+
+    // Pede para deixar prontos os cacos da casa (sem pressa). Chamado para casas perto do jogador.
+    public static void QueuePieces(HouseBreakable h)
+    {
+        if (h == null || h.source == null)
+        {
+            return;
+        }
+
+        (GameObject, int, bool) key = (h.source, h.palette, h.mirror);
+        if (pieceQueued.Contains(key))
+        {
+            return;
+        }
+
+        if (variants.TryGetValue(key, out Variant v) && v.pieces != null)
+        {
+            return;
+        }
+
+        pieceQueued.Add(key);
+        pieceQueue.Enqueue(key);
+    }
+
+    // Trabalha nos cacos até gastar "budgetMs" milissegundos neste quadro.
+    public static void PreparePiecesStep(double budgetMs)
+    {
+        if (jobVariant == null && pieceQueue.Count == 0)
+        {
+            return;
+        }
+
+        System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
+        while (watch.Elapsed.TotalMilliseconds < budgetMs)
+        {
+            if (jobVariant == null)
+            {
+                if (pieceQueue.Count == 0)
+                {
+                    return;
+                }
+
+                (GameObject model, int palette, bool mirror) = pieceQueue.Dequeue();
+                pieceQueued.Remove((model, palette, mirror));
+                if (model == null)
+                {
+                    continue;
+                }
+
+                Variant v = VariantFor(model, palette, mirror);
+                if (v.pieces != null)
+                {
+                    continue;
+                }
+
+                StartPieceJob(model, palette, mirror, v);
+            }
+
+            PieceJobStep();
+        }
+    }
+
+    private static void StartPieceJob(GameObject model, int palette, bool mirror, Variant v)
+    {
+        if (jobVariant == v)
+        {
+            return; // já estava sendo preparada: só continua
+        }
+
+        if (jobVariant != null && jobPieces != null)
+        {
+            // Outra casa estava pela metade (esta foi atingida antes): larga a outra, que volta para a
+            // fila na próxima vez que o jogador passar perto.
+            foreach (Piece piece in jobPieces)
+            {
+                Object.Destroy(piece.mesh);
+            }
+        }
+
+        jobVariant = v;
+        jobPieces = new List<Piece>();
+        jobRoot = model.transform;
+        jobPalette = palette;
+        jobMirror = mirror;
+        jobRoofLine = v.body.max.y - 0.6f;
+        jobIndex = 0;
+        jobParts.Clear();
+        foreach (Transform part in jobRoot.GetComponentsInChildren<Transform>(true))
+        {
+            string name = Clean(part.name);
+            bool prop = name == "LOD0_Carro" || name == "LOD0_Correio" || name == "LOD0_Lixeira";
+            if (name.StartsWith("Caco_") || prop)
+            {
+                jobParts.Add(part);
+            }
+        }
+    }
+
+    // Monta um caco. Devolve true quando a casa inteira ficou pronta.
+    private static bool PieceJobStep()
+    {
+        if (jobVariant == null)
+        {
+            return true;
+        }
+
+        if (jobIndex < jobParts.Count)
+        {
+            Transform part = jobParts[jobIndex++];
+            string name = Clean(part.name);
+            bool prop = name == "LOD0_Carro" || name == "LOD0_Correio" || name == "LOD0_Lixeira";
+            Accumulator a = new Accumulator();
+            a.Append(part, jobRoot, jobPalette, jobMirror);
+            if (a.Count > 0)
+            {
+                Mesh mesh = a.ToMesh(part.name, true, out Vector3 center);
+                jobPieces.Add(new Piece { mesh = mesh, center = center, prop = prop, roof = !prop && center.y > jobRoofLine });
+            }
+        }
+
+        if (jobIndex < jobParts.Count)
+        {
+            return false;
+        }
+
+        jobVariant.pieces = jobPieces;
+        jobVariant = null;
+        jobPieces = null;
+        jobRoot = null;
+        jobParts.Clear();
+        return true;
     }
 
     // O Blender põe ".001", ".002"... quando o nome já existe no arquivo (várias casas no mesmo .blend).

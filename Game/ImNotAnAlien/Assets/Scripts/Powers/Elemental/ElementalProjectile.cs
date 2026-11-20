@@ -344,7 +344,7 @@ public sealed class ElementalProjectile : MonoBehaviour
                 // O halo anda junto com o projétil (espaço local): some na hora.
                 if (trail.main.simulationSpace == ParticleSystemSimulationSpace.Local)
                 {
-                    Destroy(trail.gameObject);
+                    ElementalFx.Recycle(trail); // 18/11: volta para a caixa de efeitos
                 }
                 else
                 {

@@ -25,15 +25,50 @@ public sealed class DnaOrb : MonoBehaviour
     public int Value { get; private set; }
     public int SourceAlienId { get; private set; }
 
+    private TrailRenderer trail;
+    private bool inBox;
+    private static Mesh sphereMesh;
+
+    // Pega um orbe da caixa do DnaOrbSystem (18/11: reaproveitamento) ou monta um novo se a caixa
+    // estiver vazia. Tudo que mudou no uso anterior é zerado aqui.
     public static DnaOrb Create(DnaOrbSystem system, int sourceAlienId, int value, Vector3 position, Vector3 velocity)
     {
-        GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        go.name = "Orbe_DNA";
-        Destroy(go.GetComponent<Collider>()); // atravessa tudo: é energia, não objeto
-        go.transform.position = position;
-        go.transform.localScale = Vector3.one * system.OrbSize;
+        DnaOrb orb = system.TakeOrb();
+        if (orb == null)
+        {
+            orb = Build(system);
+        }
 
-        Renderer orbRenderer = go.GetComponent<Renderer>();
+        orb.transform.SetPositionAndRotation(position, Quaternion.identity);
+        orb.transform.localScale = Vector3.one * system.OrbSize;
+        orb.SourceAlienId = sourceAlienId;
+        orb.Value = value;
+        orb.velocity = velocity;
+        orb.restPosition = position;
+        orb.homingSpeed = 0f;
+        orb.age = 0f;
+        orb.phase = Phase.Burst;
+        orb.bobOffset = Random.value * 10f;
+        orb.inBox = false;
+        orb.gameObject.SetActive(true);
+        orb.trail.Clear(); // sem o risco do rastro do uso anterior
+        return orb;
+    }
+
+    public static DnaOrb Build(DnaOrbSystem system)
+    {
+        // Montado à mão, sem colisor (atravessa tudo: é energia, não objeto). Conserto 18/11: antes era
+        // uma esfera pronta com o colisor apagado na hora, mas a Unity não deixa apagar na hora quando o
+        // orbe nasce dentro de uma batida (alien morto por pancada) e o colisor ficava.
+        GameObject go = new GameObject("Orbe_DNA");
+        go.transform.localScale = Vector3.one * system.OrbSize;
+        if (sphereMesh == null)
+        {
+            sphereMesh = Resources.GetBuiltinResource<Mesh>("Sphere.fbx");
+        }
+
+        go.AddComponent<MeshFilter>().sharedMesh = sphereMesh;
+        MeshRenderer orbRenderer = go.AddComponent<MeshRenderer>();
         if (system.OrbMaterial != null)
         {
             orbRenderer.sharedMaterial = system.OrbMaterial;
@@ -56,12 +91,16 @@ public sealed class DnaOrb : MonoBehaviour
 
         DnaOrb orb = go.AddComponent<DnaOrb>();
         orb.system = system;
-        orb.SourceAlienId = sourceAlienId;
-        orb.Value = value;
-        orb.velocity = velocity;
-        orb.phase = Phase.Burst;
-        orb.bobOffset = Random.value * 10f;
+        orb.trail = trail;
         return orb;
+    }
+
+    // Já está guardado na caixa (o sistema não guarda o mesmo orbe duas vezes).
+    public bool InBox => inBox;
+
+    public void MarkStored()
+    {
+        inBox = true;
     }
 
     private void OnEnable()
@@ -185,7 +224,7 @@ public sealed class DnaOrb : MonoBehaviour
         if (distance <= AbsorbDistance)
         {
             system.Absorb(this);
-            Destroy(gameObject);
+            system.StoreOrb(this); // volta para a caixa em vez de ser destruído
             return;
         }
 

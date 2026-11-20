@@ -11,8 +11,20 @@ public sealed class DestructionDust : MonoBehaviour
     private static Material material;
     private static Texture2D puff;
 
+    // Caixa de nuvens (reaproveitamento, 18/11): a nuvem que termina fica guardada, desligada, e é usada
+    // de novo na próxima destruição (um desabamento solta até 7 de uma vez).
+    private const int PoolCap = 24;
+    private static readonly System.Collections.Generic.Stack<DestructionDust> FreeDust = new System.Collections.Generic.Stack<DestructionDust>();
+
     private ParticleSystem system;
     private float stopAt;
+    private float recycleAt;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
+    {
+        FreeDust.Clear();
+    }
 
     public static void Spawn(Vector3 position, float radius, float duration)
     {
@@ -22,30 +34,61 @@ public sealed class DestructionDust : MonoBehaviour
             return;
         }
 
+        DestructionDust dust = null;
+        while (FreeDust.Count > 0 && dust == null)
+        {
+            dust = FreeDust.Pop();
+        }
+
+        if (dust == null)
+        {
+            dust = Build(mat);
+        }
+
+        // O que muda de uma nuvem para outra: tamanho, quantidade e por quanto tempo solta.
+        ParticleSystem ps = dust.system;
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        dust.transform.position = position;
+
+        ParticleSystem.MainModule main = ps.main;
+        main.startSize = new ParticleSystem.MinMaxCurve(radius * 0.7f, radius * 1.3f);
+
+        ParticleSystem.EmissionModule emission = ps.emission;
+        emission.rateOverTime = Mathf.Clamp(4f * radius, 3f, 20f);
+        emission.burstCount = 1;
+        emission.SetBurst(0, new ParticleSystem.Burst(0f, (short)Mathf.Clamp(radius * 4f, 4f, 22f)));
+
+        ParticleSystem.ShapeModule shape = ps.shape;
+        shape.radius = radius;
+
+        dust.stopAt = Time.time + duration;
+        dust.recycleAt = 0f;
+        dust.enabled = true;
+        dust.gameObject.SetActive(true);
+        ps.Play();
+    }
+
+    // Monta uma nuvem nova (só quando a caixa está vazia). As partes fixas ficam configuradas para sempre.
+    private static DestructionDust Build(Material mat)
+    {
         GameObject go = new GameObject("Poeira_Destruicao");
-        go.transform.position = position;
         ParticleSystem ps = go.AddComponent<ParticleSystem>();
         ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
         ParticleSystem.MainModule main = ps.main;
+        main.playOnAwake = false;
         main.loop = true;
         main.duration = 1f;
         main.startLifetime = new ParticleSystem.MinMaxCurve(2.2f, 4f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(0.6f, 2.4f);
-        main.startSize = new ParticleSystem.MinMaxCurve(radius * 0.7f, radius * 1.3f);
         main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
         main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.86f, 0.82f, 0.75f), new Color(0.97f, 0.95f, 0.9f));
         main.gravityModifier = -0.03f;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         main.maxParticles = 140;
 
-        ParticleSystem.EmissionModule emission = ps.emission;
-        emission.rateOverTime = Mathf.Clamp(4f * radius, 3f, 20f);
-        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)Mathf.Clamp(radius * 4f, 4f, 22f)) });
-
         ParticleSystem.ShapeModule shape = ps.shape;
         shape.shapeType = ParticleSystemShapeType.Hemisphere;
-        shape.radius = radius;
 
         // Cresce (nasce em 40% do tamanho e termina em 140%).
         ParticleSystem.SizeOverLifetimeModule size = ps.sizeOverLifetime;
@@ -88,8 +131,7 @@ public sealed class DestructionDust : MonoBehaviour
 
         DestructionDust dust = go.AddComponent<DestructionDust>();
         dust.system = ps;
-        dust.stopAt = Time.time + duration;
-        ps.Play();
+        return dust;
     }
 
     private void Update()
@@ -100,12 +142,34 @@ public sealed class DestructionDust : MonoBehaviour
             return;
         }
 
-        if (Time.time >= stopAt)
+        if (recycleAt <= 0f)
         {
-            system.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-            Destroy(gameObject, 4.5f);
-            enabled = false;
+            if (Time.time >= stopAt)
+            {
+                system.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                recycleAt = Time.time + 4.5f; // espera a última nuvem sumir
+            }
+
+            return;
         }
+
+        if (Time.time >= recycleAt)
+        {
+            Store();
+        }
+    }
+
+    private void Store()
+    {
+        system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        if (FreeDust.Count >= PoolCap)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        gameObject.SetActive(false);
+        FreeDust.Push(this);
     }
 
     // ---------- Material e textura (feitos uma vez) ----------

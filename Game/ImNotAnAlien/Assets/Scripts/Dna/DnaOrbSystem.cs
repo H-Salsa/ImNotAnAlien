@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 // Cria e configura os orbes de DNA (decisão D10):
@@ -26,6 +27,12 @@ public sealed class DnaOrbSystem : MonoBehaviour
     [SerializeField, Min(0f)] private float hoverHeight = 0.6f;
     [SerializeField, Min(1f)] private float homingMaxSpeed = 30f;
     [SerializeField, Min(1f)] private float homingAcceleration = 45f;
+
+    // Caixa de orbes (reaproveitamento, 18/11): orbe absorvido fica guardado, desligado, e volta na
+    // próxima morte de alien ou chuva de DNA. Menos lixo de memória = menos travadinhas.
+    private const int OrbPoolCap = 200;
+    private const int OrbPrewarm = 96; // na briga de 18/11 chegaram a ter 64 orbes no ar ao mesmo tempo
+    private readonly Stack<DnaOrb> freeOrbs = new Stack<DnaOrb>();
 
     public Transform Player { get; private set; }
     public Material OrbMaterial => orbMaterial;
@@ -69,6 +76,46 @@ public sealed class DnaOrbSystem : MonoBehaviour
         {
             Debug.LogWarning("DnaOrbSystem: jogador não encontrado; orbes não terão para onde ir.", this);
         }
+
+        // Enche a caixa no carregamento: a primeira chuva de DNA não trava criando orbes.
+        for (int i = freeOrbs.Count; i < OrbPrewarm; i++)
+        {
+            StoreOrb(DnaOrb.Build(this));
+        }
+    }
+
+    // Um orbe guardado, ou null se a caixa estiver vazia (aí o DnaOrb monta um novo).
+    public DnaOrb TakeOrb()
+    {
+        while (freeOrbs.Count > 0)
+        {
+            DnaOrb orb = freeOrbs.Pop();
+            if (orb != null)
+            {
+                return orb;
+            }
+        }
+
+        return null;
+    }
+
+    // Guarda o orbe (desligado) para usar de novo. Caixa cheia: destrói.
+    public void StoreOrb(DnaOrb orb)
+    {
+        if (orb == null || orb.InBox)
+        {
+            return;
+        }
+
+        if (freeOrbs.Count >= OrbPoolCap)
+        {
+            Destroy(orb.gameObject);
+            return;
+        }
+
+        orb.MarkStored();
+        orb.gameObject.SetActive(false);
+        freeOrbs.Push(orb);
     }
 
     // Chamado pelo AlienHealth quando o alienígena morre.

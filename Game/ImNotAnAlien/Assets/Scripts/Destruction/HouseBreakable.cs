@@ -31,13 +31,71 @@ public sealed class HouseBreakable : MonoBehaviour
         public bool rubble;
     }
 
+    // Caco esperando a vez de cair no desabamento (18/11: no lugar de uma corrotina por caco, que criava
+    // lixo de memória para cada pedaço).
+    private struct Scheduled
+    {
+        public Live live;
+        public float at;
+        public Vector3 point;
+        public Vector3 impact;
+        public float strength;
+    }
+
+    // Todas as casas quebráveis carregadas (a caixa de destroços prepara os cacos das que estão perto).
+    public static readonly List<HouseBreakable> All = new List<HouseBreakable>();
+
     private readonly List<Live> live = new List<Live>();
+    private readonly List<Scheduled> scheduled = new List<Scheduled>();
     private bool fractured;
     private bool collapsed;
     private int wallCount;
     private int wallsReleased;
 
     public bool Collapsed => collapsed;
+    public bool Fractured => fractured;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
+    {
+        All.Clear();
+    }
+
+    private void Awake()
+    {
+        All.Add(this);
+        DebrisPool.Ensure();
+        enabled = false; // só liga (Update) enquanto há cacos esperando para cair
+    }
+
+    private void OnDestroy()
+    {
+        All.Remove(this);
+    }
+
+    private void Update()
+    {
+        float now = Time.time;
+        for (int i = scheduled.Count - 1; i >= 0; i--)
+        {
+            Scheduled s = scheduled[i];
+            if (now < s.at)
+            {
+                continue;
+            }
+
+            scheduled.RemoveAt(i);
+            if (!s.live.released)
+            {
+                Release(s.live, s.point, s.impact, s.strength);
+            }
+        }
+
+        if (scheduled.Count == 0)
+        {
+            enabled = false;
+        }
+    }
 
     // Troca a casa intacta pelos cacos parados (uma vez só).
     private void Fracture()
@@ -91,29 +149,31 @@ public sealed class HouseBreakable : MonoBehaviour
             low.Add(byHeight[i]);
         }
 
+        // 18/11: os cacos vêm da caixa de destroços (DebrisPool) em vez de serem criados um a um.
+        DestructibleStructure owner = GetComponent<DestructibleStructure>();
         foreach (RetroHouse.Piece p in pieces)
         {
-            GameObject go = new GameObject(p.prop ? "Objeto_Casa" : "Caco");
-            go.transform.SetParent(transform, true);
-            go.transform.SetPositionAndRotation(visual.TransformPoint(p.center), visual.rotation);
-            go.AddComponent<MeshFilter>().sharedMesh = p.mesh;
-            go.AddComponent<MeshRenderer>().sharedMaterial = material;
-            BoxCollider box = go.AddComponent<BoxCollider>();
+            PooledDebris debris = DebrisPool.Take();
+            debris.ResetForUse(p.prop ? "Objeto_Casa" : "Caco", p.mesh, material, Vector3.one);
+            Transform t = debris.transform;
+            t.SetParent(transform, false);
+            t.SetPositionAndRotation(visual.TransformPoint(p.center), visual.rotation);
+            BoxCollider box = debris.Box;
             box.center = p.mesh.bounds.center;
             box.size = Vector3.Max(p.mesh.bounds.size * 0.92f, Vector3.one * 0.25f);
 
-            Rigidbody body = go.AddComponent<Rigidbody>();
+            Rigidbody body = debris.Body;
             Vector3 size = p.mesh.bounds.size;
             body.mass = Mathf.Clamp(size.x * size.y * size.z * 40f, 15f, 500f);
-            body.maxDepenetrationVelocity = 1.5f; // cacos encostados: sem isso a física os "dispara"
             body.isKinematic = true;              // parado até ser solto
             body.interpolation = RigidbodyInterpolation.Interpolate;
             if (!p.prop)
             {
-                go.AddComponent<StructurePart>(); // continua levando golpes enquanto está de pé
+                debris.Part.Bind(owner); // continua levando golpes enquanto está de pé
                 if (!p.roof) wallCount++;
             }
 
+            debris.gameObject.SetActive(true);
             live.Add(new Live { piece = p, body = body, rubble = p.prop || low.Contains(p) });
         }
 
@@ -238,13 +298,25 @@ public sealed class HouseBreakable : MonoBehaviour
             float delay = height * span + Random.Range(0f, 0.1f) * (1f - near);
             if (l.piece.roof)
             {
-                StartCoroutine(ReleaseLater(l, Mathf.Max(delay, 0.3f), point, impact * 0.3f, 0.6f));
+                Schedule(l, Mathf.Max(delay, 0.3f), point, impact * 0.3f, 0.6f);
             }
             else
             {
-                StartCoroutine(ReleaseLater(l, delay, point, impact, 0.8f));
+                Schedule(l, delay, point, impact, 0.8f);
             }
         }
+    }
+
+    private void Schedule(Live l, float delay, Vector3 point, Vector3 impact, float strength)
+    {
+        if (delay <= 0f)
+        {
+            Release(l, point, impact, strength);
+            return;
+        }
+
+        scheduled.Add(new Scheduled { live = l, at = Time.time + delay, point = point, impact = impact, strength = strength });
+        enabled = true;
     }
 
     // Poeira em cada andar enquanto desaba (uma nuvem por andar, até 6) + uma grande no chão.
@@ -263,19 +335,6 @@ public sealed class HouseBreakable : MonoBehaviour
         }
 
         DestructionDust.Spawn(visual.TransformPoint(new Vector3(body.center.x, 0.5f, body.center.z)), radius * 1.3f, span + 2.5f);
-    }
-
-    private IEnumerator ReleaseLater(Live l, float delay, Vector3 point, Vector3 impact, float strength)
-    {
-        if (delay > 0f)
-        {
-            yield return new WaitForSeconds(delay);
-        }
-
-        if (!l.released)
-        {
-            Release(l, point, impact, strength);
-        }
     }
 
     // Solta um caco: ganha a velocidade do impacto (mais forte perto do golpe), um empurrão para fora
@@ -309,15 +368,22 @@ public sealed class HouseBreakable : MonoBehaviour
             return;
         }
 
-        if (l.body.TryGetComponent(out StructurePart part))
-        {
-            Destroy(part); // caco solto não machuca mais a casa
-        }
-
         l.body.transform.SetParent(null, true);
         l.body.isKinematic = false;
         l.body.linearVelocity = velocity;
         l.body.angularVelocity = spin;
+
+        if (l.body.TryGetComponent(out PooledDebris debris))
+        {
+            debris.Part.Bind(null); // caco solto não machuca mais a casa
+            debris.Fragment.Begin(l.rubble, transform);
+            return;
+        }
+
+        if (l.body.TryGetComponent(out StructurePart part))
+        {
+            Destroy(part); // caco solto não machuca mais a casa
+        }
 
         CollapsingFragment fragment = l.body.gameObject.AddComponent<CollapsingFragment>();
         if (l.rubble)

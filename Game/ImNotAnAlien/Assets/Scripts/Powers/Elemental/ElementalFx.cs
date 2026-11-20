@@ -27,18 +27,38 @@ public static class ElementalFx
     private static readonly int ZWriteId = Shader.PropertyToID("_ZWrite");
 
     private static readonly Dictionary<string, Texture2D> Textures = new Dictionary<string, Texture2D>();
-    private static readonly Dictionary<string, Material> Materials = new Dictionary<string, Material>();
+    // Materiais guardados (18/11: chaves sem montar texto a cada efeito, para não gerar lixo de memória).
+    private static readonly Dictionary<(string, int), Material> AdditiveMaterials = new Dictionary<(string, int), Material>();
+    private static readonly Dictionary<string, Material> BlendedMaterials = new Dictionary<string, Material>();
+    private static readonly Dictionary<string, Material> SolidMaterials = new Dictionary<string, Material>();
+    // Degradês e curvas repetidos: feitos uma vez e reaproveitados.
+    private static readonly Dictionary<(Color, Color, float, float, float), Gradient> Fades = new Dictionary<(Color, Color, float, float, float), Gradient>();
+    private static readonly Dictionary<(float, float, float), AnimationCurve> Curves = new Dictionary<(float, float, float), AnimationCurve>();
     private static Texture2D fallbackTexture;
     private static Mesh crystalMesh;
     private static Mesh sphereMesh;
     private static Mesh cubeMesh;
     private static bool warnedShader;
 
+    // ---------- Caixa de efeitos (reaproveitamento, 18/11) ----------
+    // Em vez de criar um objeto com partículas a cada efeito e destruir no fim, os efeitos que terminam
+    // voltam para esta caixa (desligados) e são usados de novo no próximo. Menos lixo de memória = menos
+    // travadinhas na briga. Ficam dentro do objeto "Efeitos_Caixa" da cena.
+    private const int PoolCap = 240;          // mais que isso guardado: o excedente é destruído
+    private static readonly Stack<ParticleSystem> FreeSystems = new Stack<ParticleSystem>();
+    private static Transform poolRoot;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics()
     {
         Textures.Clear();
-        Materials.Clear();
+        AdditiveMaterials.Clear();
+        BlendedMaterials.Clear();
+        SolidMaterials.Clear();
+        Fades.Clear();
+        Curves.Clear();
+        FreeSystems.Clear();
+        poolRoot = null;
         fallbackTexture = null;
         crystalMesh = null;
         sphereMesh = null;
@@ -152,45 +172,43 @@ public static class ElementalFx
     // Material que SOMA luz (fogo, raio, brilhos). "intensity" acima de 1 estoura para o branco.
     public static Material Additive(string texture, float intensity = 1f)
     {
-        string key = "A|" + texture + "|" + intensity.ToString("0.00");
-        if (Materials.TryGetValue(key, out Material material) && material != null)
+        (string, int) key = (texture, Mathf.RoundToInt(intensity * 100f));
+        if (AdditiveMaterials.TryGetValue(key, out Material material) && material != null)
         {
             return material;
         }
 
         material = NewMaterial("Elemental_" + texture + "_Soma", Tex(texture), new Color(intensity, intensity, intensity, 1f), true);
-        Materials[key] = material;
+        AdditiveMaterials[key] = material;
         return material;
     }
 
     // Material transparente comum (fumaça, névoa, vapor, marcas escuras).
     public static Material Blended(string texture)
     {
-        string key = "B|" + texture;
-        if (Materials.TryGetValue(key, out Material material) && material != null)
+        if (BlendedMaterials.TryGetValue(texture, out Material material) && material != null)
         {
             return material;
         }
 
         material = NewMaterial("Elemental_" + texture + "_Transp", Tex(texture), Color.white, false);
-        Materials[key] = material;
+        BlendedMaterials[texture] = material;
         return material;
     }
 
     // Material para objetos 3D que brilham: miolo da bola de fogo, cristal de gelo.
     public static Material Solid(string key, Color color, Color rim, float rimPower, bool additive)
     {
-        key = "S|" + key;
-        if (Materials.TryGetValue(key, out Material material) && material != null)
+        if (SolidMaterials.TryGetValue(key, out Material material) && material != null)
         {
             return material;
         }
 
-        material = NewMaterial("Elemental_" + key, Texture2D.whiteTexture, color, additive);
+        material = NewMaterial("Elemental_S|" + key, Texture2D.whiteTexture, color, additive);
         material.SetColor(RimColorId, rim);
         material.SetFloat(RimPowerId, rimPower);
         material.SetFloat(CullId, (float)CullMode.Back);
-        Materials[key] = material;
+        SolidMaterials[key] = material;
         return material;
     }
 
@@ -385,9 +403,23 @@ public static class ElementalFx
         public float sortFudge;
     }
 
+    // Degradê de cor ao longo da vida. Guardado: o mesmo pedido devolve o mesmo degradê (o sistema de
+    // partículas copia os valores, então dá para dividir entre vários efeitos).
     public static Gradient Fade(Color start, Color end, float alphaIn = 0.08f, float alphaHold = 0.5f, float alphaStart = 1f)
     {
+        (Color, Color, float, float, float) key = (start, end, alphaIn, alphaHold, alphaStart);
+        if (Fades.TryGetValue(key, out Gradient cached))
+        {
+            return cached;
+        }
+
+        if (Fades.Count > 512)
+        {
+            Fades.Clear(); // cores sempre diferentes (não deveria acontecer): não deixa crescer sem fim
+        }
+
         Gradient gradient = new Gradient();
+        Fades[key] = gradient;
         gradient.SetKeys(
             new[] { new GradientColorKey(start, 0f), new GradientColorKey(end, 1f) },
             new[]
@@ -402,26 +434,61 @@ public static class ElementalFx
 
     public static AnimationCurve Curve(float start, float middle, float end)
     {
-        return new AnimationCurve(new Keyframe(0f, start), new Keyframe(0.35f, middle), new Keyframe(1f, end));
+        (float, float, float) key = (start, middle, end);
+        if (!Curves.TryGetValue(key, out AnimationCurve curve))
+        {
+            if (Curves.Count > 512)
+            {
+                Curves.Clear();
+            }
+
+            curve = new AnimationCurve(new Keyframe(0f, start), new Keyframe(0.35f, middle), new Keyframe(1f, end));
+            Curves[key] = curve;
+        }
+
+        return curve;
     }
 
     public static ParticleSystem Emitter(string name, Transform parent, Vector3 position, Quaternion rotation, Material material, Spec spec)
     {
-        GameObject go = new GameObject(name);
+        ParticleSystem system = Take(name);
+        Transform t = system.transform;
         if (parent != null)
         {
-            go.transform.SetParent(parent, false);
-            go.transform.localPosition = position;
-            go.transform.localRotation = rotation;
+            t.SetParent(parent, false);
+            t.localPosition = position;
+            t.localRotation = rotation;
         }
         else
         {
-            go.transform.SetPositionAndRotation(position, rotation);
+            if (t.parent != poolRoot)
+            {
+                t.SetParent(poolRoot, false);
+            }
+
+            t.SetPositionAndRotation(position, rotation);
         }
 
-        ParticleSystem system = go.AddComponent<ParticleSystem>();
+        t.localScale = Vector3.one;
+        ParticleSystem.MainModule before = system.main;
+        before.stopAction = ParticleSystemStopAction.None; // parar agora não pode avisar "acabei"
         system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        Configure(system, material, spec);
 
+        // Efeito de uma vez só: avisa quando acabar (volta para a caixa). Rede de segurança: um pouco
+        // depois do tempo máximo que ele poderia durar, volta de qualquer jeito.
+        bool once = spec.destroyWhenDone && !spec.loop;
+        system.GetComponent<ElementalFxPooled>().Arm(once ? Mathf.Max(0.05f, spec.duration) + spec.life.y + 1f : 0f);
+
+        system.gameObject.SetActive(true);
+        system.Play();
+        return system;
+    }
+
+    // Monta TODAS as opções do sistema de partículas a partir da receita. Como o sistema pode ter sido
+    // usado antes por outro efeito, tudo que um efeito liga, aqui também é desligado quando não usado.
+    private static void Configure(ParticleSystem system, Material material, Spec spec)
+    {
         ParticleSystem.MainModule main = system.main;
         main.playOnAwake = false;
         main.duration = Mathf.Max(0.05f, spec.duration);
@@ -433,10 +500,10 @@ public static class ElementalFx
         main.gravityModifier = spec.gravity;
         main.simulationSpace = spec.local ? ParticleSystemSimulationSpace.Local : ParticleSystemSimulationSpace.World;
         main.maxParticles = spec.max;
-        main.stopAction = spec.destroyWhenDone && !spec.loop ? ParticleSystemStopAction.Destroy : ParticleSystemStopAction.None;
+        main.stopAction = spec.destroyWhenDone && !spec.loop ? ParticleSystemStopAction.Callback : ParticleSystemStopAction.None;
+        main.startRotation3D = spec.mesh != null;
         if (spec.mesh != null)
         {
-            main.startRotation3D = true;
             main.startRotationX = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
             main.startRotationY = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
             main.startRotationZ = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
@@ -455,7 +522,12 @@ public static class ElementalFx
         emission.rateOverTime = spec.rate;
         if (spec.burst > 0)
         {
-            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)Mathf.Min(spec.burst, short.MaxValue)) });
+            emission.burstCount = 1; // sem criar lista nova a cada efeito
+            emission.SetBurst(0, new ParticleSystem.Burst(0f, (short)Mathf.Min(spec.burst, short.MaxValue)));
+        }
+        else
+        {
+            emission.burstCount = 0;
         }
 
         ParticleSystem.ShapeModule shape = system.shape;
@@ -463,10 +535,7 @@ public static class ElementalFx
         shape.shapeType = spec.shape;
         shape.radius = Mathf.Max(0.001f, spec.radius);
         shape.angle = spec.angle;
-        if (spec.shape == ParticleSystemShapeType.Box)
-        {
-            shape.scale = spec.boxSize;
-        }
+        shape.scale = spec.shape == ParticleSystemShapeType.Box ? spec.boxSize : Vector3.one;
 
         ParticleSystem.ColorOverLifetimeModule color = system.colorOverLifetime;
         color.enabled = true;
@@ -474,66 +543,84 @@ public static class ElementalFx
 
         ParticleSystem.SizeOverLifetimeModule size = system.sizeOverLifetime;
         size.enabled = true;
-        size.size = new ParticleSystem.MinMaxCurve(1f, spec.sizeCurve ?? AnimationCurve.Linear(0f, 1f, 1f, 0.15f));
+        size.size = new ParticleSystem.MinMaxCurve(1f, spec.sizeCurve ?? DefaultShrink());
 
+        ParticleSystem.RotationOverLifetimeModule rotation3 = system.rotationOverLifetime;
+        rotation3.enabled = spec.spin > 0f;
         if (spec.spin > 0f)
         {
-            ParticleSystem.RotationOverLifetimeModule rotation3 = system.rotationOverLifetime;
-            rotation3.enabled = true;
+            float spin = spec.spin * Mathf.Deg2Rad;
+            rotation3.separateAxes = spec.mesh != null;
             if (spec.mesh != null)
             {
-                rotation3.separateAxes = true;
-                rotation3.x = new ParticleSystem.MinMaxCurve(-spec.spin * Mathf.Deg2Rad, spec.spin * Mathf.Deg2Rad);
-                rotation3.y = new ParticleSystem.MinMaxCurve(-spec.spin * Mathf.Deg2Rad, spec.spin * Mathf.Deg2Rad);
+                rotation3.x = new ParticleSystem.MinMaxCurve(-spin, spin);
+                rotation3.y = new ParticleSystem.MinMaxCurve(-spin, spin);
             }
 
-            rotation3.z = new ParticleSystem.MinMaxCurve(-spec.spin * Mathf.Deg2Rad, spec.spin * Mathf.Deg2Rad);
+            rotation3.z = new ParticleSystem.MinMaxCurve(-spin, spin);
         }
 
+        ParticleSystem.LimitVelocityOverLifetimeModule limit = system.limitVelocityOverLifetime;
+        limit.enabled = spec.damping > 0f;
         if (spec.damping > 0f)
         {
-            ParticleSystem.LimitVelocityOverLifetimeModule limit = system.limitVelocityOverLifetime;
-            limit.enabled = true;
             limit.limit = 0f;
             limit.dampen = Mathf.Clamp01(spec.damping);
         }
 
+        ParticleSystem.NoiseModule noise = system.noise;
+        noise.enabled = spec.noise > 0f;
         if (spec.noise > 0f)
         {
-            ParticleSystem.NoiseModule noise = system.noise;
-            noise.enabled = true;
             noise.strength = spec.noise;
             noise.frequency = 0.9f;
             noise.scrollSpeed = 0.6f;
         }
 
-        ParticleSystemRenderer renderer = go.GetComponent<ParticleSystemRenderer>();
+        ParticleSystemRenderer renderer = system.GetComponent<ParticleSystemRenderer>();
         renderer.sharedMaterial = material;
         renderer.shadowCastingMode = ShadowCastingMode.Off;
         renderer.receiveShadows = false;
         renderer.sortingFudge = spec.sortFudge;
+        renderer.enableGPUInstancing = false; // o shader dos efeitos não usa instância de partículas
         if (spec.mesh != null)
         {
             renderer.renderMode = ParticleSystemRenderMode.Mesh;
             renderer.mesh = spec.mesh;
-            renderer.enableGPUInstancing = false; // o shader dos efeitos não usa instância de partículas
         }
-        else if (spec.horizontal)
+        else
         {
-            renderer.renderMode = ParticleSystemRenderMode.HorizontalBillboard;
+            renderer.mesh = null;
+            if (spec.horizontal)
+            {
+                renderer.renderMode = ParticleSystemRenderMode.HorizontalBillboard;
+            }
+            else if (spec.stretch > 0f)
+            {
+                renderer.renderMode = ParticleSystemRenderMode.Stretch;
+                renderer.lengthScale = 1f;
+                renderer.velocityScale = spec.stretch;
+            }
+            else
+            {
+                renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            }
         }
-        else if (spec.stretch > 0f)
-        {
-            renderer.renderMode = ParticleSystemRenderMode.Stretch;
-            renderer.lengthScale = 1f;
-            renderer.velocityScale = spec.stretch;
-        }
-
-        system.Play();
-        return system;
     }
 
-    // Emissor de uma vez só no mundo (some sozinho quando termina).
+    private static AnimationCurve defaultShrink;
+
+    private static AnimationCurve DefaultShrink()
+    {
+        if (defaultShrink == null)
+        {
+            defaultShrink = AnimationCurve.Linear(0f, 1f, 1f, 0.15f);
+        }
+
+        return defaultShrink;
+    }
+
+    // Emissor de uma vez só no mundo (volta para a caixa sozinho quando termina).
     public static ParticleSystem Burst(string name, Vector3 position, Quaternion rotation, Material material, Spec spec)
     {
         spec.loop = false;
@@ -541,7 +628,8 @@ public static class ElementalFx
         return Emitter(name, null, position, rotation, material, spec);
     }
 
-    // Para de emitir e some quando as partículas que sobraram acabarem (usado no rastro do projétil).
+    // Para de emitir e volta para a caixa quando as partículas que sobraram acabarem (rastro do projétil,
+    // chamas de quem parou de queimar).
     public static void Release(ParticleSystem system, float extra = 0f)
     {
         if (system == null)
@@ -549,9 +637,112 @@ public static class ElementalFx
             return;
         }
 
-        system.transform.SetParent(null, true);
+        float wait = system.main.startLifetime.constantMax + 0.3f + extra;
+        if (!system.TryGetComponent(out ElementalFxPooled tag) || PoolRoot() == null)
+        {
+            // Não veio da caixa: some como antes.
+            system.transform.SetParent(null, true);
+            system.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            Object.Destroy(system.gameObject, wait);
+            return;
+        }
+
+        if (tag.InBox)
+        {
+            return; // já foi devolvido antes
+        }
+
+        system.transform.SetParent(poolRoot, true);
+        ParticleSystem.MainModule main = system.main;
+        main.stopAction = ParticleSystemStopAction.Callback;
         system.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-        Object.Destroy(system.gameObject, system.main.startLifetime.constantMax + 0.2f + extra);
+        tag.Arm(wait);
+    }
+
+    // Devolve para a caixa NA HORA (some na hora, sem esperar as partículas).
+    public static void Recycle(ParticleSystem system)
+    {
+        if (system == null)
+        {
+            return;
+        }
+
+        if (!system.TryGetComponent(out ElementalFxPooled tag))
+        {
+            Object.Destroy(system.gameObject);
+            return;
+        }
+
+        if (tag.InBox)
+        {
+            return; // já está guardado
+        }
+
+        ParticleSystem.MainModule main = system.main;
+        main.stopAction = ParticleSystemStopAction.None;
+        system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        if (poolRoot == null || FreeSystems.Count >= PoolCap)
+        {
+            Object.Destroy(system.gameObject);
+            return;
+        }
+
+        tag.Store();
+        system.transform.SetParent(poolRoot, false);
+        system.gameObject.SetActive(false);
+        FreeSystems.Push(system);
+    }
+
+    // Enche a caixa antes da briga (no carregamento), para o primeiro tiro não travar criando tudo.
+    public static void Prewarm(int count)
+    {
+        Transform root = PoolRoot();
+        for (int i = FreeSystems.Count; i < count && i < PoolCap; i++)
+        {
+            ParticleSystem system = NewPooledSystem("Efeito_Guardado", root);
+            system.GetComponent<ElementalFxPooled>().Store();
+            system.gameObject.SetActive(false);
+            FreeSystems.Push(system);
+        }
+    }
+
+    private static Transform PoolRoot()
+    {
+        if (poolRoot == null)
+        {
+            FreeSystems.Clear(); // a cena mudou: os guardados foram embora junto com ela
+            poolRoot = new GameObject("Efeitos_Caixa").transform;
+        }
+
+        return poolRoot;
+    }
+
+    private static ParticleSystem Take(string name)
+    {
+        Transform root = PoolRoot();
+        while (FreeSystems.Count > 0)
+        {
+            ParticleSystem pooled = FreeSystems.Pop();
+            if (pooled != null)
+            {
+                pooled.gameObject.name = name;
+                return pooled;
+            }
+        }
+
+        return NewPooledSystem(name, root);
+    }
+
+    private static ParticleSystem NewPooledSystem(string name, Transform root)
+    {
+        GameObject go = new GameObject(name);
+        go.transform.SetParent(root, false);
+        ParticleSystem system = go.AddComponent<ParticleSystem>();
+        system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        ParticleSystem.MainModule main = system.main;
+        main.playOnAwake = false;
+        go.AddComponent<ElementalFxPooled>();
+        return system;
     }
 
     // Clarão de luz que apaga sozinho.
