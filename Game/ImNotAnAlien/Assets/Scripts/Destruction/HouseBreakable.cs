@@ -106,6 +106,7 @@ public sealed class HouseBreakable : MonoBehaviour
         }
 
         fractured = true;
+        using PerfMarks.Scope mark = PerfMarks.Time("Casa: trocar por cacos");
         Material material = RetroHouse.HouseMaterial;
 
         // Some a casa inteira (LODs) e a caixa de colisão.
@@ -279,6 +280,7 @@ public sealed class HouseBreakable : MonoBehaviour
         }
 
         collapsed = true;
+        PerfMarks.Event("Casa: desabou");
         Fracture();
         PunchThrough(attacker, impact, 0.75f);
         CollapseDust();

@@ -1,0 +1,144 @@
+﻿MEDIÇÃO DE DESEMPENHO — I'm Not an Alien
+Data: 20/11/2026 12:13:05   ·   dentro do Editor (fica mais lento que a build)
+Duração: 30,0 s · 3858 quadros (pausa do menu não conta)
+
+NOTA: BOM
+FPS médio ............ 128,6
+FPS mediano .......... 146,6
+1% baixo ............. 34,2 FPS   (média dos 1% piores quadros: é o que se sente como 'travadinha')
+0,1% baixo ........... 19,2 FPS
+Pior quadro .......... 57,9 ms
+Quadros acima de 16,7 ms (abaixo de 60 FPS): 236 (6,1%)
+Quadros acima de 33,3 ms (abaixo de 30 FPS): 8 (0,2%)
+Engasgos (acima de 50 ms): 3
+
+Tempo médio — CPU scripts/física: 5.3 ms · CPU preparando desenho: 2.1 ms · GPU: 1.9 ms
+Quem segura o jogo: PROCESSADOR — scripts e física (aliens, trânsito, destruição, mundo carregando)
+
+Média / máximo por segundo:
+  batches: 2498,9 / 3203,4
+  setpass: 98,6 / 114,5
+  triângulos (mil): 4065,9 / 5607,2
+  partículas: 0,7 / 20
+  efeitos de partícula ativos: 0,1 / 1
+  luzes: 1 / 1
+  luzes com sombra: 1 / 1
+  objetos na tela: 778,2 / 1010
+  aliens: 36,4 / 37
+  orbes de DNA: 1,9 / 5
+  física acordada: 12,3 / 18
+  blocos do mundo: 18,4 / 22
+  lixo GC (KB/quadro): 51,5 / 544
+
+Marcadores — o que aconteceu durante a medição (quadro lento = acima de 25 ms):
+  Bloco: carregar: 7x · total 206,1 ms · maior 49,4 ms · em 6 quadro(s) lento(s)
+  Bloco: construir: 7x · total 205,5 ms · maior 49,3 ms · em 6 quadro(s) lento(s)
+  Bloco > chão: 7x · total 136,4 ms · maior 39,9 ms · em 6 quadro(s) lento(s)
+  Chão > calcular alturas: 7x · total 59,0 ms · maior 24,0 ms · em 6 quadro(s) lento(s)
+  Chão > pintar textura: 7x · total 50,5 ms · maior 7,5 ms · em 6 quadro(s) lento(s)
+  Bloco > assentar no relevo: 6x · total 32,5 ms · maior 9,7 ms · em 6 quadro(s) lento(s)
+  Chão > montar malha e normais: 7x · total 19,7 ms · maior 7,2 ms · em 6 quadro(s) lento(s)
+  NavMesh: juntar formas: 12x · total 16,0 ms · maior 1,6 ms · em 2 quadro(s) lento(s)
+  Bloco > grama, flores e pedrinhas: 7x · total 11,2 ms · maior 1,9 ms · em 6 quadro(s) lento(s)
+  Chão > colisor da malha: 6x · total 5,4 ms · maior 1,5 ms · em 6 quadro(s) lento(s)
+  Bloco > ruas: 4x · total 5,4 ms · maior 2,2 ms · em 3 quadro(s) lento(s)
+  Bloco > preencher: Predios: 1x · total 3,9 ms · maior 3,9 ms · em 1 quadro(s) lento(s)
+  Bloco > preencher: Fazenda: 2x · total 3,5 ms · maior 2,1 ms · em 2 quadro(s) lento(s)
+  Bloco > preencher: Floresta: 1x · total 3,4 ms · maior 3,4 ms · em 1 quadro(s) lento(s)
+  Limpeza: procurar objetos caídos: 15x · total 3,0 ms · maior 0,2 ms · em 0 quadro(s) lento(s)
+  NavMesh: começar a refazer: 12x · total 2,2 ms · maior 0,9 ms · em 2 quadro(s) lento(s)
+  Bloco > preencher: Parque: 1x · total 1,8 ms · maior 1,8 ms · em 0 quadro(s) lento(s)
+  Bloco > preencher: Campo: 1x · total 1,6 ms · maior 1,6 ms · em 1 quadro(s) lento(s)
+  Bloco > Physics.SyncTransforms: 7x · total 1,4 ms · maior 0,2 ms · em 6 quadro(s) lento(s)
+  Bloco: descarregar (o apagar vem no fim do quadro): 7x · total 1,1 ms · maior 0,5 ms · em 0 quadro(s) lento(s)
+  Bloco > preencher: Lagoa: 1x · total 1,0 ms · maior 1,0 ms · em 1 quadro(s) lento(s)
+  Bloco: horizonte curvo: 7x · total 0,6 ms · maior 0,1 ms · em 6 quadro(s) lento(s)
+  Bloco > cor das plantas: 7x · total 0,4 ms · maior 0,1 ms · em 6 quadro(s) lento(s)
+  Bloco > água: 7x · total 0,2 ms · maior 0,0 ms · em 6 quadro(s) lento(s)
+  Chão > enviar textura para a placa: 7x · total 0,1 ms · maior 0,0 ms · em 6 quadro(s) lento(s)
+  Bloco: avisar (aliens, trânsito...): 7x · total 0,0 ms · maior 0,0 ms · em 6 quadro(s) lento(s)
+  NavMesh: terminou de refazer: 12x · em 2 quadro(s) lento(s)
+  Coleta de lixo (GC): 2x · em 1 quadro(s) lento(s)
+  ("sem marcador" nos quadros lentos = física, desenho, apagar objetos, NavMesh em segundo plano e o resto do Unity)
+
+10 piores quadros (segundo da medição → tempo):
+  7,7 s → 57,9 ms  · lixo 574 KB · Bloco: carregar 49.4 ms · Bloco: construir 49.3 ms · Bloco > chão 33.5 ms · Chão > calcular alturas 19.5 ms · Bloco > assentar no relevo 9.7 ms · Chão > pintar textura 7.1 ms · Chão > montar malha e normais 5.6 ms · Bloco > grama, flores e pedrinhas 1.9 ms · Bloco > preencher: Campo 1.6 ms · Chão > colisor da malha 1.1 ms · Bloco > ruas 0.8 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco > cor das plantas 0.1 ms · Bloco > água 0.0 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 9 ms
+  26,4 s → 56,9 ms  · lixo 1119 KB · Coleta de lixo (GC) · sem marcador 57 ms
+  7,9 s → 51,8 ms  · lixo 330 KB · Bloco: carregar 44.3 ms · Bloco: construir 44.2 ms · Bloco > chão 39.9 ms · Chão > calcular alturas 24.0 ms · Chão > pintar textura 7.2 ms · Chão > montar malha e normais 7.2 ms · Bloco > assentar no relevo 1.5 ms · Bloco > grama, flores e pedrinhas 1.4 ms · Chão > colisor da malha 1.1 ms · Bloco > preencher: Lagoa 1.0 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco > cor das plantas 0.0 ms · Bloco > água 0.0 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 7 ms
+  12,7 s → 42,1 ms  · lixo 1318 KB · sem marcador 42 ms
+  13,4 s → 38,7 ms  · lixo 456 KB · Bloco: carregar 31.6 ms · Bloco: construir 31.4 ms · Bloco > chão 23.3 ms · Chão > calcular alturas 11.8 ms · Chão > pintar textura 7.1 ms · Bloco > preencher: Floresta 3.4 ms · Chão > montar malha e normais 3.2 ms · Bloco > assentar no relevo 2.6 ms · Bloco > grama, flores e pedrinhas 1.7 ms · Chão > colisor da malha 1.0 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco > cor das plantas 0.1 ms · Bloco > água 0.0 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 7 ms
+  12,2 s → 37,4 ms  · lixo 534 KB · Bloco: carregar 26.1 ms · Bloco: construir 26.0 ms · Bloco > chão 11.0 ms · Chão > pintar textura 7.5 ms · Bloco > assentar no relevo 6.1 ms · Bloco > preencher: Predios 3.9 ms · Bloco > ruas 2.2 ms · Bloco > grama, flores e pedrinhas 1.9 ms · Chão > montar malha e normais 1.5 ms · Chão > calcular alturas 1.4 ms · Chão > colisor da malha 0.4 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco > cor das plantas 0.1 ms · Bloco > água 0.0 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 11 ms
+  8,0 s → 35,7 ms  · lixo 200 KB · NavMesh: juntar formas 1.3 ms · NavMesh: começar a refazer 0.0 ms · NavMesh: terminou de refazer · sem marcador 34 ms
+  7,8 s → 33,6 ms  · lixo 208 KB · NavMesh: juntar formas 1.1 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 32 ms
+  26,7 s → 29,8 ms  · lixo 1425 KB · sem marcador 30 ms
+  26,4 s → 29,0 ms  · lixo 1015 KB · sem marcador 29 ms
+
+Todos os quadros acima de 25 ms, em ordem (24):
+    7,7 s →  57,9 ms  · lixo 574 KB · Bloco: carregar 49.4 ms · Bloco: construir 49.3 ms · Bloco > chão 33.5 ms · Chão > calcular alturas 19.5 ms · Bloco > assentar no relevo 9.7 ms · Chão > pintar textura 7.1 ms · Chão > montar malha e normais 5.6 ms · Bloco > grama, flores e pedrinhas 1.9 ms · Bloco > preencher: Campo 1.6 ms · Chão > colisor da malha 1.1 ms · Bloco > ruas 0.8 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco > cor das plantas 0.1 ms · Bloco > água 0.0 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 9 ms
+    7,8 s →  33,6 ms  · lixo 208 KB · NavMesh: juntar formas 1.1 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 32 ms
+    7,9 s →  51,8 ms  · lixo 330 KB · Bloco: carregar 44.3 ms · Bloco: construir 44.2 ms · Bloco > chão 39.9 ms · Chão > calcular alturas 24.0 ms · Chão > pintar textura 7.2 ms · Chão > montar malha e normais 7.2 ms · Bloco > assentar no relevo 1.5 ms · Bloco > grama, flores e pedrinhas 1.4 ms · Chão > colisor da malha 1.1 ms · Bloco > preencher: Lagoa 1.0 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco > cor das plantas 0.0 ms · Bloco > água 0.0 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 7 ms
+    8,0 s →  35,7 ms  · lixo 200 KB · NavMesh: juntar formas 1.3 ms · NavMesh: começar a refazer 0.0 ms · NavMesh: terminou de refazer · sem marcador 34 ms
+    9,5 s →  26,1 ms  · lixo 120 KB · sem marcador 26 ms
+   12,2 s →  37,4 ms  · lixo 534 KB · Bloco: carregar 26.1 ms · Bloco: construir 26.0 ms · Bloco > chão 11.0 ms · Chão > pintar textura 7.5 ms · Bloco > assentar no relevo 6.1 ms · Bloco > preencher: Predios 3.9 ms · Bloco > ruas 2.2 ms · Bloco > grama, flores e pedrinhas 1.9 ms · Chão > montar malha e normais 1.5 ms · Chão > calcular alturas 1.4 ms · Chão > colisor da malha 0.4 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco > cor das plantas 0.1 ms · Bloco > água 0.0 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 11 ms
+   12,2 s →  27,7 ms  · lixo 131 KB · sem marcador 28 ms
+   12,7 s →  42,1 ms  · lixo 1318 KB · sem marcador 42 ms
+   12,9 s →  25,2 ms  · lixo 1155 KB · NavMesh: terminou de refazer · sem marcador 25 ms
+   13,0 s →  26,4 ms  · lixo 129 KB · sem marcador 26 ms
+   13,2 s →  28,1 ms  · lixo 420 KB · Bloco: carregar 19.9 ms · Bloco: construir 19.8 ms · Bloco > chão 9.7 ms · Chão > pintar textura 7.1 ms · Bloco > assentar no relevo 6.1 ms · Bloco > grama, flores e pedrinhas 1.4 ms · Bloco > preencher: Fazenda 1.4 ms · Chão > calcular alturas 1.1 ms · Chão > montar malha e normais 1.0 ms · Bloco > ruas 0.8 ms · Chão > colisor da malha 0.3 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco > cor das plantas 0.0 ms · Bloco > água 0.0 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 8 ms
+   13,4 s →  38,7 ms  · lixo 456 KB · Bloco: carregar 31.6 ms · Bloco: construir 31.4 ms · Bloco > chão 23.3 ms · Chão > calcular alturas 11.8 ms · Chão > pintar textura 7.1 ms · Bloco > preencher: Floresta 3.4 ms · Chão > montar malha e normais 3.2 ms · Bloco > assentar no relevo 2.6 ms · Bloco > grama, flores e pedrinhas 1.7 ms · Chão > colisor da malha 1.0 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco > cor das plantas 0.1 ms · Bloco > água 0.0 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 7 ms
+   14,3 s →  27,8 ms  · lixo 135 KB · sem marcador 28 ms
+   15,8 s →  26,7 ms  · lixo 136 KB · sem marcador 27 ms
+   21,0 s →  28,6 ms  · lixo 435 KB · Bloco: carregar 21.8 ms · Bloco: construir 21.8 ms · Bloco > chão 11.2 ms · Chão > pintar textura 7.2 ms · Bloco > assentar no relevo 6.5 ms · Bloco > preencher: Fazenda 2.1 ms · Chão > colisor da malha 1.5 ms · Bloco > grama, flores e pedrinhas 1.4 ms · Chão > calcular alturas 1.2 ms · Chão > montar malha e normais 1.1 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco > cor das plantas 0.0 ms · Bloco > água 0.0 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 7 ms
+   21,8 s →  25,1 ms  · lixo 138 KB · sem marcador 25 ms
+   22,1 s →  25,6 ms  · lixo 120 KB · sem marcador 26 ms
+   23,8 s →  27,2 ms  · lixo 318 KB · sem marcador 27 ms
+   26,3 s →  26,8 ms  · lixo 1122 KB · sem marcador 27 ms
+   26,4 s →  29,0 ms  · lixo 1015 KB · sem marcador 29 ms
+   26,4 s →  56,9 ms  · lixo 1119 KB · Coleta de lixo (GC) · sem marcador 57 ms
+   26,7 s →  29,8 ms  · lixo 1425 KB · sem marcador 30 ms
+   26,9 s →  27,9 ms  · lixo 1243 KB · sem marcador 28 ms
+   29,5 s →  26,5 ms  · lixo 135 KB · sem marcador 26 ms
+
+Segundo a segundo (FPS · pior ms · partículas · luzes · aliens):
+    1s    136 FPS    11,2 ms      0 part.    1 luzes   37 aliens  16 blocos  · Limpeza: procurar objetos caídos
+    2s    119 FPS    21,6 ms      0 part.    1 luzes   37 aliens  16 blocos
+    3s    121 FPS    24,8 ms      0 part.    1 luzes   37 aliens  16 blocos  · Limpeza: procurar objetos caídos, Coleta de lixo (GC)
+    4s    129 FPS    22,4 ms      0 part.    1 luzes   37 aliens  16 blocos
+    5s    134 FPS    20,6 ms      0 part.    1 luzes   37 aliens  16 blocos  · Limpeza: procurar objetos caídos
+    6s    133 FPS    18,6 ms      0 part.    1 luzes   37 aliens  16 blocos
+    7s    133 FPS    22,4 ms      0 part.    1 luzes   37 aliens  16 blocos  · Limpeza: procurar objetos caídos
+    8s    116 FPS    57,9 ms      0 part.    1 luzes   37 aliens  16 blocos  · Chão > calcular alturas ×2, Chão > montar malha e normais ×2, Chão > pintar textura ×2, Chão > enviar textura para a placa ×2, Chão > colisor da malha ×2, Bloco > chão ×2, Bloco > ruas, Bloco > preencher: Campo, Bloco > grama, flores e pedrinhas ×2, Bloco > assentar no relevo ×2, Bloco > cor das plantas ×2, Bloco > água ×2, Bloco > Physics.SyncTransforms ×2, Bloco: construir ×2, Bloco: horizonte curvo ×2, Bloco: avisar (aliens, trânsito...) ×2, Bloco: carregar ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, Bloco > preencher: Lagoa, NavMesh: terminou de refazer
+    9s    131 FPS    20,0 ms      0 part.    1 luzes   37 aliens  18 blocos  · Limpeza: procurar objetos caídos, NavMesh: terminou de refazer
+   10s    133 FPS    26,1 ms      0 part.    1 luzes   37 aliens  18 blocos
+   11s    136 FPS    21,8 ms      0 part.    1 luzes   37 aliens  18 blocos  · Limpeza: procurar objetos caídos
+   12s    132 FPS    21,7 ms     20 part.    1 luzes   37 aliens  18 blocos  · Chão > calcular alturas, Chão > montar malha e normais, Chão > pintar textura, Chão > enviar textura para a placa, Bloco > chão, Bloco > ruas, Bloco > preencher: Parque, Bloco > grama, flores e pedrinhas, Bloco > cor das plantas, Bloco > água, Bloco > Physics.SyncTransforms, Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   13s     88 FPS    42,1 ms      1 part.    1 luzes   37 aliens  19 blocos  · Limpeza: procurar objetos caídos, Chão > calcular alturas, Chão > montar malha e normais, Chão > pintar textura, Chão > enviar textura para a placa, Chão > colisor da malha, Bloco > chão, Bloco > ruas, Bloco > preencher: Predios, Bloco > grama, flores e pedrinhas, Bloco > assentar no relevo, Bloco > cor das plantas, Bloco > água, Bloco > Physics.SyncTransforms, Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2, Bloco: descarregar (o apagar vem no fim do quadro)
+   14s    110 FPS    38,7 ms      0 part.    1 luzes   36 aliens  19 blocos  · Chão > calcular alturas ×2, Chão > montar malha e normais ×2, Chão > pintar textura ×2, Chão > enviar textura para a placa ×2, Chão > colisor da malha ×2, Bloco > chão ×2, Bloco > ruas, Bloco > preencher: Fazenda, Bloco > grama, flores e pedrinhas ×2, Bloco > assentar no relevo ×2, Bloco > cor das plantas ×2, Bloco > água ×2, Bloco > Physics.SyncTransforms ×2, Bloco: construir ×2, Bloco: horizonte curvo ×2, Bloco: avisar (aliens, trânsito...) ×2, Bloco: carregar ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2, Bloco > preencher: Floresta
+   15s    126 FPS    27,8 ms      0 part.    1 luzes   36 aliens  21 blocos  · Limpeza: procurar objetos caídos
+   16s    135 FPS    26,7 ms      0 part.    1 luzes   36 aliens  21 blocos
+   17s    140 FPS    19,6 ms      0 part.    1 luzes   36 aliens  21 blocos  · Limpeza: procurar objetos caídos
+   18s    134 FPS    20,2 ms      0 part.    1 luzes   36 aliens  21 blocos
+   19s    138 FPS    23,1 ms      0 part.    1 luzes   36 aliens  21 blocos  · Limpeza: procurar objetos caídos
+   20s    138 FPS    20,6 ms      0 part.    1 luzes   36 aliens  21 blocos
+   21s    137 FPS    28,6 ms      0 part.    1 luzes   36 aliens  21 blocos  · Limpeza: procurar objetos caídos, Chão > calcular alturas, Chão > montar malha e normais, Chão > pintar textura, Chão > enviar textura para a placa, Chão > colisor da malha, Bloco > chão, Bloco > preencher: Fazenda, Bloco > grama, flores e pedrinhas, Bloco > assentar no relevo, Bloco > cor das plantas, Bloco > água, Bloco > Physics.SyncTransforms, Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar, NavMesh: juntar formas, NavMesh: começar a refazer
+   22s    133 FPS    25,1 ms      0 part.    1 luzes   36 aliens  22 blocos  · NavMesh: terminou de refazer ×3, Bloco: descarregar (o apagar vem no fim do quadro) ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2
+   23s    138 FPS    25,6 ms      0 part.    1 luzes   36 aliens  20 blocos  · Limpeza: procurar objetos caídos
+   24s    139 FPS    27,2 ms      0 part.    1 luzes   36 aliens  20 blocos
+   25s    139 FPS    19,7 ms      0 part.    1 luzes   36 aliens  20 blocos  · Limpeza: procurar objetos caídos
+   26s    122 FPS    23,3 ms      0 part.    1 luzes   36 aliens  20 blocos  · Bloco: descarregar (o apagar vem no fim do quadro) ×2, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   27s     71 FPS    56,9 ms      0 part.    1 luzes   36 aliens  16 blocos  · Limpeza: procurar objetos caídos, Bloco: descarregar (o apagar vem no fim do quadro) ×2, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer, Coleta de lixo (GC)
+   28s    137 FPS    19,0 ms      0 part.    1 luzes   36 aliens  16 blocos
+   29s    138 FPS    19,9 ms      0 part.    1 luzes   36 aliens  16 blocos  · Limpeza: procurar objetos caídos
+   30s    140 FPS    26,5 ms      0 part.    1 luzes   36 aliens  16 blocos
+
+Máquina e configuração:
+  Placa de vídeo: AMD Radeon RX 9060 XT (16253 MB, Direct3D12)
+  Processador: AMD Ryzen 5 5600X 6-Core Processor  (12 núcleos) · RAM 16328 MB
+  Resolução do jogo: 1455x599 · tela 144 Hz
+  Qualidade: PC · VSync normal: desligado (desligado durante a medição)
+  URP: PC_RPAsset · escala de render 1,00 · distância da sombra 50 m · MSAA 1x · HDR sim
+  Posição do jogador no fim: 432, 13, -276
+  Custo da contagem de objetos do medidor: 1,9 ms (tirado do quadro seguinte)
+
+O que você estava fazendo durante a medição? (anote aqui embaixo antes de mandar)
+> 

@@ -21,6 +21,15 @@ public sealed class GrassField : MonoBehaviour
     private static readonly int OffsetId = Shader.PropertyToID("_GrassWorldOffset");
     private static int globalsFrame = -1;
 
+    // Listas reaproveitadas entre os pedaços (20/11): antes cada pedaço criava listas novas (~1,1 MB de
+    // lixo por quadro enquanto a grama era montada), o que chamava a coleta de lixo e travava.
+    private static readonly List<Vector3> sharedVertices = new List<Vector3>(1 << 15);
+    private static readonly List<Color32> sharedColors = new List<Color32>(1 << 15);
+    private static readonly List<Vector2> sharedUvs = new List<Vector2>(1 << 15);
+    private static int[] sharedIndices = new int[0];
+    private static readonly Color[] sharedGridPe = new Color[36];
+    private static readonly Color[] sharedGridPonta = new Color[36];
+
     private Material material;
     private bool[] blocked;      // 100 × 100 células de 1 m (ruas, casas, árvores, lagos)
     private Vector3[] grid;      // vértices da malha do chão (null = chão plano em 0)
@@ -96,7 +105,10 @@ public sealed class GrassField : MonoBehaviour
 
         if (next >= 0 && next < Chunks * Chunks)
         {
-            BuildChunk(next++);
+            using (PerfMarks.Time("Grama: montar pedaço"))
+            {
+                BuildChunk(next++);
+            }
         }
 
         if (next >= 0 && distance > KeepRadius)
@@ -126,9 +138,12 @@ public sealed class GrassField : MonoBehaviour
         System.Random rng = new System.Random(seed + k * 7919);
         int attempts = Mathf.RoundToInt(density * ChunkSize * ChunkSize);
 
-        List<Vector3> vertices = new List<Vector3>(attempts * 3);
-        List<Color32> colors = new List<Color32>(attempts * 3);
-        List<Vector2> uvs = new List<Vector2>(attempts * 3);
+        List<Vector3> vertices = sharedVertices;
+        List<Color32> colors = sharedColors;
+        List<Vector2> uvs = sharedUvs;
+        vertices.Clear();
+        colors.Clear();
+        uvs.Clear();
 
         // Cores do bioma numa grade de 5 m sobre o pedaço (6 × 6 pontos), misturadas por folha.
         const int Grid = 6;
@@ -136,8 +151,8 @@ public sealed class GrassField : MonoBehaviour
         Color[] gridPe = null, gridPonta = null;
         if (blendBiomes)
         {
-            gridPe = new Color[Grid * Grid];
-            gridPonta = new Color[Grid * Grid];
+            gridPe = sharedGridPe;
+            gridPonta = sharedGridPonta;
             for (int gz = 0; gz < Grid; gz++)
             {
                 for (int gx = 0; gx < Grid; gx++)
@@ -205,10 +220,14 @@ public sealed class GrassField : MonoBehaviour
             return;
         }
 
-        int[] triangles = new int[vertices.Count];
-        for (int t = 0; t < triangles.Length; t++)
+        // Índices 0, 1, 2, 3... (cada folha é um triângulo próprio): uma lista só, crescida quando precisa.
+        if (sharedIndices.Length < vertices.Count)
         {
-            triangles[t] = t;
+            sharedIndices = new int[Mathf.NextPowerOfTwo(vertices.Count)];
+            for (int t = 0; t < sharedIndices.Length; t++)
+            {
+                sharedIndices[t] = t;
+            }
         }
 
         Mesh mesh = new Mesh { name = "Grama" };
@@ -216,7 +235,7 @@ public sealed class GrassField : MonoBehaviour
         mesh.SetVertices(vertices);
         mesh.SetColors(colors);
         mesh.SetUVs(0, uvs);
-        mesh.SetTriangles(triangles, 0, false);
+        mesh.SetIndices(sharedIndices, 0, vertices.Count, MeshTopology.Triangles, 0, false);
         mesh.RecalculateBounds();
         Bounds bounds = mesh.bounds;
         bounds.Expand(new Vector3(2f, 1f, 2f)); // a ponta sai um pouco do lugar com o vento

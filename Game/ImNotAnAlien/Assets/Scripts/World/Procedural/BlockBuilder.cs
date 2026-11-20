@@ -87,23 +87,50 @@ public static partial class BlockBuilder
         switch (spec.type)
         {
             case BlockType.Rio:
-                BuildRiverBlock(c);
-                break;
-            case BlockType.Esquina:
-                BuildEsquinaRing(c);
-                break;
-            case BlockType.Polo:
-                BuildPole(c);
-                break;
-            default:
-                Ground(c);
-                if (c.AnyRoad)
+                using (PerfMarks.Time("Bloco > rio do Vilarejo"))
                 {
-                    Roads(c, RoadHalf);
+                    BuildRiverBlock(c);
                 }
 
-                Fill(c);
-                GroundCover(c); // Missão 20: grama, flores, pedrinhas (Kit de Natureza)
+                break;
+            case BlockType.Esquina:
+                using (PerfMarks.Time("Bloco > esquina"))
+                {
+                    BuildEsquinaRing(c);
+                }
+
+                break;
+            case BlockType.Polo:
+                using (PerfMarks.Time("Bloco > polo"))
+                {
+                    BuildPole(c);
+                }
+
+                break;
+            default:
+                using (PerfMarks.Time("Bloco > chão"))
+                {
+                    Ground(c);
+                }
+
+                if (c.AnyRoad)
+                {
+                    using (PerfMarks.Time("Bloco > ruas"))
+                    {
+                        Roads(c, RoadHalf);
+                    }
+                }
+
+                using (PerfMarks.Time(PerfMarks.Active ? FillTag(spec.type) : null))
+                {
+                    Fill(c);
+                }
+
+                using (PerfMarks.Time("Bloco > grama, flores e pedrinhas"))
+                {
+                    GroundCover(c); // Missão 20: grama, flores, pedrinhas (Kit de Natureza)
+                }
+
                 break;
         }
 
@@ -114,19 +141,47 @@ public static partial class BlockBuilder
             int mode = PlanetTerrain.GroundMode(coord, spec.type);
             if (mode > 0)
             {
-                PlanetTerrain.SettleObjects(c.root, c.est, c.dyn, coord, c.biome, spec.seed, mode == 2, c.assets);
+                using (PerfMarks.Time("Bloco > assentar no relevo"))
+                {
+                    PlanetTerrain.SettleObjects(c.root, c.est, c.dyn, coord, c.biome, spec.seed, mode == 2, c.assets);
+                }
             }
 
-            PlanetTerrain.TintFoliage(c.root, c.biome);
+            using (PerfMarks.Time("Bloco > cor das plantas"))
+            {
+                PlanetTerrain.TintFoliage(c.root, c.biome);
+            }
         }
 
-        WaterLook.Apply(rootObject.transform, kit.water); // Missão 20: água transparente
+        using (PerfMarks.Time("Bloco > água"))
+        {
+            WaterLook.Apply(rootObject.transform, kit.water); // Missão 20: água transparente
+        }
 
         WorldBlock block = rootObject.AddComponent<WorldBlock>();
         block.Setup(coord, c.est, c.dyn);
         block.SetSpec(spec);
-        Physics.SyncTransforms();
+        using (PerfMarks.Time("Bloco > Physics.SyncTransforms"))
+        {
+            Physics.SyncTransforms();
+        }
+
         return rootObject;
+    }
+
+    // Nome do marcador do medidor para cada tipo de bloco (guardado, para não gerar lixo).
+    private static readonly System.Collections.Generic.Dictionary<BlockType, string> fillTags =
+        new System.Collections.Generic.Dictionary<BlockType, string>();
+
+    private static string FillTag(BlockType type)
+    {
+        if (!fillTags.TryGetValue(type, out string tag))
+        {
+            tag = "Bloco > preencher: " + type;
+            fillTags[type] = tag;
+        }
+
+        return tag;
     }
 
     private static void Fill(Ctx c)
@@ -376,7 +431,8 @@ public static partial class BlockBuilder
         bool straight = c.spec.Count(Socket.Rio) == 2 && c.spec.north == c.spec.south;
         if (!straight)
         {
-            BuildRiverPieces(c); // Missão 20: curva ou nascente
+            // O bloco Rio só existe no Vilarejo, sempre reto (o resto dos rios é relevo, GreatLake).
+            Debug.LogWarning("[BlockBuilder] Bloco Rio que não é reto: ignorado.");
             return;
         }
 
@@ -460,118 +516,6 @@ public static partial class BlockBuilder
         Transform bushes = Child(c.est, "Arbustos");
         Scatter(c, 8, 1.5f, p => Bush(c, bushes, p));
         StreetProps(c);
-    }
-
-    // Curva ou nascente (Missão 20). O bloco é dividido em 3 × 3: o quadrado do meio (25 m), um "braço"
-    // para cada lado e os 4 cantos. Os braços com rio e o meio viram canal (fundo, margens em rampa,
-    // água e gatilho), o resto é chão. Na nascente, o canal acaba no meio do bloco com pedras em volta.
-    private static void BuildRiverPieces(Ctx c)
-    {
-        Transform rio = Child(c.est, "Rio");
-        float w = RiverHalf;
-        float arm = Half - w;
-        bool[] river = new bool[4];
-        for (int s = 0; s < 4; s++)
-        {
-            river[s] = c.spec.Get(s) == Socket.Rio;
-        }
-
-        // Cantos: sempre chão.
-        for (int sx = -1; sx <= 1; sx += 2)
-        {
-            for (int sz = -1; sz <= 1; sz += 2)
-            {
-                Box(c, rio, "Chao_Canto", new Vector3(Half + sx * (w + arm / 2f), -0.1f, Half + sz * (w + arm / 2f)), new Vector3(arm, 0.2f, arm), c.grass);
-            }
-        }
-
-        // Meio: margem nos lados sem rio.
-        bool[] centerWalls = new bool[4];
-        for (int s = 0; s < 4; s++)
-        {
-            centerWalls[s] = !river[s];
-        }
-
-        RiverChannel(c, rio, Center, new Vector2(w * 2f, w * 2f), centerWalls);
-
-        // Braços.
-        for (int s = 0; s < 4; s++)
-        {
-            Vector2 at = Center + Dir[s] * (w + arm / 2f);
-            bool alongZ = s == 0 || s == 2;
-            Vector2 size = alongZ ? new Vector2(w * 2f, arm) : new Vector2(arm, w * 2f);
-            if (river[s])
-            {
-                RiverChannel(c, rio, at, size, alongZ ? new[] { false, true, false, true } : new[] { true, false, true, false });
-            }
-            else
-            {
-                Box(c, rio, "Chao", new Vector3(at.x, -0.1f, at.y), new Vector3(size.x, 0.2f, size.y), c.grass);
-            }
-        }
-
-        // Curva: arredonda o canto de dentro (senão fica um degrau entre as duas margens).
-        for (int s = 0; s < 4; s++)
-        {
-            int next = (s + 1) % 4;
-            if (river[s] && river[next])
-            {
-                Vector2 corner = Center + (Dir[s] + Dir[next]) * w;
-                float height = -0.02f - RiverBedY;
-                Prim(c, PrimitiveType.Cylinder, "Margem_Curva", rio, new Vector3(corner.x, RiverBedY + height / 2f, corner.y),
-                    new Vector3(BankLength * 2f, height / 2f, BankLength * 2f), c.kit.riverBed);
-            }
-        }
-
-        // Nascente: pedras no fim do canal.
-        if (c.spec.Count(Socket.Rio) == 1)
-        {
-            int inlet = System.Array.IndexOf(river, true);
-            Vector2 back = -Dir[inlet];
-            Vector2 side = new Vector2(back.y, back.x);
-            Transform rocks = Child(c.est, "Nascente");
-            Rock(c, rocks, Center + back * (w + 2f), Range(c, 1.6f, 2.2f));
-            Rock(c, rocks, Center + back * (w + 1f) + side * 6f, Range(c, 0.9f, 1.4f));
-            Rock(c, rocks, Center + back * (w + 1.5f) - side * 7f, Range(c, 1f, 1.5f));
-            Reserve(c, RectAround(Center + back * (w + 2f), 18f, 18f));
-        }
-
-        Transform trees = Child(c.est, "Arvores");
-        Scatter(c, 14, 2.5f, p => Tree(c, trees, p, Range(c, 0.9f, 1.2f)));
-        Transform bushes = Child(c.est, "Arbustos");
-        Scatter(c, 10, 1.5f, p => Bush(c, bushes, p));
-        StreetProps(c);
-    }
-
-    // Um trecho de canal (retângulo em coordenadas do bloco). "walls" = lados com margem em rampa.
-    private static void RiverChannel(Ctx c, Transform parent, Vector2 center, Vector2 size, bool[] walls)
-    {
-        float minX = center.x - size.x / 2f, maxX = center.x + size.x / 2f;
-        float minZ = center.y - size.y / 2f, maxZ = center.y + size.y / 2f;
-        NoCollider(Box(c, parent, "Agua", new Vector3(center.x, WaterY, center.y), new Vector3(size.x, 0.02f, size.y), c.kit.water));
-
-        // Fundo: o retângulo sem as rampas.
-        float bx0 = minX + (walls[3] ? BankLength : 0f), bx1 = maxX - (walls[1] ? BankLength : 0f);
-        float bz0 = minZ + (walls[2] ? BankLength : 0f), bz1 = maxZ - (walls[0] ? BankLength : 0f);
-        Box(c, parent, "Fundo", new Vector3((bx0 + bx1) / 2f, RiverBedY - 0.1f, (bz0 + bz1) / 2f), new Vector3(bx1 - bx0, 0.2f, bz1 - bz0), c.kit.riverBed);
-
-        float drop = -0.02f - RiverBedY;
-        float slope = Mathf.Sqrt(BankLength * BankLength + drop * drop);
-        float angle = Mathf.Atan2(drop, BankLength) * Mathf.Rad2Deg;
-        float rampY = (-0.02f + RiverBedY) / 2f - 0.1f;
-        if (walls[0]) Local(c, parent, "Margem", new Vector3(center.x, rampY, maxZ - BankLength / 2f), new Vector3(size.x, 0.2f, slope), c.kit.riverBed, new Vector3(-angle, 0f, 0f));
-        if (walls[2]) Local(c, parent, "Margem", new Vector3(center.x, rampY, minZ + BankLength / 2f), new Vector3(size.x, 0.2f, slope), c.kit.riverBed, new Vector3(angle, 0f, 0f));
-        if (walls[1]) Local(c, parent, "Margem", new Vector3(maxX - BankLength / 2f, rampY, center.y), new Vector3(slope, 0.2f, size.y), c.kit.riverBed, new Vector3(0f, 0f, angle));
-        if (walls[3]) Local(c, parent, "Margem", new Vector3(minX + BankLength / 2f, rampY, center.y), new Vector3(slope, 0.2f, size.y), c.kit.riverBed, new Vector3(0f, 0f, -angle));
-
-        Transform trigger = Child(c.trig, "Agua_Gatilho");
-        trigger.localPosition = new Vector3(center.x, (RiverBedY + WaterY) / 2f, center.y);
-        BoxCollider box = trigger.gameObject.AddComponent<BoxCollider>();
-        box.isTrigger = true;
-        box.size = new Vector3(size.x, WaterY - RiverBedY + 0.2f, size.y);
-        trigger.gameObject.AddComponent<WaterZone>();
-
-        Reserve(c, RectAround(center, size.x + 4f, size.y + 4f));
     }
 
     // ---------- Tipos ----------

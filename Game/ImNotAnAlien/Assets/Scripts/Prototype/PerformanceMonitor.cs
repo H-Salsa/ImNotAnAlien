@@ -19,6 +19,8 @@ using Debug = UnityEngine.Debug;
 //          Docs\Medicoes\fps_<data>.csv  — uma linha por segundo, para gráfico
 //        (Numa build, que não tem a pasta Docs, salva na pasta de dados do jogo.)
 // Com o menu aberto (jogo pausado) os quadros não entram na conta.
+// Marcadores (20/11): partes do jogo avisam o que fizeram (PerfMarks). Cada quadro lento sai no relatório
+// com a lista do que aconteceu nele (bloco montado, NavMesh, casa desabando, coleta de lixo...).
 [DisallowMultipleComponent]
 [DefaultExecutionOrder(-1000)]
 public sealed class PerformanceMonitor : MonoBehaviour
@@ -79,6 +81,25 @@ public sealed class PerformanceMonitor : MonoBehaviour
     private readonly List<float[]> secRows = new List<float[]>(64);
     private string lastResult;
     private float lastResultUntil;
+
+    // Marcadores (20/11): o que aconteceu em cada quadro (ver PerfMarks).
+    private const float SpikeMs = 25f;                 // quadro lento: guarda a lista do que aconteceu nele
+    private const string GcTag = "Coleta de lixo (GC)";
+    private sealed class MarkTotal
+    {
+        public int count;
+        public double ms;
+        public float max;
+        public int inSpikes;
+        public bool timed;
+    }
+
+    private readonly List<PerfMarks.Mark> frameMarks = new List<PerfMarks.Mark>(16);
+    private readonly Dictionary<int, string> spikeNotes = new Dictionary<int, string>();
+    private readonly Dictionary<string, MarkTotal> markTotals = new Dictionary<string, MarkTotal>();
+    private readonly Dictionary<string, int> secMarkCounts = new Dictionary<string, int>();
+    private readonly List<string> secMarkText = new List<string>(64);
+    private int lastGcCount = -1;
 
     private GUIStyle textStyle, bigStyle;
     private Transform player;
@@ -155,6 +176,21 @@ public sealed class PerformanceMonitor : MonoBehaviour
         float ms = Mathf.Max(0.01f, Time.unscaledDeltaTime * 1000f - pendingCountCost);
         pendingCountCost = 0f;
         bool paused = GamePause.IsPaused;
+
+        // Marcadores do quadro que acabou (este Update roda antes de todos os outros scripts).
+        int gcCount = System.GC.CollectionCount(0);
+        if (gcCount != lastGcCount)
+        {
+            if (lastGcCount >= 0)
+            {
+                PerfMarks.Event(GcTag);
+            }
+
+            lastGcCount = gcCount;
+        }
+
+        PerfMarks.TakeFrame(frameMarks);
+        PerfMarks.Active = recording;
 
         if (!paused)
         {
@@ -414,7 +450,12 @@ public sealed class PerformanceMonitor : MonoBehaviour
         sumMain = sumRender = sumGpu = 0;
         nMain = nGpu = 0;
         secIndex = 0;
+        spikeNotes.Clear();
+        markTotals.Clear();
+        secMarkText.Clear();
         ResetSecond();
+        PerfMarks.Clear();
+        PerfMarks.Active = true;
 
         savedVSync = QualitySettings.vSyncCount;
         savedTargetFps = Application.targetFrameRate;
@@ -434,6 +475,7 @@ public sealed class PerformanceMonitor : MonoBehaviour
         secWorst = 0f;
         secMain = secRender = secGpu = secBatches = secSetPass = secTris = secGc = 0;
         secMainN = secGpuN = secRecN = 0;
+        secMarkCounts.Clear();
     }
 
     private void RecordFrame(float ms)
@@ -454,6 +496,8 @@ public sealed class PerformanceMonitor : MonoBehaviour
             secGc += System.Math.Max(0, g);
             secRecN++;
         }
+
+        RecordMarks(ms, g);
 
         if (recElapsed >= secIndex + 1)
         {
@@ -486,6 +530,7 @@ public sealed class PerformanceMonitor : MonoBehaviour
             particles, particleSystems, lights, shadowLights, visibleRenderers, aliens, orbs, awakeBodies, blocks, gc,
         };
         secRows.Add(row);
+        secMarkText.Add(SecondMarks());
 
         StringBuilder line = new StringBuilder(256);
         for (int i = 0; i < row.Length; i++)
@@ -495,6 +540,108 @@ public sealed class PerformanceMonitor : MonoBehaviour
 
         line.Append(p.x.ToString("0", Inv)).Append(',').Append(p.y.ToString("0", Inv)).Append(',').Append(p.z.ToString("0", Inv));
         csv.AppendLine(line.ToString());
+    }
+
+    // ---------- Marcadores ----------
+
+    private void RecordMarks(float ms, long gcBytes)
+    {
+        bool spike = ms >= SpikeMs;
+        foreach (PerfMarks.Mark m in frameMarks)
+        {
+            if (!markTotals.TryGetValue(m.tag, out MarkTotal total))
+            {
+                total = new MarkTotal();
+                markTotals[m.tag] = total;
+            }
+
+            total.count += m.count;
+            total.ms += m.ms;
+            total.max = Mathf.Max(total.max, m.ms);
+            total.timed |= m.timed;
+            if (spike)
+            {
+                total.inSpikes++;
+            }
+
+            secMarkCounts.TryGetValue(m.tag, out int n);
+            secMarkCounts[m.tag] = n + m.count;
+        }
+
+        if (spike)
+        {
+            spikeNotes[recMs.Count - 1] = DescribeFrame(ms, gcBytes);
+        }
+    }
+
+    // Ex.: "lixo 290 KB · Bloco: montar 12,3 ms · NavMesh: juntar formas ×2 4,1 ms · Coleta de lixo (GC) · sem marcador 30 ms"
+    private string DescribeFrame(float ms, long gcBytes)
+    {
+        StringBuilder sb = new StringBuilder(160);
+        sb.Append(gcBytes >= 0 ? $"lixo {gcBytes / 1024f:0} KB" : "lixo ?");
+        frameMarks.Sort((a, b) => b.ms.CompareTo(a.ms));
+        float explained = 0f;
+        foreach (PerfMarks.Mark m in frameMarks)
+        {
+            sb.Append(" · ").Append(m.tag);
+            if (m.count > 1)
+            {
+                sb.Append(" ×").Append(m.count);
+            }
+
+            if (m.timed)
+            {
+                sb.Append(' ').Append(m.ms.ToString("0.0", Inv)).Append(" ms");
+                if (m.topLevel)
+                {
+                    explained += m.ms;
+                }
+            }
+        }
+
+        sb.Append(" · sem marcador ").Append(Mathf.Max(0f, ms - explained).ToString("0", Inv)).Append(" ms");
+        return sb.ToString();
+    }
+
+    private string SecondMarks()
+    {
+        if (secMarkCounts.Count == 0)
+        {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder(96);
+        foreach (KeyValuePair<string, int> pair in secMarkCounts)
+        {
+            sb.Append(sb.Length == 0 ? "" : ", ").Append(pair.Key);
+            if (pair.Value > 1)
+            {
+                sb.Append(" ×").Append(pair.Value);
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    private void AppendMarkTotals(StringBuilder r)
+    {
+        r.AppendLine($"Marcadores — o que aconteceu durante a medição (quadro lento = acima de {SpikeMs:0} ms):");
+        if (markTotals.Count == 0)
+        {
+            r.AppendLine("  (nada marcado)");
+            return;
+        }
+
+        List<KeyValuePair<string, MarkTotal>> list = new List<KeyValuePair<string, MarkTotal>>(markTotals);
+        list.Sort((a, b) => b.Value.ms.CompareTo(a.Value.ms));
+        foreach (KeyValuePair<string, MarkTotal> pair in list)
+        {
+            MarkTotal t = pair.Value;
+            string time = t.timed ? $" · total {t.ms:0.0} ms · maior {t.max:0.0} ms" : "";
+            r.AppendLine($"  {pair.Key}: {t.count}x{time} · em {t.inSpikes} quadro(s) lento(s)");
+        }
+
+        r.AppendLine("  (\"sem marcador\" nos quadros lentos = física, desenho, apagar objetos, NavMesh em segundo plano e o resto do Unity)");
     }
 
     // Posição "lógica" (a mesma do jogo salvo), que não muda quando o mundo recentra.
@@ -512,6 +659,8 @@ public sealed class PerformanceMonitor : MonoBehaviour
     private void StopRecording(bool save)
     {
         recording = false;
+        PerfMarks.Active = false;
+        PerfMarks.Clear();
         QualitySettings.vSyncCount = savedVSync;
         Application.targetFrameRate = savedTargetFps;
 
@@ -637,6 +786,8 @@ public sealed class PerformanceMonitor : MonoBehaviour
         AppendStat(r, "blocos do mundo", 17);
         AppendStat(r, "lixo GC (KB/quadro)", 18);
         r.AppendLine();
+        AppendMarkTotals(r);
+        r.AppendLine();
 
         // Os 10 piores quadros e quando aconteceram.
         List<int> idx = new List<int>(n);
@@ -645,14 +796,30 @@ public sealed class PerformanceMonitor : MonoBehaviour
         r.AppendLine("10 piores quadros (segundo da medição → tempo):");
         for (int i = 0; i < Mathf.Min(10, n); i++)
         {
-            r.AppendLine($"  {recAt[idx[i]]:0.0} s → {recMs[idx[i]]:0.0} ms");
+            string note = spikeNotes.TryGetValue(idx[i], out string text) ? "  · " + text : "";
+            r.AppendLine($"  {recAt[idx[i]]:0.0} s → {recMs[idx[i]]:0.0} ms{note}");
+        }
+
+        // Todos os quadros lentos, na ordem em que aconteceram.
+        if (spikeNotes.Count > 0)
+        {
+            r.AppendLine();
+            r.AppendLine($"Todos os quadros acima de {SpikeMs:0} ms, em ordem ({spikeNotes.Count}):");
+            List<int> spikes = new List<int>(spikeNotes.Keys);
+            spikes.Sort();
+            foreach (int i in spikes)
+            {
+                r.AppendLine($"  {recAt[i],5:0.0} s → {recMs[i],5:0.0} ms  · {spikeNotes[i]}");
+            }
         }
 
         r.AppendLine();
         r.AppendLine("Segundo a segundo (FPS · pior ms · partículas · luzes · aliens):");
-        foreach (float[] row in secRows)
+        for (int s = 0; s < secRows.Count; s++)
         {
-            r.AppendLine($"  {row[0],3:0}s  {row[1],5:0} FPS  {row[2],6:0.0} ms  {row[9],5:0} part.  {row[11],3:0} luzes  {row[14],3:0} aliens");
+            float[] row = secRows[s];
+            string marks = s < secMarkText.Count && secMarkText[s].Length > 0 ? "  · " + secMarkText[s] : "";
+            r.AppendLine($"  {row[0],3:0}s  {row[1],5:0} FPS  {row[2],6:0.0} ms  {row[9],5:0} part.  {row[11],3:0} luzes  {row[14],3:0} aliens  {row[17],2:0} blocos{marks}");
         }
 
         r.AppendLine();

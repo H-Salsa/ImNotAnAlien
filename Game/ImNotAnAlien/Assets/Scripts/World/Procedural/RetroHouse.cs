@@ -927,6 +927,55 @@ public static class RetroHouse
         return house;
     }
 
+    // Preparo antecipado das combinações (20/11): modelo × 8 cores × espelho. Montar uma combinação nova
+    // leva ~5 ms; num bairro novo eram até 8 de uma vez (~45 ms). Agora o WorldStreamer chama
+    // WarmUpStep uma vez por quadro (só nos quadros sem bloco novo) até preparar todas.
+    private static readonly Queue<(GameObject, int, bool)> warmQueue = new Queue<(GameObject, int, bool)>();
+
+    public static void QueueWarmUp(GameObject[] models)
+    {
+        if (models == null)
+        {
+            return;
+        }
+
+        foreach (GameObject model in models)
+        {
+            if (model == null)
+            {
+                continue;
+            }
+
+            for (int palette = 0; palette < PaletteCount; palette++)
+            {
+                warmQueue.Enqueue((model, palette, false));
+                warmQueue.Enqueue((model, palette, true));
+            }
+        }
+    }
+
+    // Prepara no máximo uma combinação. false = não tinha nada para preparar.
+    public static bool WarmUpStep()
+    {
+        while (warmQueue.Count > 0)
+        {
+            (GameObject model, int palette, bool mirror) = warmQueue.Dequeue();
+            if (model == null || (variants.TryGetValue((model, palette, mirror), out Variant ready) && ready.lod0 != null))
+            {
+                continue; // já apareceu no jogo
+            }
+
+            using (PerfMarks.Time("Casa: preparar modelo aos poucos"))
+            {
+                VariantFor(model, palette, mirror);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
     private static Variant VariantFor(GameObject model, int palette, bool mirror)
     {
         if (variants.TryGetValue((model, palette, mirror), out Variant v) && v.lod0 != null)
@@ -934,11 +983,14 @@ public static class RetroHouse
             return v;
         }
 
+        using PerfMarks.Scope mark = PerfMarks.Time("Casa: montar modelo novo (cor/espelho)");
         Transform root = model.transform;
         v = new Variant();
-        Accumulator lod0 = new Accumulator();
-        Accumulator body = new Accumulator();
-        Accumulator ground = new Accumulator();
+        // Listas reaproveitadas (20/11): antes cada modelo novo criava listas novas e copiava as malhas de
+        // origem de novo (dezenas de MB de lixo num bairro novo).
+        Accumulator lod0 = sharedLod0.Reset();
+        Accumulator body = sharedBody.Reset();
+        Accumulator ground = sharedGround.Reset();
         Transform lod1 = null, lod2 = null;
         foreach (Transform part in root.GetComponentsInChildren<Transform>(true))
         {
@@ -958,8 +1010,8 @@ public static class RetroHouse
         v.lod0 = lod0.ToMesh("Casa_LOD0", false, out _);
         v.body = body.Bounds;
         v.ground = ground.Count > 0 ? ground.ToMesh("Casa_Chao", false, out _) : null;
-        if (lod1 != null) { Accumulator a = new Accumulator(); a.Append(lod1, root, palette, mirror); v.lod1 = a.ToMesh("Casa_LOD1", false, out _); }
-        if (lod2 != null) { Accumulator a = new Accumulator(); a.Append(lod2, root, palette, mirror); v.lod2 = a.ToMesh("Casa_LOD2", false, out _); }
+        if (lod1 != null) { Accumulator a = sharedExtra.Reset(); a.Append(lod1, root, palette, mirror); v.lod1 = a.ToMesh("Casa_LOD1", false, out _); }
+        if (lod2 != null) { Accumulator a = sharedExtra.Reset(); a.Append(lod2, root, palette, mirror); v.lod2 = a.ToMesh("Casa_LOD2", false, out _); }
         variants[(model, palette, mirror)] = v;
         return v;
     }
@@ -1030,6 +1082,7 @@ public static class RetroHouse
             return;
         }
 
+        using PerfMarks.Scope mark = PerfMarks.Time("Casa: preparar cacos (aos poucos)");
         System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
         while (watch.Elapsed.TotalMilliseconds < budgetMs)
         {
@@ -1143,6 +1196,64 @@ public static class RetroHouse
     public static Material HouseMaterial => material;
 
     // Junta partes do modelo numa malha só, com UV apontando para a célula da paleta de cada material.
+    private static readonly Accumulator sharedLod0 = new Accumulator();
+    private static readonly Accumulator sharedBody = new Accumulator();
+    private static readonly Accumulator sharedGround = new Accumulator();
+    private static readonly Accumulator sharedExtra = new Accumulator();
+
+    // Dados das malhas de origem (modelos do Blender), lidos uma vez só por peça (20/11).
+    // Ler mesh.vertices/normals/uv/GetTriangles cria cópias novas a cada chamada.
+    private sealed class PartData
+    {
+        public Vector3[] vertices;
+        public Vector3[] normals;
+        public Vector2[] uv;
+        public int[][] triangles;   // por submalha
+        public string[] names;      // nome limpo do material de cada submalha
+    }
+
+    private static readonly Dictionary<Transform, PartData> partCache = new Dictionary<Transform, PartData>();
+
+    private static PartData DataFor(Transform part)
+    {
+        if (partCache.TryGetValue(part, out PartData data))
+        {
+            return data;
+        }
+
+        MeshFilter filter = part.GetComponent<MeshFilter>();
+        Renderer renderer = part.GetComponent<Renderer>();
+        Mesh src = filter != null ? filter.sharedMesh : null;
+        if (src == null || !src.isReadable)
+        {
+            if (src != null) Debug.LogWarning($"Casa: a malha {src.name} não está legível. Rode 'Preparar Casas (Missao 20)'.");
+            partCache[part] = null;
+            return null;
+        }
+
+        Material[] mats = renderer != null ? renderer.sharedMaterials : new Material[0];
+        data = new PartData
+        {
+            vertices = src.vertices,
+            normals = src.normals,
+            uv = src.uv,
+            triangles = new int[src.subMeshCount][],
+            names = new string[src.subMeshCount],
+        };
+
+        for (int sub = 0; sub < src.subMeshCount; sub++)
+        {
+            string name = sub < mats.Length && mats[sub] != null ? mats[sub].name : "Parede";
+            int dot = name.IndexOf('.');
+            if (dot > 0) name = name.Substring(0, dot);
+            data.names[sub] = name.Replace(" (Instance)", "");
+            data.triangles[sub] = src.GetTriangles(sub);
+        }
+
+        partCache[part] = data;
+        return data;
+    }
+
     private sealed class Accumulator
     {
         private readonly List<Vector3> vertices = new List<Vector3>();
@@ -1151,6 +1262,15 @@ public static class RetroHouse
         private readonly List<int> triangles = new List<int>();
 
         public int Count => triangles.Count;
+
+        public Accumulator Reset()
+        {
+            vertices.Clear();
+            normals.Clear();
+            uvs.Clear();
+            triangles.Clear();
+            return this;
+        }
 
         public Bounds Bounds
         {
@@ -1165,32 +1285,25 @@ public static class RetroHouse
 
         public void Append(Transform part, Transform root, int palette, bool mirror)
         {
-            MeshFilter filter = part.GetComponent<MeshFilter>();
-            Renderer renderer = part.GetComponent<Renderer>();
-            Mesh src = filter != null ? filter.sharedMesh : null;
-            if (src == null || !src.isReadable)
+            PartData data = DataFor(part);
+            if (data == null)
             {
-                if (src != null) Debug.LogWarning($"Casa: a malha {src.name} não está legível. Rode 'Preparar Casas (Missao 20)'.");
                 return;
             }
 
             Matrix4x4 m = root.worldToLocalMatrix * part.localToWorldMatrix;
             if (mirror) m = Matrix4x4.Scale(new Vector3(-1f, 1f, 1f)) * m;
             Matrix4x4 nm = m.inverse.transpose;
-            Vector3[] v = src.vertices;
-            Vector3[] n = src.normals;
-            Vector2[] uv = src.uv;
-            Material[] mats = renderer != null ? renderer.sharedMaterials : new Material[0];
+            Vector3[] v = data.vertices;
+            Vector3[] n = data.normals;
+            Vector2[] uv = data.uv;
             Rect room = InteriorUV(palette % 4);
-            for (int sub = 0; sub < src.subMeshCount; sub++)
+            for (int sub = 0; sub < data.triangles.Length; sub++)
             {
-                string name = sub < mats.Length && mats[sub] != null ? mats[sub].name : "Parede";
-                int dot = name.IndexOf('.');
-                if (dot > 0) name = name.Substring(0, dot);
-                name = name.Replace(" (Instance)", "");
+                string name = data.names[sub];
                 bool interior = name == "Interior";
                 Vector2 cell = CellFor(name, palette);
-                int[] t = src.GetTriangles(sub);
+                int[] t = data.triangles[sub];
                 for (int i = 0; i < t.Length; i += 3)
                 {
                     for (int k = 0; k < 3; k++)

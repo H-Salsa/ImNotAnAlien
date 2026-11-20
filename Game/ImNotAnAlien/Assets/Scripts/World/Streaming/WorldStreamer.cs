@@ -93,6 +93,7 @@ public sealed class WorldStreamer : MonoBehaviour
     private WorldNavMesh navMesh;
     private float timer;
     private float killTimer;
+    private int lastLoadFrame = -1;
     private bool testMode;
     private int testBase = -1;
 
@@ -151,6 +152,15 @@ public sealed class WorldStreamer : MonoBehaviour
         }
 
         navMesh.BuildNow();
+
+        // Casas e prédios retrô: as combinações de cor/espelho que ainda não apareceram são montadas aos
+        // poucos (uma por quadro, nos quadros sem bloco novo), em vez de na hora em que um bairro entra.
+        if (kit != null && kit.retroHouses)
+        {
+            RetroHouse.QueueWarmUp(kit.houseModels);
+            RetroHouse.QueueWarmUp(kit.buildingModels);
+        }
+
         Debug.Log(planet
             ? $"Planeta: {loaded.Count} blocos carregados no início."
             : $"Mundo em blocos: {loaded.Count} de {cells.Count} blocos carregados no início.");
@@ -383,6 +393,14 @@ public sealed class WorldStreamer : MonoBehaviour
         UpdateBlocks();
     }
 
+    private void LateUpdate()
+    {
+        if (lastLoadFrame != Time.frameCount)
+        {
+            RetroHouse.WarmUpStep();
+        }
+    }
+
     // ---------- Carregar e descarregar ----------
 
     private void UpdateBlocks()
@@ -417,18 +435,67 @@ public sealed class WorldStreamer : MonoBehaviour
         {
             Load(scratch[i], true);
         }
+
+        PrefetchGround();
+    }
+
+    // Chão dos blocos que estão quase entrando, calculado em segundo plano (GroundPrefetch, 20/11).
+    private void PrefetchGround()
+    {
+        if (!planet || kit == null || kit.grass == null || Layout == null || !PlanetTerrain.Active)
+        {
+            return;
+        }
+
+        using PerfMarks.Scope mark = PerfMarks.Time("Bloco: pedir chão em segundo plano");
+        float reach = LoadRadius + blockSize * 1.5f;
+        foreach (Vector2Int coord in CandidateCoords(reach))
+        {
+            if (loaded.ContainsKey(coord) || !Planet.InsideLatitude(coord.y) || entries.ContainsKey(Planet.Wrap(coord))
+                || DistanceTo(coord) > reach)
+            {
+                continue;
+            }
+
+            BlockType type = Layout.Get(coord).type;
+            if (type == BlockType.Rio || type == BlockType.Esquina || type == BlockType.Polo)
+            {
+                continue; // esses não usam o chão com relevo
+            }
+
+            GroundPrefetch.Request(coord, PlanetTerrain.GroundMode(coord, type));
+        }
+
+        float keep = UnloadRadius + blockSize * 2f;
+        GroundPrefetch.Prune(coord => DistanceTo(coord) <= keep);
     }
 
     private void Load(Vector2Int coord, bool rebuildNavMesh)
+    {
+        using (PerfMarks.Time("Bloco: carregar"))
+        {
+            LoadBlock(coord, rebuildNavMesh);
+        }
+    }
+
+    private void LoadBlock(Vector2Int coord, bool rebuildNavMesh)
     {
         Rect rect = BlockRectWorld(coord);
         Vector2Int key = planet ? Planet.Wrap(coord) : coord;
         GameObject go;
         if (entries.TryGetValue(key, out BlockEntry entry))
         {
-            go = Instantiate(entry.prefab, new Vector3(rect.xMin, 0f, rect.yMin), Quaternion.identity);
+            using (PerfMarks.Time("Bloco: copiar do Vilarejo"))
+            {
+                go = Instantiate(entry.prefab, new Vector3(rect.xMin, 0f, rect.yMin), Quaternion.identity);
+            }
+
             go.name = entry.prefab.name;
-            BlockBuilder.Naturalize(go, kit, coord); // Missão 20: árvores, pedras e grama do Kit de Natureza no Vilarejo
+            using (PerfMarks.Time("Bloco: natureza do Vilarejo"))
+            {
+                BlockBuilder.Naturalize(go, kit, coord); // Missão 20: árvores, pedras e grama do Kit de Natureza no Vilarejo
+            }
+
             if (kit != null)
             {
                 WaterLook.Apply(go.transform, kit.water); // Missão 20: água transparente
@@ -441,11 +508,17 @@ public sealed class WorldStreamer : MonoBehaviour
             BlockSpec pole = BlockSpec.Make(BlockType.Polo, Socket.Mato, Socket.Mato, Socket.Mato, Socket.Mato,
                 (north ? "norte" : "sul") + (outer ? "_fora" : ""));
             pole.seed = 900000 + Planet.WrapX(coord.x) * 7 + (coord.y + 10) * 1013;
-            go = BlockBuilder.Build(pole, kit, coord, new Vector3(rect.xMin, 0f, rect.yMin));
+            using (PerfMarks.Time("Bloco: construir"))
+            {
+                go = BlockBuilder.Build(pole, kit, coord, new Vector3(rect.xMin, 0f, rect.yMin));
+            }
         }
         else if (Layout != null && kit != null)
         {
-            go = BlockBuilder.Build(Layout.Get(coord), kit, coord, new Vector3(rect.xMin, 0f, rect.yMin));
+            using (PerfMarks.Time("Bloco: construir"))
+            {
+                go = BlockBuilder.Build(Layout.Get(coord), kit, coord, new Vector3(rect.xMin, 0f, rect.yMin));
+            }
         }
         else
         {
@@ -467,11 +540,18 @@ public sealed class WorldStreamer : MonoBehaviour
         block.SetCoord(coord);
         if (planet)
         {
-            CurvedHorizon.PrepareBlock(go); // peças compridas entortam direito com o horizonte curvo
+            using (PerfMarks.Time("Bloco: horizonte curvo"))
+            {
+                CurvedHorizon.PrepareBlock(go); // peças compridas entortam direito com o horizonte curvo
+            }
         }
 
         loaded[coord] = block;
-        BlockLoaded?.Invoke(block);
+        lastLoadFrame = Time.frameCount;
+        using (PerfMarks.Time("Bloco: avisar (aliens, trânsito...)"))
+        {
+            BlockLoaded?.Invoke(block);
+        }
         if (rebuildNavMesh)
         {
             navMesh.RequestRebuild();
@@ -484,6 +564,8 @@ public sealed class WorldStreamer : MonoBehaviour
         {
             return;
         }
+
+        using PerfMarks.Scope mark = PerfMarks.Time("Bloco: descarregar (o apagar vem no fim do quadro)");
 
         loaded.Remove(coord);
         BlockUnloading?.Invoke(BlockRectWorld(coord));
@@ -524,6 +606,7 @@ public sealed class WorldStreamer : MonoBehaviour
     // Objetos com física que caíram para fora do mundo carregado.
     private void RemoveFallen()
     {
+        using PerfMarks.Scope mark = PerfMarks.Time("Limpeza: procurar objetos caídos");
         foreach (Rigidbody body in FindObjectsByType<Rigidbody>(FindObjectsSortMode.None))
         {
             if (body == null || body.isKinematic || body.position.y > killHeight)

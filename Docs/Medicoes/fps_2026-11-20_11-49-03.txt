@@ -1,0 +1,104 @@
+﻿MEDIÇÃO DE DESEMPENHO — I'm Not an Alien
+Data: 20/11/2026 11:49:03   ·   dentro do Editor (fica mais lento que a build)
+Duração: 30,0 s · 3501 quadros (pausa do menu não conta)
+
+NOTA: ÓTIMO
+FPS médio ............ 116,7
+FPS mediano .......... 122,0
+1% baixo ............. 50,1 FPS   (média dos 1% piores quadros: é o que se sente como 'travadinha')
+0,1% baixo ........... 33,9 FPS
+Pior quadro .......... 32,1 ms
+Quadros acima de 16,7 ms (abaixo de 60 FPS): 28 (0,8%)
+Quadros acima de 33,3 ms (abaixo de 30 FPS): 0 (0,0%)
+Engasgos (acima de 50 ms): 0
+
+Tempo médio — CPU scripts/física: 6.5 ms · CPU preparando desenho: 2.2 ms · GPU: 1.9 ms
+Quem segura o jogo: PROCESSADOR — scripts e física (aliens, trânsito, destruição, mundo carregando)
+
+Média / máximo por segundo:
+  batches: 3513,1 / 4157,7
+  setpass: 133,2 / 162
+  triângulos (mil): 4771,7 / 5808
+  partículas: 797,3 / 1740
+  efeitos de partícula ativos: 29 / 62
+  luzes: 1,7 / 4
+  luzes com sombra: 1 / 1
+  objetos na tela: 1225,3 / 1528
+  aliens: 45,3 / 50
+  orbes de DNA: 60,5 / 99
+  física acordada: 210,3 / 434
+  blocos do mundo: 21 / 21
+  lixo GC (KB/quadro): 35,7 / 192,3
+
+Marcadores — o que aconteceu durante a medição (quadro lento = acima de 25 ms):
+  Casa: trocar por cacos: 24x · total 119,2 ms · maior 13,5 ms · em 1 quadro(s) lento(s)
+  NavMesh: juntar formas: 22x · total 43,0 ms · maior 4,7 ms · em 1 quadro(s) lento(s)
+  Limpeza: procurar objetos caídos: 14x · total 5,7 ms · maior 0,6 ms · em 0 quadro(s) lento(s)
+  NavMesh: começar a refazer: 22x · total 2,3 ms · maior 0,8 ms · em 1 quadro(s) lento(s)
+  Casa: desabou: 23x · em 1 quadro(s) lento(s)
+  NavMesh: terminou de refazer: 22x · em 0 quadro(s) lento(s)
+  Coleta de lixo (GC): 1x · em 0 quadro(s) lento(s)
+  ("sem marcador" nos quadros lentos = física, desenho, apagar objetos, NavMesh em segundo plano e o resto do Unity)
+
+10 piores quadros (segundo da medição → tempo):
+  13,1 s → 32,1 ms  · lixo 122 KB · NavMesh: juntar formas 1.7 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 30 ms
+  2,1 s → 30,4 ms  · lixo 16 KB · sem marcador 30 ms
+  16,5 s → 28,4 ms  · lixo 5284 KB · sem marcador 28 ms
+  6,3 s → 27,1 ms  · lixo 282 KB · sem marcador 27 ms
+  3,3 s → 26,1 ms  · lixo 105 KB · Casa: trocar por cacos ×2 2.5 ms · Casa: desabou · sem marcador 24 ms
+  19,8 s → 22,6 ms
+  19,5 s → 22,4 ms
+  13,3 s → 21,3 ms
+  13,6 s → 21,0 ms
+  13,1 s → 20,4 ms
+
+Todos os quadros acima de 25 ms, em ordem (5):
+    2,1 s →  30,4 ms  · lixo 16 KB · sem marcador 30 ms
+    3,3 s →  26,1 ms  · lixo 105 KB · Casa: trocar por cacos ×2 2.5 ms · Casa: desabou · sem marcador 24 ms
+    6,3 s →  27,1 ms  · lixo 282 KB · sem marcador 27 ms
+   13,1 s →  32,1 ms  · lixo 122 KB · NavMesh: juntar formas 1.7 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 30 ms
+   16,5 s →  28,4 ms  · lixo 5284 KB · sem marcador 28 ms
+
+Segundo a segundo (FPS · pior ms · partículas · luzes · aliens):
+    1s    142 FPS     8,8 ms      0 part.    1 luzes   32 aliens  21 blocos
+    2s    136 FPS    19,4 ms      0 part.    1 luzes   32 aliens  21 blocos  · Limpeza: procurar objetos caídos
+    3s    137 FPS    30,4 ms     16 part.    2 luzes   32 aliens  21 blocos
+    4s    124 FPS    26,1 ms     89 part.    3 luzes   32 aliens  21 blocos  · Casa: trocar por cacos ×4, Casa: desabou ×3, NavMesh: juntar formas ×3, NavMesh: começar a refazer ×3, NavMesh: terminou de refazer ×3, Limpeza: procurar objetos caídos
+    5s    122 FPS    15,4 ms    945 part.    2 luzes   34 aliens  21 blocos  · Casa: desabou ×3, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2, Casa: trocar por cacos ×2
+    6s    124 FPS    13,8 ms   1293 part.    2 luzes   37 aliens  21 blocos
+    7s    110 FPS    27,1 ms   1089 part.    2 luzes   38 aliens  21 blocos  · Limpeza: procurar objetos caídos, Casa: trocar por cacos ×3, Casa: desabou ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2, Coleta de lixo (GC)
+    8s    115 FPS    19,3 ms   1740 part.    4 luzes   38 aliens  21 blocos
+    9s    110 FPS    19,3 ms   1703 part.    3 luzes   42 aliens  21 blocos  · Casa: trocar por cacos, Limpeza: procurar objetos caídos, Casa: desabou ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2
+   10s    120 FPS    12,1 ms   1709 part.    4 luzes   46 aliens  21 blocos
+   11s    116 FPS    15,3 ms   1268 part.    2 luzes   48 aliens  21 blocos
+   12s    108 FPS    14,7 ms    954 part.    2 luzes   50 aliens  21 blocos  · Limpeza: procurar objetos caídos
+   13s    114 FPS    11,6 ms    615 part.    2 luzes   50 aliens  21 blocos
+   14s    104 FPS    32,1 ms    349 part.    2 luzes   49 aliens  21 blocos  · Casa: trocar por cacos ×4, Casa: desabou ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2, Limpeza: procurar objetos caídos
+   15s    122 FPS    13,8 ms    688 part.    1 luzes   50 aliens  21 blocos
+   16s    109 FPS    20,2 ms    457 part.    1 luzes   50 aliens  21 blocos  · Limpeza: procurar objetos caídos, Casa: trocar por cacos ×3, Casa: desabou, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   17s    110 FPS    28,4 ms    656 part.    1 luzes   50 aliens  21 blocos  · Casa: trocar por cacos ×2, Casa: desabou ×4, NavMesh: juntar formas ×4, NavMesh: começar a refazer ×4, NavMesh: terminou de refazer ×4
+   18s    119 FPS    11,7 ms   1246 part.    1 luzes   50 aliens  21 blocos  · Limpeza: procurar objetos caídos
+   19s    121 FPS    11,5 ms    927 part.    1 luzes   50 aliens  21 blocos  · Casa: desabou, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   20s    104 FPS    22,6 ms   1100 part.    1 luzes   50 aliens  21 blocos  · Casa: trocar por cacos ×3, Limpeza: procurar objetos caídos, Casa: desabou ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2
+   21s    103 FPS    15,3 ms   1391 part.    1 luzes   50 aliens  21 blocos  · Casa: desabou ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2
+   22s    103 FPS    18,8 ms   1315 part.    1 luzes   50 aliens  21 blocos  · Casa: trocar por cacos ×2, Limpeza: procurar objetos caídos
+   23s    105 FPS    15,8 ms   1102 part.    1 luzes   50 aliens  21 blocos
+   24s    100 FPS    16,0 ms    899 part.    1 luzes   50 aliens  21 blocos  · Limpeza: procurar objetos caídos
+   25s    109 FPS    15,5 ms    689 part.    2 luzes   50 aliens  21 blocos  · Casa: desabou, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   26s    122 FPS    12,3 ms    590 part.    2 luzes   50 aliens  21 blocos  · Limpeza: procurar objetos caídos
+   27s    113 FPS    12,1 ms    419 part.    1 luzes   50 aliens  21 blocos
+   28s    130 FPS    11,7 ms    332 part.    2 luzes   50 aliens  21 blocos
+   29s    131 FPS    12,1 ms    241 part.    1 luzes   50 aliens  21 blocos  · Limpeza: procurar objetos caídos
+   30s    118 FPS    12,3 ms     97 part.    1 luzes   50 aliens  21 blocos  · Limpeza: procurar objetos caídos
+
+Máquina e configuração:
+  Placa de vídeo: AMD Radeon RX 9060 XT (16253 MB, Direct3D12)
+  Processador: AMD Ryzen 5 5600X 6-Core Processor  (12 núcleos) · RAM 16328 MB
+  Resolução do jogo: 1455x599 · tela 144 Hz
+  Qualidade: PC · VSync normal: desligado (desligado durante a medição)
+  URP: PC_RPAsset · escala de render 1,00 · distância da sombra 50 m · MSAA 1x · HDR sim
+  Posição do jogador no fim: 210, 3, -501
+  Custo da contagem de objetos do medidor: 3,3 ms (tirado do quadro seguinte)
+
+O que você estava fazendo durante a medição? (anote aqui embaixo antes de mandar)
+> 

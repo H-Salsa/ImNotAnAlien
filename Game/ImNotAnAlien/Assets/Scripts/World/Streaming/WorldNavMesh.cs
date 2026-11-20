@@ -31,6 +31,7 @@ public sealed class WorldNavMesh : MonoBehaviour
     private NavMeshDataInstance instance;
     private AsyncOperation building;
     private bool dirty;
+    private bool reportedDone = true;
 
     public bool IsBuilding => building != null && !building.isDone;
 
@@ -66,12 +67,30 @@ public sealed class WorldNavMesh : MonoBehaviour
 
     private void Update()
     {
+        if (building != null && building.isDone && !reportedDone)
+        {
+            reportedDone = true;
+            PerfMarks.Event("NavMesh: terminou de refazer");
+        }
+
         if (dirty && !IsBuilding)
         {
             dirty = false;
-            if (Collect(out Bounds bounds))
+            bool ok;
+            Bounds bounds;
+            using (PerfMarks.Time("NavMesh: juntar formas"))
             {
-                building = NavMeshBuilder.UpdateNavMeshDataAsync(data, Settings(), sources, bounds);
+                ok = Collect(out bounds);
+            }
+
+            if (ok)
+            {
+                using (PerfMarks.Time("NavMesh: começar a refazer"))
+                {
+                    building = NavMeshBuilder.UpdateNavMeshDataAsync(data, Settings(), sources, bounds);
+                }
+
+                reportedDone = false;
             }
         }
     }
@@ -93,6 +112,7 @@ public sealed class WorldNavMesh : MonoBehaviour
         }
 
         dirty = false;
+        using PerfMarks.Scope mark = PerfMarks.Time("NavMesh: montar na hora");
         if (Collect(out Bounds bounds))
         {
             NavMeshBuilder.UpdateNavMeshData(data, Settings(), sources, bounds);

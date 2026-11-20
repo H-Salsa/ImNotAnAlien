@@ -159,20 +159,7 @@ public sealed class WorldLayout
                 // Rio atravessando de um lado ao oposto; os outros dois lados iguais (mato, ou rua = ponte).
                 bool northSouth = s.north == Socket.Rio && s.south == Socket.Rio && s.east == s.west && s.east != Socket.Rio;
                 bool eastWest = s.east == Socket.Rio && s.west == Socket.Rio && s.north == s.south && s.north != Socket.Rio;
-                if (northSouth || eastWest)
-                {
-                    return true;
-                }
-
-                // Missão 20: curva (dois lados vizinhos) ou nascente (um lado só); o resto é mato.
-                // Assim o rio termina e faz curvas, em vez de dar a volta no planeta em linha reta.
-                if (roads > 0)
-                {
-                    return false;
-                }
-
-                bool bend = rivers == 2 && s.north != s.south;
-                return rivers == 1 || bend;
+                return northSouth || eastWest;
             case BlockType.Floresta:
                 return roads == 0 && rivers == 0;
             case BlockType.Bairro:

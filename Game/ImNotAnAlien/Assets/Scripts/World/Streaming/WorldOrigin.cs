@@ -132,6 +132,7 @@ public sealed class WorldOrigin : MonoBehaviour
 
     private void Shift(Vector3 delta)
     {
+        using PerfMarks.Scope mark = PerfMarks.Time("Mundo: recentralizar");
         // 1. Agentes do NavMesh: guarda para onde iam.
         List<(NavMeshAgent agent, bool hadPath, Vector3 destination)> agents = new List<(NavMeshAgent, bool, Vector3)>();
         foreach (NavMeshAgent agent in FindObjectsByType<NavMeshAgent>(FindObjectsSortMode.None))

@@ -143,6 +143,7 @@ public static class PlanetTerrain
 
         BuildMacroMask();
         tintCache.Clear();
+        GroundPrefetch.Clear(); // planeta novo: chão calculado antes não vale mais
     }
 
     // Missão 20: lagoas naturais (blocos "Lago"): x, z = centro no bloco, w = raio médio, ww = fase.
@@ -181,6 +182,7 @@ public static class PlanetTerrain
 
     public static void Clear()
     {
+        GroundPrefetch.Clear();
         layout = null;
         cellInfo = null;
         ponds.Clear();
@@ -660,9 +662,26 @@ public static class PlanetTerrain
         return IsWild(type) ? 2 : 1;
     }
 
-    // Malha do chão do bloco com relevo e textura do bioma.
-    // Devolve o objeto do chão; "minHeight" = ponto mais baixo (para saber se tem água).
-    public static GameObject BuildGround(Transform parent, Vector2Int coord, Material template, int mode, BlockAssets assets, out float minHeight)
+    // Dados do chão de um bloco: só números, sem nada do Unity. Podem ser calculados em segundo plano
+    // (GroundPrefetch, outra thread) antes de o bloco entrar, e a montagem no quadro fica leve.
+    public sealed class GroundData
+    {
+        public Vector2Int coord;
+        public int mode;
+        public int row;
+        public Vector3[] vertices;
+        public Vector2[] uvs;
+        public int[] triangles;
+        public Vector3[] borderNormals; // só a borda é usada (o resto fica zero)
+        public Color32[] pixels;        // textura 64 × 64
+        public float minHeight;
+    }
+
+    private const int GroundTextureSize = 64;
+
+    // Calcula tudo do chão (alturas, malha, normais da borda e cores). Só matemática e dados do planeta
+    // que não mudam durante o jogo: pode rodar fora da thread principal.
+    public static GroundData ComputeGround(Vector2Int coord, int mode)
     {
         float originX = Planet.GridOrigin.x + coord.x * BlockSize;
         float originZ = Planet.GridOrigin.y + coord.y * BlockSize;
@@ -671,9 +690,18 @@ public static class PlanetTerrain
         float step = BlockSize / cells;
         int row = cells + 1;
 
-        Vector3[] vertices = new Vector3[row * row];
-        Vector2[] uvs = new Vector2[row * row];
-        minHeight = float.MaxValue;
+        GroundData d = new GroundData
+        {
+            coord = coord,
+            mode = mode,
+            row = row,
+            vertices = new Vector3[row * row],
+            uvs = new Vector2[row * row],
+            triangles = new int[cells * cells * 6],
+            pixels = new Color32[GroundTextureSize * GroundTextureSize],
+        };
+
+        float minHeight = float.MaxValue;
         for (int j = 0; j <= cells; j++)
         {
             for (int i = 0; i <= cells; i++)
@@ -682,60 +710,134 @@ public static class PlanetTerrain
                 float lz = j * step;
                 float h = wild ? Height(originX + lx, originZ + lz) : 0f;
                 minHeight = Mathf.Min(minHeight, h);
-                vertices[j * row + i] = new Vector3(lx, h, lz);
-                uvs[j * row + i] = new Vector2(lx / BlockSize, lz / BlockSize);
+                d.vertices[j * row + i] = new Vector3(lx, h, lz);
+                d.uvs[j * row + i] = new Vector2(lx / BlockSize, lz / BlockSize);
             }
         }
 
-        int[] triangles = new int[cells * cells * 6];
+        d.minHeight = minHeight == float.MaxValue ? 0f : minHeight;
+
         int t = 0;
         for (int j = 0; j < cells; j++)
         {
             for (int i = 0; i < cells; i++)
             {
                 int a = j * row + i;
-                triangles[t++] = a;
-                triangles[t++] = a + row;
-                triangles[t++] = a + 1;
-                triangles[t++] = a + 1;
-                triangles[t++] = a + row;
-                triangles[t++] = a + row + 1;
+                d.triangles[t++] = a;
+                d.triangles[t++] = a + row;
+                d.triangles[t++] = a + 1;
+                d.triangles[t++] = a + 1;
+                d.triangles[t++] = a + row;
+                d.triangles[t++] = a + row + 1;
             }
         }
 
-        Mesh mesh = new Mesh { name = $"Chao_{coord.x}_{coord.y}" };
-        mesh.vertices = vertices;
-        mesh.uv = uvs;
-        mesh.triangles = triangles;
-        mesh.RecalculateNormals();
-        FixBorderNormals(mesh, vertices, row, step, originX, originZ, wild);
-        mesh.RecalculateTangents();
-        mesh.RecalculateBounds();
-        assets.Add(mesh);
+        // As normais da borda são calculadas com a altura de FORA do bloco também: sem isso a luz faz uma
+        // "costura" visível entre blocos vizinhos.
+        if (wild)
+        {
+            d.borderNormals = new Vector3[row * row];
+            int last = row - 1;
+            for (int j = 0; j <= last; j++)
+            {
+                for (int i = 0; i <= last; i++)
+                {
+                    if (i != 0 && j != 0 && i != last && j != last)
+                    {
+                        continue;
+                    }
+
+                    Vector3 p = d.vertices[j * row + i];
+                    float x = originX + p.x;
+                    float z = originZ + p.z;
+                    float hl = Height(x - step, z);
+                    float hr = Height(x + step, z);
+                    float hd = Height(x, z - step);
+                    float hu = Height(x, z + step);
+                    d.borderNormals[j * row + i] = new Vector3(hl - hr, 2f * step, hd - hu).normalized;
+                }
+            }
+        }
 
         // Textura do chão: 64 × 64 (~1,6 m por pixel).
-        const int size = 64;
-        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, true)
-        {
-            name = $"Chao_{coord.x}_{coord.y}",
-            wrapMode = TextureWrapMode.Clamp,
-            filterMode = FilterMode.Bilinear,
-            anisoLevel = 2,
-        };
-        Color32[] pixels = new Color32[size * size];
+        const int size = GroundTextureSize;
         for (int y = 0; y < size; y++)
         {
             for (int x = 0; x < size; x++)
             {
                 float lx = (x + 0.5f) / size * BlockSize;
                 float lz = (y + 0.5f) / size * BlockSize;
-                float h = wild ? GridHeight(vertices, row, step, lx, lz) : 0f; // da malha (bem mais rápido)
-                pixels[y * size + x] = GroundColor(originX + lx, originZ + lz, h);
+                float h = wild ? GridHeight(d.vertices, row, step, lx, lz) : 0f; // da malha (bem mais rápido)
+                d.pixels[y * size + x] = GroundColor(originX + lx, originZ + lz, h);
             }
         }
 
-        texture.SetPixels32(pixels);
-        texture.Apply(true, true); // sem cópia na CPU
+        return d;
+    }
+
+    // Malha do chão do bloco com relevo e textura do bioma.
+    // Devolve o objeto do chão; "minHeight" = ponto mais baixo (para saber se tem água).
+    public static GameObject BuildGround(Transform parent, Vector2Int coord, Material template, int mode, BlockAssets assets, out float minHeight)
+    {
+        bool wild = mode >= 1;
+        GroundData d;
+        if (GroundPrefetch.TryTake(coord, mode, out GroundData ready))
+        {
+            d = ready;
+            PerfMarks.Event("Chão > já vinha pronto (segundo plano)");
+        }
+        else
+        {
+            using (PerfMarks.Time("Chão > calcular na hora (não estava pronto)"))
+            {
+                d = ComputeGround(coord, mode);
+            }
+        }
+
+        minHeight = d.minHeight;
+
+        PerfMarks.Scope markMesh = PerfMarks.Time("Chão > montar malha");
+        Mesh mesh = new Mesh { name = $"Chao_{coord.x}_{coord.y}" };
+        mesh.vertices = d.vertices;
+        mesh.uv = d.uvs;
+        mesh.triangles = d.triangles;
+        mesh.RecalculateNormals();
+        if (d.borderNormals != null)
+        {
+            Vector3[] normals = mesh.normals;
+            int last = d.row - 1;
+            for (int j = 0; j <= last; j++)
+            {
+                for (int i = 0; i <= last; i++)
+                {
+                    if (i == 0 || j == 0 || i == last || j == last)
+                    {
+                        normals[j * d.row + i] = d.borderNormals[j * d.row + i];
+                    }
+                }
+            }
+
+            mesh.normals = normals;
+        }
+
+        mesh.RecalculateTangents();
+        mesh.RecalculateBounds();
+        assets.Add(mesh);
+        markMesh.Dispose();
+
+        Texture2D texture = new Texture2D(GroundTextureSize, GroundTextureSize, TextureFormat.RGBA32, true)
+        {
+            name = $"Chao_{coord.x}_{coord.y}",
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear,
+            anisoLevel = 2,
+        };
+        using (PerfMarks.Time("Chão > enviar textura para a placa"))
+        {
+            texture.SetPixels32(d.pixels);
+            texture.Apply(true, true); // sem cópia na CPU
+        }
+
         assets.Add(texture);
 
         Material material = new Material(template) { name = "Chao_Bioma" };
@@ -759,18 +861,16 @@ public static class PlanetTerrain
         ground.AddComponent<MeshRenderer>().sharedMaterial = material;
         if (wild)
         {
-            ground.AddComponent<MeshCollider>().sharedMesh = mesh;
+            using (PerfMarks.Time("Chão > colisor da malha"))
+            {
+                ground.AddComponent<MeshCollider>().sharedMesh = mesh;
+            }
         }
         else
         {
             BoxCollider box = ground.AddComponent<BoxCollider>();
             box.center = new Vector3(BlockSize * 0.5f, -0.1f, BlockSize * 0.5f);
             box.size = new Vector3(BlockSize, 0.2f, BlockSize);
-        }
-
-        if (minHeight == float.MaxValue)
-        {
-            minHeight = 0f;
         }
 
         return ground;
@@ -789,40 +889,6 @@ public static class PlanetTerrain
         float c = vertices[(j + 1) * row + i].y;
         float d = vertices[(j + 1) * row + i + 1].y;
         return Mathf.Lerp(Mathf.Lerp(a, b, tx), Mathf.Lerp(c, d, tx), tz);
-    }
-
-    // As normais da borda são calculadas com a altura de FORA do bloco também: sem isso a luz faz uma
-    // "costura" visível entre blocos vizinhos.
-    private static void FixBorderNormals(Mesh mesh, Vector3[] vertices, int row, float step, float originX, float originZ, bool wild)
-    {
-        if (!wild)
-        {
-            return;
-        }
-
-        Vector3[] normals = mesh.normals;
-        int last = row - 1;
-        for (int j = 0; j <= last; j++)
-        {
-            for (int i = 0; i <= last; i++)
-            {
-                if (i != 0 && j != 0 && i != last && j != last)
-                {
-                    continue;
-                }
-
-                Vector3 p = vertices[j * row + i];
-                float x = originX + p.x;
-                float z = originZ + p.z;
-                float hl = Height(x - step, z);
-                float hr = Height(x + step, z);
-                float hd = Height(x, z - step);
-                float hu = Height(x, z + step);
-                normals[j * row + i] = new Vector3(hl - hr, 2f * step, hd - hu).normalized;
-            }
-        }
-
-        mesh.normals = normals;
     }
 
     // ================================================================

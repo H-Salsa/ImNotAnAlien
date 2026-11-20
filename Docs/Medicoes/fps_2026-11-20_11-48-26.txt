@@ -1,0 +1,113 @@
+﻿MEDIÇÃO DE DESEMPENHO — I'm Not an Alien
+Data: 20/11/2026 11:48:26   ·   dentro do Editor (fica mais lento que a build)
+Duração: 30,0 s · 4207 quadros (pausa do menu não conta)
+
+NOTA: BOM
+FPS médio ............ 140,2
+FPS mediano .......... 144,0
+1% baixo ............. 39,9 FPS   (média dos 1% piores quadros: é o que se sente como 'travadinha')
+0,1% baixo ........... 11,5 FPS
+Pior quadro .......... 132,3 ms
+Quadros acima de 16,7 ms (abaixo de 60 FPS): 21 (0,5%)
+Quadros acima de 33,3 ms (abaixo de 30 FPS): 7 (0,2%)
+Engasgos (acima de 50 ms): 3
+
+Tempo médio — CPU scripts/física: 5.7 ms · CPU preparando desenho: 1.9 ms · GPU: 1.8 ms
+Quem segura o jogo: PROCESSADOR — scripts e física (aliens, trânsito, destruição, mundo carregando)
+
+Média / máximo por segundo:
+  batches: 2066,7 / 2505,8
+  setpass: 97,8 / 103,1
+  triângulos (mil): 2715,7 / 3305,1
+  partículas: 0 / 0
+  efeitos de partícula ativos: 0 / 0
+  luzes: 1 / 1
+  luzes com sombra: 1 / 1
+  objetos na tela: 644,5 / 826
+  aliens: 31,9 / 32
+  orbes de DNA: 0 / 0
+  física acordada: 17,6 / 23
+  blocos do mundo: 18,4 / 20
+  lixo GC (KB/quadro): 81,7 / 654,2
+
+Marcadores — o que aconteceu durante a medição (quadro lento = acima de 25 ms):
+  Bloco: carregar: 9x · total 444,2 ms · maior 124,7 ms · em 9 quadro(s) lento(s)
+  Bloco: construir: 9x · total 443,2 ms · maior 124,6 ms · em 9 quadro(s) lento(s)
+  Casa: preparar cacos (aos poucos): 43x · total 74,9 ms · maior 10,7 ms · em 1 quadro(s) lento(s)
+  NavMesh: juntar formas: 17x · total 25,8 ms · maior 2,0 ms · em 0 quadro(s) lento(s)
+  Limpeza: procurar objetos caídos: 15x · total 3,0 ms · maior 0,3 ms · em 0 quadro(s) lento(s)
+  Bloco: descarregar (o apagar vem no fim do quadro): 9x · total 1,4 ms · maior 0,2 ms · em 1 quadro(s) lento(s)
+  Bloco: horizonte curvo: 9x · total 0,9 ms · maior 0,2 ms · em 9 quadro(s) lento(s)
+  NavMesh: começar a refazer: 17x · total 0,9 ms · maior 0,1 ms · em 0 quadro(s) lento(s)
+  Bloco: avisar (aliens, trânsito...): 9x · total 0,0 ms · maior 0,0 ms · em 9 quadro(s) lento(s)
+  NavMesh: terminou de refazer: 17x · em 0 quadro(s) lento(s)
+  Coleta de lixo (GC): 3x · em 2 quadro(s) lento(s)
+  ("sem marcador" nos quadros lentos = física, desenho, apagar objetos, NavMesh em segundo plano e o resto do Unity)
+
+10 piores quadros (segundo da medição → tempo):
+  3,3 s → 132,3 ms  · lixo 79454 KB · Bloco: carregar 124.7 ms · Bloco: construir 124.6 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · Coleta de lixo (GC) · sem marcador 8 ms
+  29,1 s → 93,5 ms  · lixo 37229 KB · Bloco: carregar 85.7 ms · Bloco: construir 85.6 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · Coleta de lixo (GC) · sem marcador 8 ms
+  22,9 s → 78,8 ms  · lixo 51888 KB · Bloco: carregar 68.9 ms · Bloco: construir 68.7 ms · Bloco: descarregar (o apagar vem no fim do quadro) 0.2 ms · Bloco: horizonte curvo 0.2 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 10 ms
+  23,0 s → 42,2 ms  · lixo 585 KB · Bloco: carregar 35.7 ms · Bloco: construir 35.6 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 7 ms
+  27,1 s → 38,5 ms  · lixo 457 KB · Bloco: carregar 32.4 ms · Bloco: construir 32.3 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 6 ms
+  7,3 s → 35,3 ms  · lixo 456 KB · Bloco: carregar 28.9 ms · Bloco: construir 28.7 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 6 ms
+  12,3 s → 34,2 ms  · lixo 456 KB · Bloco: carregar 28.2 ms · Bloco: construir 28.1 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 6 ms
+  14,3 s → 31,7 ms  · lixo 1235 KB · Bloco: carregar 19.5 ms · Bloco: construir 19.4 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 12 ms
+  7,7 s → 26,9 ms  · lixo 426 KB · Bloco: carregar 20.3 ms · Bloco: construir 20.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 7 ms
+  18,4 s → 26,3 ms  · lixo 715 KB · Casa: preparar cacos (aos poucos) 2.1 ms · sem marcador 24 ms
+
+Todos os quadros acima de 25 ms, em ordem (10):
+    3,3 s → 132,3 ms  · lixo 79454 KB · Bloco: carregar 124.7 ms · Bloco: construir 124.6 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · Coleta de lixo (GC) · sem marcador 8 ms
+    7,3 s →  35,3 ms  · lixo 456 KB · Bloco: carregar 28.9 ms · Bloco: construir 28.7 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 6 ms
+    7,7 s →  26,9 ms  · lixo 426 KB · Bloco: carregar 20.3 ms · Bloco: construir 20.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 7 ms
+   12,3 s →  34,2 ms  · lixo 456 KB · Bloco: carregar 28.2 ms · Bloco: construir 28.1 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 6 ms
+   14,3 s →  31,7 ms  · lixo 1235 KB · Bloco: carregar 19.5 ms · Bloco: construir 19.4 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 12 ms
+   18,4 s →  26,3 ms  · lixo 715 KB · Casa: preparar cacos (aos poucos) 2.1 ms · sem marcador 24 ms
+   22,9 s →  78,8 ms  · lixo 51888 KB · Bloco: carregar 68.9 ms · Bloco: construir 68.7 ms · Bloco: descarregar (o apagar vem no fim do quadro) 0.2 ms · Bloco: horizonte curvo 0.2 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 10 ms
+   23,0 s →  42,2 ms  · lixo 585 KB · Bloco: carregar 35.7 ms · Bloco: construir 35.6 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 7 ms
+   27,1 s →  38,5 ms  · lixo 457 KB · Bloco: carregar 32.4 ms · Bloco: construir 32.3 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · sem marcador 6 ms
+   29,1 s →  93,5 ms  · lixo 37229 KB · Bloco: carregar 85.7 ms · Bloco: construir 85.6 ms · Bloco: horizonte curvo 0.1 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · Coleta de lixo (GC) · sem marcador 8 ms
+
+Segundo a segundo (FPS · pior ms · partículas · luzes · aliens):
+    1s    144 FPS    14,7 ms      0 part.    1 luzes   32 aliens  19 blocos  · Limpeza: procurar objetos caídos
+    2s    144 FPS    12,9 ms      0 part.    1 luzes   32 aliens  19 blocos  · Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+    3s    144 FPS     9,9 ms      0 part.    1 luzes   32 aliens  18 blocos  · Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer, Limpeza: procurar objetos caídos
+    4s    125 FPS   132,3 ms      0 part.    1 luzes   32 aliens  17 blocos  · Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar, Coleta de lixo (GC), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+    5s    144 FPS    10,4 ms      0 part.    1 luzes   32 aliens  18 blocos  · Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer, Limpeza: procurar objetos caídos
+    6s    143 FPS    18,3 ms      0 part.    1 luzes   32 aliens  17 blocos
+    7s    144 FPS     9,2 ms      0 part.    1 luzes   32 aliens  17 blocos  · Limpeza: procurar objetos caídos
+    8s    139 FPS    35,3 ms      0 part.    1 luzes   32 aliens  17 blocos  · Bloco: construir ×2, Bloco: horizonte curvo ×2, Bloco: avisar (aliens, trânsito...) ×2, Bloco: carregar ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2
+    9s    144 FPS     7,9 ms      0 part.    1 luzes   32 aliens  19 blocos  · Limpeza: procurar objetos caídos
+   10s    144 FPS    13,6 ms      0 part.    1 luzes   32 aliens  19 blocos
+   11s    144 FPS    13,6 ms      0 part.    1 luzes   31 aliens  19 blocos  · Limpeza: procurar objetos caídos
+   12s    144 FPS    14,2 ms      0 part.    1 luzes   32 aliens  19 blocos
+   13s    140 FPS    34,2 ms      0 part.    1 luzes   32 aliens  19 blocos  · Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer, Limpeza: procurar objetos caídos
+   14s    144 FPS     9,2 ms      0 part.    1 luzes   32 aliens  20 blocos  · Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   15s    127 FPS    31,7 ms      0 part.    1 luzes   32 aliens  19 blocos  · Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer, Limpeza: procurar objetos caídos
+   16s    144 FPS    20,5 ms      0 part.    1 luzes   32 aliens  20 blocos  · Bloco: descarregar (o apagar vem no fim do quadro) ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2
+   17s    144 FPS    13,6 ms      0 part.    1 luzes   32 aliens  18 blocos  · Casa: preparar cacos (aos poucos) ×8, Limpeza: procurar objetos caídos
+   18s    144 FPS     9,4 ms      0 part.    1 luzes   32 aliens  18 blocos
+   19s    132 FPS    26,3 ms      0 part.    1 luzes   29 aliens  18 blocos  · Casa: preparar cacos (aos poucos) ×17, Coleta de lixo (GC), Limpeza: procurar objetos caídos
+   20s    144 FPS    15,5 ms      0 part.    1 luzes   32 aliens  18 blocos  · Casa: preparar cacos (aos poucos) ×6
+   21s    144 FPS    10,6 ms      0 part.    1 luzes   32 aliens  18 blocos  · Limpeza: procurar objetos caídos, Casa: preparar cacos (aos poucos) ×7
+   22s    144 FPS    10,5 ms      0 part.    1 luzes   32 aliens  18 blocos
+   23s    121 FPS    78,8 ms      0 part.    1 luzes   32 aliens  18 blocos  · Limpeza: procurar objetos caídos, Bloco: descarregar (o apagar vem no fim do quadro), Bloco: construir ×2, Bloco: horizonte curvo ×2, Bloco: avisar (aliens, trânsito...) ×2, Bloco: carregar ×2, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   24s    144 FPS    13,0 ms      0 part.    1 luzes   32 aliens  19 blocos  · NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2, Bloco: descarregar (o apagar vem no fim do quadro)
+   25s    144 FPS    16,1 ms      0 part.    1 luzes   32 aliens  18 blocos  · Limpeza: procurar objetos caídos
+   26s    144 FPS    18,0 ms      0 part.    1 luzes   32 aliens  18 blocos
+   27s    145 FPS     8,3 ms      0 part.    1 luzes   32 aliens  18 blocos  · Limpeza: procurar objetos caídos
+   28s    139 FPS    38,5 ms      0 part.    1 luzes   32 aliens  19 blocos  · Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   29s    127 FPS    17,7 ms      0 part.    1 luzes   32 aliens  19 blocos  · Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer, Limpeza: procurar objetos caídos, NavMesh: terminou de refazer
+   30s    129 FPS    93,5 ms      0 part.    1 luzes   32 aliens  19 blocos  · Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar, Coleta de lixo (GC), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer, Casa: preparar cacos (aos poucos) ×5
+
+Máquina e configuração:
+  Placa de vídeo: AMD Radeon RX 9060 XT (16253 MB, Direct3D12)
+  Processador: AMD Ryzen 5 5600X 6-Core Processor  (12 núcleos) · RAM 16328 MB
+  Resolução do jogo: 1455x599 · tela 144 Hz
+  Qualidade: PC · VSync normal: desligado (desligado durante a medição)
+  URP: PC_RPAsset · escala de render 1,00 · distância da sombra 50 m · MSAA 1x · HDR sim
+  Posição do jogador no fim: 207, 3, -516
+  Custo da contagem de objetos do medidor: 3,2 ms (tirado do quadro seguinte)
+
+O que você estava fazendo durante a medição? (anote aqui embaixo antes de mandar)
+> 
