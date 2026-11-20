@@ -172,6 +172,11 @@ public sealed class HouseBreakable : MonoBehaviour
             {
                 debris.Part.Bind(owner); // continua levando golpes enquanto está de pé
                 if (!p.roof) wallCount++;
+
+                // 20/11: de pé, colide com a forma exata (sem "parede invisível"); a caixa volta ao soltar.
+                debris.Shape.sharedMesh = p.mesh;
+                debris.Shape.enabled = true;
+                box.enabled = false;
             }
 
             debris.gameObject.SetActive(true);
@@ -371,14 +376,24 @@ public sealed class HouseBreakable : MonoBehaviour
         }
 
         l.body.transform.SetParent(null, true);
+        // Forma exata (malha côncava) não pode cair com física: troca de volta para a caixa antes.
+        if (l.body.TryGetComponent(out PooledDebris pooledShape) && pooledShape.Shape.enabled)
+        {
+            pooledShape.Shape.enabled = false;
+            pooledShape.Box.enabled = true;
+        }
+
         l.body.isKinematic = false;
         l.body.linearVelocity = velocity;
         l.body.angularVelocity = spin;
 
+        // Dominó curto (20/11): o caco leva a "geração" da casa (ver DestructibleStructure.DebrisGeneration).
+        int generation = TryGetComponent(out DestructibleStructure owner) ? owner.DebrisGeneration : 1;
         if (l.body.TryGetComponent(out PooledDebris debris))
         {
             debris.Part.Bind(null); // caco solto não machuca mais a casa
             debris.Fragment.Begin(l.rubble, transform);
+            debris.Fragment.Generation = generation;
             return;
         }
 
@@ -388,6 +403,7 @@ public sealed class HouseBreakable : MonoBehaviour
         }
 
         CollapsingFragment fragment = l.body.gameObject.AddComponent<CollapsingFragment>();
+        fragment.Generation = generation;
         if (l.rubble)
         {
             fragment.StayAsRubble(transform);
@@ -409,9 +425,24 @@ public sealed class HouseBreakable : MonoBehaviour
         }
     }
 
+    // Ponto da caixa do caco mais perto (conta mesmo com a caixa desligada enquanto o caco usa a forma exata).
     private static Vector3 ClosestPoint(Live l, Vector3 point)
     {
-        Collider c = l.body != null ? l.body.GetComponent<Collider>() : null;
-        return c != null && c.enabled ? c.ClosestPoint(point) : l.body.position;
+        if (l.body == null)
+        {
+            return point;
+        }
+
+        if (!l.body.TryGetComponent(out BoxCollider box))
+        {
+            Collider c = l.body.GetComponent<Collider>();
+            return c != null && c.enabled ? c.ClosestPoint(point) : l.body.position;
+        }
+
+        Transform t = box.transform;
+        Vector3 local = t.InverseTransformPoint(point) - box.center;
+        Vector3 half = box.size * 0.5f;
+        local = new Vector3(Mathf.Clamp(local.x, -half.x, half.x), Mathf.Clamp(local.y, -half.y, half.y), Mathf.Clamp(local.z, -half.z, half.z));
+        return t.TransformPoint(local + box.center);
     }
 }

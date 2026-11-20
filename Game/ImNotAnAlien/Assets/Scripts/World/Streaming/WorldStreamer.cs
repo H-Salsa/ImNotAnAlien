@@ -248,6 +248,7 @@ public sealed class WorldStreamer : MonoBehaviour
             fixedSpecs[info.coord] = spec;
         }
 
+        Cities.Plan(seed, fixedSpecs); // 20/11: capital (e depois as outras cidades); antes dos rios, que desviam dela
         GreatLake.Plan(seed, fixedSpecs); // Missão 20: Grande Lago e os rios que saem dele
 
         Layout = WorldLayout.GeneratePlanet(Planet.Width, Planet.Height, gridOrigin, blockSize, seed, fixedSpecs);
@@ -359,14 +360,23 @@ public sealed class WorldStreamer : MonoBehaviour
             UpdateBelowGround();
         }
 
-        // Teste do planeta: com o modo teste ligado, F10 leva para a próxima base.
+        // Teste do planeta: com o modo teste ligado, F10 leva para a próxima base e depois para as cidades.
         if (planet && testMode && keyboard != null && keyboard.f10Key.wasPressedThisFrame && PlayerHealth.Instance != null)
         {
-            testBase = (testBase + 1) % Planet.Bases.Length;
-            Planet.BaseInfo info = Planet.Bases[testBase];
-            Vector3 target = WorldOrigin.ToWorld(Planet.BaseSpawnLogical(info, WorldOrigin.ToLogical(player.position)));
-            PlayerHealth.Instance.Teleport(target, Quaternion.Euler(0f, 180f, 0f));
-            Debug.Log($"Teste: levado para a base {info.name} (bloco {info.coord.x}, {info.coord.y}).");
+            testBase = (testBase + 1) % (Planet.Bases.Length + Cities.All.Count);
+            Vector3 near = WorldOrigin.ToLogical(player.position);
+            if (testBase < Planet.Bases.Length)
+            {
+                Planet.BaseInfo info = Planet.Bases[testBase];
+                PlayerHealth.Instance.Teleport(WorldOrigin.ToWorld(Planet.BaseSpawnLogical(info, near)), Quaternion.Euler(0f, 180f, 0f));
+                Debug.Log($"Teste: levado para a base {info.name} (bloco {info.coord.x}, {info.coord.y}).");
+            }
+            else
+            {
+                Cities.City city = Cities.All[testBase - Planet.Bases.Length];
+                PlayerHealth.Instance.Teleport(WorldOrigin.ToWorld(Cities.SpawnLogical(city, near)), Quaternion.identity);
+                Debug.Log($"Teste: levado para a cidade {city.name} (canto {city.corner.x}, {city.corner.y}).");
+            }
         }
 
         // O bloco onde o jogador está nunca pode faltar (ex.: ao renascer longe).

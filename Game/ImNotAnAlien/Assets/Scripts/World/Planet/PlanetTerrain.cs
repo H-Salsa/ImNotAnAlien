@@ -196,9 +196,9 @@ public static class PlanetTerrain
 
     private static byte KindOf(BlockType type, int x, int z)
     {
-        if (IsVillage(x, z))
+        if (IsVillage(x, z) || Cities.IsCity(x, z))
         {
-            return 2;
+            return 2; // 20/11: cidades planas como o Vilarejo (o relevo volta aos poucos em volta)
         }
 
         switch (type)

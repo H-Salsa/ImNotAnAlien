@@ -181,6 +181,7 @@ public sealed class GameHud : MonoBehaviour
 
         UpdateHealthBar(dt);
         UpdateSectorEnterText(dt);
+        UpdateCityEnter(dt);
         UpdateWanted(dt);
         UpdateAbilities();
 
@@ -372,6 +373,35 @@ public sealed class GameHud : MonoBehaviour
         }
 
         ShowBanner($"{tracker.RegionName.ToUpperInvariant()} LIMPO!\n<size=30>Região completa! DNA de bônus extra</size>", 5f, true);
+    }
+
+    // 20/11: ao entrar numa cidade, o nome dela aparece no lugar do aviso de setor.
+    private Cities.City currentCity;
+    private float cityCheckTimer;
+
+    private void UpdateCityEnter(float dt)
+    {
+        cityCheckTimer -= dt;
+        if (cityCheckTimer > 0f || !Planet.Active || PlayerHealth.Instance == null)
+        {
+            return;
+        }
+
+        cityCheckTimer = 0.5f;
+        Vector2Int block = Planet.PlanetBlockAt(WorldOrigin.ToLogical(PlayerHealth.Instance.transform.position));
+        Cities.City city = Cities.At(block);
+        if (city == currentCity)
+        {
+            return;
+        }
+
+        currentCity = city;
+        if (city != null && sectorEnterText != null)
+        {
+            sectorEnterText.text = $"{city.name}\n<size=22>{city.title}</size>";
+            sectorEnterText.enabled = true;
+            sectorEnterTimer = 3f;
+        }
     }
 
     private void OnSectorEntered(int index)

@@ -44,6 +44,11 @@ public sealed class DestructibleStructure : MonoBehaviour
     // Poeira, polícia e NavMesh quando a casa do Blender desaba (uma vez só).
     private bool houseCollapseDone;
 
+    // Dominó curto (20/11, decisão do autor): os cacos de um prédio derrubado pelo jogador podem derrubar
+    // o vizinho, mas os cacos desse vizinho não derrubam mais ninguém. Uma estrutura atingida por cacos
+    // passa a soltar cacos "de 2ª geração" (inofensivos para outros prédios).
+    public int DebrisGeneration { get; private set; } = 1;
+
     private void FinishHouseCollapse()
     {
         collapsed = true;
@@ -162,6 +167,16 @@ public sealed class DestructibleStructure : MonoBehaviour
         if (speed <= minImpactSpeed)
         {
             return;
+        }
+
+        if (other.TryGetComponent(out CollapsingFragment debris))
+        {
+            if (debris.Generation >= 2)
+            {
+                return; // caco de prédio que já caiu por causa de outro: não continua o dominó
+            }
+
+            DebrisGeneration = 2; // esta foi atingida por cacos: os cacos dela não derrubam ninguém
         }
 
         Vector3 point = collision.contactCount > 0 ? collision.GetContact(0).point : other.position;
@@ -491,6 +506,7 @@ public sealed class DestructibleStructure : MonoBehaviour
         body.linearVelocity = velocity;
         body.angularVelocity = Random.insideUnitSphere * 3f;
         debris.Fragment.Begin(false, null);
+        debris.Fragment.Generation = 2; // pedacinhos leves: nunca derrubam prédio
     }
 
     // Monte baixo de pedaços escurecidos no lugar da casa.

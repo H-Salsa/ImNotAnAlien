@@ -13,6 +13,9 @@ public sealed class PooledDebris : MonoBehaviour
     public Rigidbody Body { get; private set; }
     public CollapsingFragment Fragment { get; private set; }
     public StructurePart Part { get; private set; }
+    // 20/11: colisão com a forma exata do caco enquanto ele está de pé na casa (parado). A caixa de antes
+    // cobria o espaço vazio de paredes curvas e diagonais = "parede invisível". Ao ser solto, volta para a caixa.
+    public MeshCollider Shape { get; private set; }
 
     // Guardado na caixa (desligado).
     public bool InBox { get; set; }
@@ -31,6 +34,8 @@ public sealed class PooledDebris : MonoBehaviour
         debris.Fragment = go.AddComponent<CollapsingFragment>();
         debris.Fragment.enabled = false;
         debris.Part = go.AddComponent<StructurePart>();
+        debris.Shape = go.AddComponent<MeshCollider>(); // depois da caixa: GetComponent<Collider>() continua achando a caixa
+        debris.Shape.enabled = false;
         return debris;
     }
 
@@ -46,6 +51,8 @@ public sealed class PooledDebris : MonoBehaviour
         Box.enabled = true;
         Box.center = Vector3.zero;
         Box.size = Vector3.one;
+        Shape.enabled = false;
+        Shape.sharedMesh = null;
         Fragment.enabled = false;
         Part.Bind(null);
         Body.isKinematic = true;

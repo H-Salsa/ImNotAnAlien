@@ -24,6 +24,128 @@ public sealed class DestructionDust : MonoBehaviour
     private static void ResetStatics()
     {
         FreeDust.Clear();
+        impactSystem = null;
+        impactBudget = 0f;
+        impactTime = 0f;
+    }
+
+    // ---------- Fumacinha de impacto (20/11, pedido do autor) ----------
+    // Quando um caco de casa/prédio bate no chão: um "puf" pequeno de poeira, nada grandioso.
+    // Um sistema de partículas só para o jogo todo (Emit na posição do impacto): não cria objeto por caco.
+    // Limites para não pesar quando cai um prédio inteiro: só perto da câmera e no máximo ~25 por segundo.
+    private const float ImpactMaxDistance = 70f;
+    private const float ImpactsPerSecond = 25f;
+    private static ParticleSystem impactSystem;
+    private static float impactBudget;
+    private static float impactTime;
+
+    public static void Impact(Vector3 point, float size)
+    {
+        // Orçamento: enche 25 por segundo, guarda no máximo 8 de uma vez.
+        float now = Time.time;
+        impactBudget = Mathf.Min(8f, impactBudget + (now - impactTime) * ImpactsPerSecond);
+        impactTime = now;
+        if (impactBudget < 1f)
+        {
+            return;
+        }
+
+        Camera cam = Camera.main;
+        if (cam != null && (cam.transform.position - point).sqrMagnitude > ImpactMaxDistance * ImpactMaxDistance)
+        {
+            return;
+        }
+
+        ParticleSystem ps = ImpactSystem();
+        if (ps == null)
+        {
+            return;
+        }
+
+        impactBudget -= 1f;
+        size = Mathf.Clamp(size, 0.4f, 1.6f);
+        int count = size > 1f ? 4 : 3;
+        ParticleSystem.EmitParams p = new ParticleSystem.EmitParams();
+        for (int i = 0; i < count; i++)
+        {
+            Vector2 dir = Random.insideUnitCircle.normalized;
+            p.position = point + new Vector3(dir.x, 0.05f, dir.y) * (0.15f * size);
+            p.velocity = new Vector3(dir.x * Random.Range(0.6f, 1.4f), Random.Range(0.3f, 0.9f), dir.y * Random.Range(0.6f, 1.4f)) * size;
+            p.startSize = Random.Range(0.55f, 0.9f) * size;
+            p.startLifetime = Random.Range(0.7f, 1.2f);
+            p.rotation = Random.Range(0f, 360f);
+            p.startColor = Color.Lerp(new Color(0.82f, 0.78f, 0.7f), new Color(0.95f, 0.93f, 0.88f), Random.value);
+            ps.Emit(p, 1);
+        }
+    }
+
+    private static ParticleSystem ImpactSystem()
+    {
+        if (impactSystem != null)
+        {
+            return impactSystem;
+        }
+
+        Material mat = DustMaterial();
+        if (mat == null)
+        {
+            return null;
+        }
+
+        GameObject go = new GameObject("Poeira_Impacto");
+        Object.DontDestroyOnLoad(go);
+        ParticleSystem ps = go.AddComponent<ParticleSystem>();
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+        ParticleSystem.MainModule main = ps.main;
+        main.playOnAwake = false;
+        main.loop = true;
+        main.duration = 1f;
+        main.startSpeed = 0f;
+        main.gravityModifier = -0.02f;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.maxParticles = 200;
+
+        ParticleSystem.EmissionModule emission = ps.emission;
+        emission.enabled = false; // só Emit
+
+        ParticleSystem.ShapeModule shape = ps.shape;
+        shape.enabled = false;
+
+        // Nasce pequeno, abre rápido e some.
+        ParticleSystem.SizeOverLifetimeModule growth = ps.sizeOverLifetime;
+        growth.enabled = true;
+        growth.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(new Keyframe(0f, 0.35f), new Keyframe(0.3f, 1f), new Keyframe(1f, 1.5f)));
+
+        ParticleSystem.ColorOverLifetimeModule color = ps.colorOverLifetime;
+        color.enabled = true;
+        Gradient fade = new Gradient();
+        fade.SetKeys(
+            new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.85f, 0.1f), new GradientAlphaKey(0.5f, 0.55f), new GradientAlphaKey(0f, 1f) });
+        color.color = fade;
+
+        ParticleSystem.RotationOverLifetimeModule rotation = ps.rotationOverLifetime;
+        rotation.enabled = true;
+        rotation.z = new ParticleSystem.MinMaxCurve(-0.8f, 0.8f);
+
+        // Freia logo (poeira pesada, fica perto do chão).
+        ParticleSystem.LimitVelocityOverLifetimeModule drag = ps.limitVelocityOverLifetime;
+        drag.enabled = true;
+        drag.limit = 0.6f;
+        drag.dampen = 0.25f;
+
+        ParticleSystemRenderer renderer = go.GetComponent<ParticleSystemRenderer>();
+        renderer.renderMode = ParticleSystemRenderMode.Billboard;
+        renderer.sharedMaterial = mat;
+        renderer.sortMode = ParticleSystemSortMode.None;
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+        renderer.maxParticleSize = 2f;
+
+        ps.Play();
+        impactSystem = ps;
+        return ps;
     }
 
     public static void Spawn(Vector3 position, float radius, float duration)

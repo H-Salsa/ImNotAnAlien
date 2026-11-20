@@ -1,0 +1,157 @@
+﻿MEDIÇÃO DE DESEMPENHO — I'm Not an Alien
+Data: 20/11/2026 13:55:21   ·   dentro do Editor (fica mais lento que a build)
+Duração: 30,0 s · 3488 quadros (pausa do menu não conta)
+
+NOTA: BOM
+FPS médio ............ 116,2
+FPS mediano .......... 136,4
+1% baixo ............. 34,6 FPS   (média dos 1% piores quadros: é o que se sente como 'travadinha')
+0,1% baixo ........... 25,1 FPS
+Pior quadro .......... 40,0 ms
+Quadros acima de 16,7 ms (abaixo de 60 FPS): 238 (6,8%)
+Quadros acima de 33,3 ms (abaixo de 30 FPS): 4 (0,1%)
+Engasgos (acima de 50 ms): 0
+
+Tempo médio — CPU scripts/física: 5.3 ms · CPU preparando desenho: 2.3 ms · GPU: 1.8 ms
+Quem segura o jogo: PROCESSADOR — scripts e física (aliens, trânsito, destruição, mundo carregando)
+
+Média / máximo por segundo:
+  batches: 2252,2 / 3442,2
+  setpass: 100,1 / 122
+  triângulos (mil): 3519,8 / 5188,8
+  partículas: 3,1 / 24
+  efeitos de partícula ativos: 0,2 / 1
+  luzes: 1 / 1
+  luzes com sombra: 1 / 1
+  objetos na tela: 680,8 / 1153
+  aliens: 8 / 8
+  orbes de DNA: 0 / 0
+  física acordada: 4,7 / 37
+  blocos do mundo: 18,8 / 21
+  lixo GC (KB/quadro): 37,7 / 117,2
+
+Marcadores — o que aconteceu durante a medição (quadro lento = acima de 25 ms):
+  Grama: montar pedaço: 128x · total 352,8 ms · maior 8,5 ms · em 5 quadro(s) lento(s)
+  Bloco: carregar: 9x · total 114,9 ms · maior 23,4 ms · em 3 quadro(s) lento(s)
+  Bloco: construir: 9x · total 113,5 ms · maior 23,2 ms · em 3 quadro(s) lento(s)
+  Casa: preparar cacos (aos poucos): 63x · total 92,6 ms · maior 2,5 ms · em 4 quadro(s) lento(s)
+  Bloco > assentar no relevo: 5x · total 35,0 ms · maior 12,0 ms · em 3 quadro(s) lento(s)
+  Bloco > preencher: Bairro: 8x · total 32,7 ms · maior 5,9 ms · em 3 quadro(s) lento(s)
+  NavMesh: juntar formas: 19x · total 26,9 ms · maior 2,6 ms · em 2 quadro(s) lento(s)
+  Bloco > ruas: 9x · total 17,3 ms · maior 2,5 ms · em 3 quadro(s) lento(s)
+  Bloco > grama, flores e pedrinhas: 9x · total 13,2 ms · maior 1,8 ms · em 3 quadro(s) lento(s)
+  Bloco: pedir chão em segundo plano: 146x · total 11,5 ms · maior 0,5 ms · em 3 quadro(s) lento(s)
+  Bloco > chão: 9x · total 7,2 ms · maior 1,4 ms · em 3 quadro(s) lento(s)
+  Mundo: recentralizar: 1x · total 4,4 ms · maior 4,4 ms · em 0 quadro(s) lento(s)
+  Bloco > preencher: Galpoes: 1x · total 3,1 ms · maior 3,1 ms · em 0 quadro(s) lento(s)
+  Limpeza: procurar objetos caídos: 15x · total 2,5 ms · maior 0,2 ms · em 1 quadro(s) lento(s)
+  NavMesh: começar a refazer: 19x · total 2,3 ms · maior 0,5 ms · em 2 quadro(s) lento(s)
+  Chão > montar malha: 9x · total 2,0 ms · maior 0,4 ms · em 3 quadro(s) lento(s)
+  Chão > colisor da malha: 5x · total 1,8 ms · maior 0,5 ms · em 3 quadro(s) lento(s)
+  Bloco > Physics.SyncTransforms: 9x · total 1,7 ms · maior 0,5 ms · em 3 quadro(s) lento(s)
+  Bloco: descarregar (o apagar vem no fim do quadro): 11x · total 1,5 ms · maior 0,3 ms · em 0 quadro(s) lento(s)
+  Bloco: horizonte curvo: 9x · total 1,3 ms · maior 0,2 ms · em 3 quadro(s) lento(s)
+  Bloco > cor das plantas: 9x · total 0,8 ms · maior 0,2 ms · em 3 quadro(s) lento(s)
+  Bloco > água: 9x · total 0,5 ms · maior 0,1 ms · em 3 quadro(s) lento(s)
+  Chão > enviar textura para a placa: 9x · total 0,2 ms · maior 0,0 ms · em 3 quadro(s) lento(s)
+  Bloco: avisar (aliens, trânsito...): 9x · total 0,0 ms · maior 0,0 ms · em 3 quadro(s) lento(s)
+  Coleta de lixo (GC): 1x · em 1 quadro(s) lento(s)
+  Chão > já vinha pronto (segundo plano): 9x · em 3 quadro(s) lento(s)
+  NavMesh: terminou de refazer: 19x · em 3 quadro(s) lento(s)
+  ("sem marcador" nos quadros lentos = física, desenho, apagar objetos, NavMesh em segundo plano e o resto do Unity)
+
+10 piores quadros (segundo da medição → tempo):
+  17,5 s → 40,0 ms  · lixo 93 KB · Casa: preparar cacos (aos poucos) 1.4 ms · Coleta de lixo (GC) · sem marcador 39 ms
+  21,9 s → 40,0 ms  · lixo 16 KB · sem marcador 40 ms
+  28,9 s → 39,3 ms  · lixo 541 KB · Bloco: carregar 23.4 ms · Bloco: construir 23.2 ms · Bloco > assentar no relevo 12.0 ms · Bloco > preencher: Bairro 5.9 ms · Bloco > ruas 2.0 ms · Bloco > grama, flores e pedrinhas 1.8 ms · Bloco > chão 0.9 ms · Chão > colisor da malha 0.3 ms · Chão > montar malha 0.2 ms · Bloco: horizonte curvo 0.2 ms · Bloco > cor das plantas 0.2 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco > água 0.1 ms · Bloco: pedir chão em segundo plano 0.1 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · Chão > já vinha pronto (segundo plano) · sem marcador 16 ms
+  29,9 s → 35,4 ms  · lixo 18 KB · sem marcador 35 ms
+  8,0 s → 32,7 ms  · lixo 207 KB · NavMesh: juntar formas 1.3 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 31 ms
+  28,8 s → 31,6 ms  · lixo 128 KB · sem marcador 32 ms
+  14,0 s → 29,4 ms  · lixo 112 KB · sem marcador 29 ms
+  29,1 s → 29,3 ms  · lixo 132 KB · sem marcador 29 ms
+  20,3 s → 28,7 ms  · lixo 140 KB · sem marcador 29 ms
+  17,5 s → 28,3 ms  · lixo 857 KB · Casa: preparar cacos (aos poucos) 1.5 ms · sem marcador 27 ms
+
+Todos os quadros acima de 25 ms, em ordem (38):
+    0,2 s →  27,8 ms  · lixo 128 KB · Grama: montar pedaço 1.8 ms · sem marcador 26 ms
+    0,3 s →  27,5 ms  · lixo 128 KB · Grama: montar pedaço 3.0 ms · sem marcador 24 ms
+    1,3 s →  27,8 ms  · lixo 201 KB · NavMesh: juntar formas 1.4 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 26 ms
+    2,0 s →  27,8 ms  · lixo 128 KB · Grama: montar pedaço ×2 6.4 ms · sem marcador 21 ms
+    3,9 s →  26,2 ms  · lixo 111 KB · sem marcador 26 ms
+    8,0 s →  27,8 ms  · lixo 618 KB · Bloco: carregar 17.6 ms · Bloco: construir 17.4 ms · Bloco > assentar no relevo 7.7 ms · Bloco > preencher: Bairro 4.8 ms · Bloco > ruas 1.8 ms · Bloco > grama, flores e pedrinhas 1.5 ms · Bloco > chão 0.9 ms · Bloco > Physics.SyncTransforms 0.5 ms · Chão > colisor da malha 0.3 ms · Chão > montar malha 0.2 ms · Bloco: horizonte curvo 0.2 ms · Bloco > cor das plantas 0.1 ms · Bloco: pedir chão em segundo plano 0.1 ms · Bloco > água 0.1 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · Chão > já vinha pronto (segundo plano) · sem marcador 10 ms
+    8,0 s →  32,7 ms  · lixo 207 KB · NavMesh: juntar formas 1.3 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 31 ms
+    8,5 s →  25,1 ms  · lixo 128 KB · sem marcador 25 ms
+   10,4 s →  27,9 ms  · lixo 128 KB · Grama: montar pedaço 3.6 ms · sem marcador 24 ms
+   10,5 s →  26,5 ms  · lixo 15 KB · sem marcador 27 ms
+   10,6 s →  27,1 ms  · lixo 127 KB · sem marcador 27 ms
+   11,1 s →  26,2 ms  · lixo 127 KB · sem marcador 26 ms
+   11,7 s →  25,5 ms  · lixo 127 KB · sem marcador 25 ms
+   12,8 s →  25,2 ms  · lixo 110 KB · sem marcador 25 ms
+   13,8 s →  27,6 ms  · lixo 115 KB · Limpeza: procurar objetos caídos 0.2 ms · sem marcador 27 ms
+   14,0 s →  29,4 ms  · lixo 112 KB · sem marcador 29 ms
+   14,4 s →  26,9 ms  · lixo 111 KB · sem marcador 27 ms
+   15,4 s →  27,3 ms  · lixo 128 KB · sem marcador 27 ms
+   17,5 s →  40,0 ms  · lixo 93 KB · Casa: preparar cacos (aos poucos) 1.4 ms · Coleta de lixo (GC) · sem marcador 39 ms
+   17,5 s →  28,3 ms  · lixo 857 KB · Casa: preparar cacos (aos poucos) 1.5 ms · sem marcador 27 ms
+   19,5 s →  25,5 ms  · lixo 676 KB · Casa: preparar cacos (aos poucos) 1.4 ms · sem marcador 24 ms
+   20,3 s →  28,7 ms  · lixo 140 KB · sem marcador 29 ms
+   20,5 s →  27,1 ms  · lixo 127 KB · NavMesh: terminou de refazer · sem marcador 27 ms
+   21,2 s →  27,9 ms  · lixo 362 KB · Grama: montar pedaço 2.2 ms · sem marcador 26 ms
+   21,9 s →  40,0 ms  · lixo 16 KB · sem marcador 40 ms
+   23,4 s →  25,4 ms  · lixo 111 KB · sem marcador 25 ms
+   27,3 s →  27,2 ms  · lixo 127 KB · NavMesh: terminou de refazer · sem marcador 27 ms
+   27,4 s →  27,8 ms  · lixo 127 KB · sem marcador 28 ms
+   27,9 s →  27,3 ms  · lixo 127 KB · sem marcador 27 ms
+   28,6 s →  27,3 ms  · lixo 129 KB · sem marcador 27 ms
+   28,7 s →  27,1 ms  · lixo 459 KB · Bloco: carregar 14.5 ms · Bloco: construir 14.4 ms · Bloco > assentar no relevo 6.0 ms · Bloco > preencher: Bairro 4.2 ms · Bloco > ruas 1.5 ms · Bloco > grama, flores e pedrinhas 1.3 ms · Bloco > chão 0.8 ms · Chão > colisor da malha 0.3 ms · Chão > montar malha 0.2 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco: horizonte curvo 0.1 ms · Bloco > cor das plantas 0.1 ms · Bloco: pedir chão em segundo plano 0.1 ms · Bloco > água 0.1 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · Chão > já vinha pronto (segundo plano) · sem marcador 13 ms
+   28,8 s →  31,6 ms  · lixo 128 KB · sem marcador 32 ms
+   28,9 s →  39,3 ms  · lixo 541 KB · Bloco: carregar 23.4 ms · Bloco: construir 23.2 ms · Bloco > assentar no relevo 12.0 ms · Bloco > preencher: Bairro 5.9 ms · Bloco > ruas 2.0 ms · Bloco > grama, flores e pedrinhas 1.8 ms · Bloco > chão 0.9 ms · Chão > colisor da malha 0.3 ms · Chão > montar malha 0.2 ms · Bloco: horizonte curvo 0.2 ms · Bloco > cor das plantas 0.2 ms · Bloco > Physics.SyncTransforms 0.2 ms · Bloco > água 0.1 ms · Bloco: pedir chão em segundo plano 0.1 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · Chão > já vinha pronto (segundo plano) · sem marcador 16 ms
+   28,9 s →  26,3 ms  · lixo 124 KB · NavMesh: terminou de refazer · sem marcador 26 ms
+   29,1 s →  29,3 ms  · lixo 132 KB · sem marcador 29 ms
+   29,9 s →  25,6 ms  · lixo 130 KB · sem marcador 26 ms
+   29,9 s →  35,4 ms  · lixo 18 KB · sem marcador 35 ms
+   30,0 s →  26,5 ms  · lixo 758 KB · Casa: preparar cacos (aos poucos) 1.4 ms · sem marcador 25 ms
+
+Segundo a segundo (FPS · pior ms · partículas · luzes · aliens):
+    1s    114 FPS    27,8 ms      0 part.    1 luzes    7 aliens  20 blocos  · Grama: montar pedaço ×16, Bloco: pedir chão em segundo plano ×4
+    2s    110 FPS    27,8 ms      0 part.    1 luzes    8 aliens  19 blocos  · Bloco: descarregar (o apagar vem no fim do quadro) ×4, Bloco: pedir chão em segundo plano ×5, NavMesh: juntar formas ×3, NavMesh: começar a refazer ×3, NavMesh: terminou de refazer ×3, Grama: montar pedaço ×29, Limpeza: procurar objetos caídos
+    3s    114 FPS    25,0 ms      0 part.    1 luzes    8 aliens  16 blocos  · Bloco: pedir chão em segundo plano ×5, Grama: montar pedaço ×19
+    4s    127 FPS    26,2 ms      0 part.    1 luzes    8 aliens  16 blocos  · Bloco: pedir chão em segundo plano ×5, Limpeza: procurar objetos caídos
+    5s    136 FPS    21,0 ms      0 part.    1 luzes    8 aliens  16 blocos  · Bloco: pedir chão em segundo plano ×5, Casa: preparar cacos (aos poucos) ×5
+    6s    136 FPS    19,5 ms      0 part.    1 luzes    8 aliens  16 blocos  · Bloco: pedir chão em segundo plano ×5, Limpeza: procurar objetos caídos
+    7s    133 FPS    22,9 ms      0 part.    1 luzes    8 aliens  16 blocos  · Bloco: pedir chão em segundo plano ×5
+    8s    118 FPS    32,7 ms      0 part.    1 luzes    8 aliens  16 blocos  · Bloco: pedir chão em segundo plano ×5, Chão > já vinha pronto (segundo plano) ×2, Chão > montar malha ×2, Chão > enviar textura para a placa ×2, Bloco > chão ×2, Bloco > ruas ×2, Bloco > preencher: Galpoes, Bloco > grama, flores e pedrinhas ×2, Bloco > cor das plantas ×2, Bloco > água ×2, Bloco > Physics.SyncTransforms ×2, Bloco: construir ×2, Bloco: horizonte curvo ×2, Bloco: avisar (aliens, trânsito...) ×2, Bloco: carregar ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer, Limpeza: procurar objetos caídos, Casa: preparar cacos (aos poucos) ×4, Chão > colisor da malha, Bloco > preencher: Bairro, Bloco > assentar no relevo
+    9s    118 FPS    25,1 ms      0 part.    1 luzes    8 aliens  18 blocos  · NavMesh: terminou de refazer ×2, Bloco: pedir chão em segundo plano ×5, Chão > já vinha pronto (segundo plano), Chão > montar malha, Chão > enviar textura para a placa, Chão > colisor da malha, Bloco > chão, Bloco > ruas, Bloco > preencher: Bairro, Bloco > grama, flores e pedrinhas, Bloco > assentar no relevo, Bloco > cor das plantas, Bloco > água, Bloco > Physics.SyncTransforms, Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar, NavMesh: juntar formas, NavMesh: começar a refazer
+   10s    124 FPS    21,7 ms      0 part.    1 luzes    8 aliens  19 blocos  · Bloco: pedir chão em segundo plano ×5, Limpeza: procurar objetos caídos, Chão > já vinha pronto (segundo plano), Chão > montar malha, Chão > enviar textura para a placa, Chão > colisor da malha, Bloco > chão, Bloco > ruas, Bloco > preencher: Bairro, Bloco > grama, flores e pedrinhas, Bloco > assentar no relevo, Bloco > cor das plantas, Bloco > água, Bloco > Physics.SyncTransforms, Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar
+   11s     97 FPS    27,9 ms      0 part.    1 luzes    8 aliens  20 blocos  · NavMesh: juntar formas ×4, NavMesh: começar a refazer ×4, NavMesh: terminou de refazer ×4, Chão > já vinha pronto (segundo plano) ×2, Chão > montar malha ×2, Chão > enviar textura para a placa ×2, Bloco > chão ×2, Bloco > ruas ×2, Bloco > preencher: Bairro ×2, Bloco > grama, flores e pedrinhas ×2, Bloco > cor das plantas ×2, Bloco > água ×2, Bloco > Physics.SyncTransforms ×2, Bloco: construir ×2, Bloco: horizonte curvo ×2, Bloco: avisar (aliens, trânsito...) ×2, Bloco: carregar ×2, Bloco: pedir chão em segundo plano ×4, Grama: montar pedaço ×16, Bloco: descarregar (o apagar vem no fim do quadro)
+   12s    116 FPS    26,2 ms      0 part.    1 luzes    8 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×5, Casa: preparar cacos (aos poucos) ×7, Limpeza: procurar objetos caídos
+   13s    126 FPS    25,2 ms      0 part.    1 luzes    8 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×5
+   14s    111 FPS    29,4 ms      0 part.    1 luzes    8 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×5, Limpeza: procurar objetos caídos
+   15s    110 FPS    26,9 ms      0 part.    1 luzes    8 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×5
+   16s    110 FPS    27,3 ms      0 part.    1 luzes    8 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×5, Limpeza: procurar objetos caídos
+   17s    116 FPS    24,2 ms     11 part.    1 luzes    8 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×5
+   18s    102 FPS    40,0 ms     10 part.    1 luzes    8 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×5, Casa: preparar cacos (aos poucos) ×15, Coleta de lixo (GC), Limpeza: procurar objetos caídos
+   19s    121 FPS    24,7 ms      0 part.    1 luzes    8 aliens  21 blocos  · Casa: preparar cacos (aos poucos) ×12, Bloco: pedir chão em segundo plano ×5
+   20s    108 FPS    25,5 ms      0 part.    1 luzes    8 aliens  21 blocos  · Bloco: descarregar (o apagar vem no fim do quadro), Bloco: pedir chão em segundo plano ×5, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2, Casa: preparar cacos (aos poucos) ×15, Chão > já vinha pronto (segundo plano), Chão > montar malha, Chão > enviar textura para a placa, Bloco > chão, Bloco > ruas, Bloco > preencher: Bairro, Bloco > grama, flores e pedrinhas, Bloco > cor das plantas, Bloco > água, Bloco > Physics.SyncTransforms, Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar, Limpeza: procurar objetos caídos
+   21s    107 FPS    28,7 ms      0 part.    1 luzes    8 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×4, Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   22s    104 FPS    40,0 ms     22 part.    1 luzes    8 aliens  20 blocos  · Bloco: pedir chão em segundo plano ×5, Grama: montar pedaço ×16, Mundo: recentralizar, Limpeza: procurar objetos caídos, Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   23s    126 FPS    24,3 ms      0 part.    1 luzes    8 aliens  19 blocos  · Bloco: pedir chão em segundo plano ×5, Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   24s    125 FPS    25,4 ms      0 part.    1 luzes    8 aliens  18 blocos  · Bloco: pedir chão em segundo plano ×5, Limpeza: procurar objetos caídos
+   25s    114 FPS    23,8 ms      0 part.    1 luzes    8 aliens  18 blocos  · Bloco: pedir chão em segundo plano ×5, Grama: montar pedaço ×16
+   26s    116 FPS    25,0 ms     24 part.    1 luzes    8 aliens  18 blocos  · Bloco: pedir chão em segundo plano ×5, Grama: montar pedaço ×16, Limpeza: procurar objetos caídos
+   27s    128 FPS    24,9 ms      0 part.    1 luzes    8 aliens  18 blocos  · Bloco: pedir chão em segundo plano ×5, Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   28s    114 FPS    27,8 ms      0 part.    1 luzes    8 aliens  16 blocos  · Bloco: descarregar (o apagar vem no fim do quadro), Bloco: pedir chão em segundo plano ×4, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer, Limpeza: procurar objetos caídos
+   29s    103 FPS    39,3 ms     11 part.    1 luzes    8 aliens  16 blocos  · Bloco: pedir chão em segundo plano ×5, Chão > já vinha pronto (segundo plano) ×2, Chão > montar malha ×2, Chão > enviar textura para a placa ×2, Chão > colisor da malha ×2, Bloco > chão ×2, Bloco > ruas ×2, Bloco > preencher: Bairro ×2, Bloco > grama, flores e pedrinhas ×2, Bloco > assentar no relevo ×2, Bloco > cor das plantas ×2, Bloco > água ×2, Bloco > Physics.SyncTransforms ×2, Bloco: construir ×2, Bloco: horizonte curvo ×2, Bloco: avisar (aliens, trânsito...) ×2, Bloco: carregar ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2
+   30s    101 FPS    35,4 ms     15 part.    1 luzes    8 aliens  18 blocos  · Bloco: pedir chão em segundo plano ×5, Limpeza: procurar objetos caídos, Casa: preparar cacos (aos poucos) ×5
+
+Máquina e configuração:
+  Placa de vídeo: AMD Radeon RX 9060 XT (16253 MB, Direct3D12)
+  Processador: AMD Ryzen 5 5600X 6-Core Processor  (12 núcleos) · RAM 16328 MB
+  Resolução do jogo: 1455x599 · tela 144 Hz
+  Qualidade: PC · VSync normal: desligado (desligado durante a medição)
+  URP: PC_RPAsset · escala de render 1,00 · distância da sombra 50 m · MSAA 1x · HDR sim
+  Posição do jogador no fim: 2587, 3, 1650
+  Custo da contagem de objetos do medidor: 2,9 ms (tirado do quadro seguinte)
+
+O que você estava fazendo durante a medição? (anote aqui embaixo antes de mandar)
+> 

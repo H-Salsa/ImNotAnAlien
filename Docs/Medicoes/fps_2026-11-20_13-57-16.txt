@@ -1,0 +1,359 @@
+﻿MEDIÇÃO DE DESEMPENHO — I'm Not an Alien
+Data: 20/11/2026 13:57:16   ·   dentro do Editor (fica mais lento que a build)
+Duração: 30,0 s · 1809 quadros (pausa do menu não conta)
+
+NOTA: ACEITÁVEL (dá para melhorar)
+FPS médio ............ 60,3
+FPS mediano .......... 69,9
+1% baixo ............. 16,4 FPS   (média dos 1% piores quadros: é o que se sente como 'travadinha')
+0,1% baixo ........... 11,7 FPS
+Pior quadro .......... 96,7 ms
+Quadros acima de 16,7 ms (abaixo de 60 FPS): 662 (36,6%)
+Quadros acima de 33,3 ms (abaixo de 30 FPS): 76 (4,2%)
+Engasgos (acima de 50 ms): 18
+
+Tempo médio — CPU scripts/física: 11.2 ms · CPU preparando desenho: 2.1 ms · GPU: 1.4 ms
+Quem segura o jogo: PROCESSADOR — scripts e física (aliens, trânsito, destruição, mundo carregando)
+
+Média / máximo por segundo:
+  batches: 4668,9 / 6654,7
+  setpass: 147,7 / 188,7
+  triângulos (mil): 6151,7 / 8323,3
+  partículas: 3090,2 / 6585
+  efeitos de partícula ativos: 101,7 / 236
+  luzes: 1,6 / 4
+  luzes com sombra: 1 / 1
+  objetos na tela: 1648,4 / 2532
+  aliens: 53 / 62
+  orbes de DNA: 71,4 / 128
+  física acordada: 424,4 / 1095
+  blocos do mundo: 19,3 / 21
+  lixo GC (KB/quadro): 60,5 / 147,8
+
+Marcadores — o que aconteceu durante a medição (quadro lento = acima de 25 ms):
+  Casa: trocar por cacos: 42x · total 121,4 ms · maior 7,6 ms · em 15 quadro(s) lento(s)
+  NavMesh: juntar formas: 44x · total 106,5 ms · maior 3,6 ms · em 31 quadro(s) lento(s)
+  Grama: montar pedaço: 48x · total 64,9 ms · maior 3,4 ms · em 6 quadro(s) lento(s)
+  Bloco: carregar: 4x · total 38,7 ms · maior 11,9 ms · em 2 quadro(s) lento(s)
+  Bloco: construir: 4x · total 38,0 ms · maior 11,7 ms · em 2 quadro(s) lento(s)
+  Limpeza: procurar objetos caídos: 14x · total 23,2 ms · maior 4,1 ms · em 4 quadro(s) lento(s)
+  NavMesh: começar a refazer: 44x · total 15,3 ms · maior 4,6 ms · em 31 quadro(s) lento(s)
+  Bloco > preencher: Predios: 4x · total 15,0 ms · maior 4,3 ms · em 2 quadro(s) lento(s)
+  Bloco > ruas: 4x · total 10,3 ms · maior 3,4 ms · em 2 quadro(s) lento(s)
+  Bloco: pedir chão em segundo plano: 134x · total 10,2 ms · maior 0,7 ms · em 18 quadro(s) lento(s)
+  Bloco > grama, flores e pedrinhas: 4x · total 8,0 ms · maior 2,3 ms · em 2 quadro(s) lento(s)
+  Bloco > chão: 4x · total 2,5 ms · maior 1,0 ms · em 2 quadro(s) lento(s)
+  Bloco: descarregar (o apagar vem no fim do quadro): 6x · total 1,1 ms · maior 0,2 ms · em 0 quadro(s) lento(s)
+  Bloco > Physics.SyncTransforms: 4x · total 0,7 ms · maior 0,3 ms · em 2 quadro(s) lento(s)
+  Chão > montar malha: 4x · total 0,7 ms · maior 0,3 ms · em 2 quadro(s) lento(s)
+  Bloco: horizonte curvo: 4x · total 0,7 ms · maior 0,3 ms · em 2 quadro(s) lento(s)
+  Bloco > cor das plantas: 4x · total 0,4 ms · maior 0,2 ms · em 2 quadro(s) lento(s)
+  Bloco > água: 4x · total 0,2 ms · maior 0,1 ms · em 2 quadro(s) lento(s)
+  Chão > enviar textura para a placa: 4x · total 0,1 ms · maior 0,0 ms · em 2 quadro(s) lento(s)
+  Bloco: avisar (aliens, trânsito...): 4x · total 0,0 ms · maior 0,0 ms · em 2 quadro(s) lento(s)
+  Chão > já vinha pronto (segundo plano): 4x · em 2 quadro(s) lento(s)
+  NavMesh: terminou de refazer: 44x · em 16 quadro(s) lento(s)
+  Casa: desabou: 36x · em 14 quadro(s) lento(s)
+  Coleta de lixo (GC): 1x · em 1 quadro(s) lento(s)
+  ("sem marcador" nos quadros lentos = física, desenho, apagar objetos, NavMesh em segundo plano e o resto do Unity)
+
+10 piores quadros (segundo da medição → tempo):
+  2,3 s → 96,7 ms  · lixo 465 KB · NavMesh: juntar formas 2.3 ms · NavMesh: começar a refazer 0.1 ms · NavMesh: terminou de refazer · sem marcador 94 ms
+  5,9 s → 75,0 ms  · lixo 489 KB · Bloco: carregar 9.8 ms · Bloco: construir 9.6 ms · Bloco > preencher: Predios 3.8 ms · Bloco > ruas 2.4 ms · Bloco > grama, flores e pedrinhas 2.3 ms · Bloco > chão 0.5 ms · Bloco: horizonte curvo 0.3 ms · Bloco: pedir chão em segundo plano 0.2 ms · Bloco > cor das plantas 0.2 ms · Chão > montar malha 0.1 ms · Bloco > Physics.SyncTransforms 0.1 ms · Bloco > água 0.1 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · Chão > já vinha pronto (segundo plano) · Coleta de lixo (GC) · sem marcador 65 ms
+  1,6 s → 70,1 ms  · lixo 276 KB · NavMesh: juntar formas 2.5 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 67 ms
+  2,8 s → 67,0 ms  · lixo 367 KB · NavMesh: juntar formas 2.3 ms · Bloco: pedir chão em segundo plano 0.1 ms · NavMesh: começar a refazer 0.1 ms · Casa: desabou · sem marcador 65 ms
+  1,2 s → 65,0 ms  · lixo 369 KB · NavMesh: juntar formas 2.3 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 63 ms
+  2,2 s → 61,5 ms  · lixo 264 KB · Casa: trocar por cacos 7.6 ms · NavMesh: juntar formas 2.1 ms · NavMesh: começar a refazer 0.0 ms · Casa: desabou · sem marcador 52 ms
+  26,5 s → 61,1 ms  · lixo 420 KB · NavMesh: juntar formas 2.6 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 58 ms
+  5,9 s → 58,8 ms  · lixo 323 KB · NavMesh: começar a refazer 4.6 ms · NavMesh: juntar formas 2.5 ms · sem marcador 52 ms
+  26,2 s → 58,5 ms  · lixo 143 KB · Casa: desabou · sem marcador 58 ms
+  25,6 s → 57,9 ms  · lixo 179 KB · Casa: trocar por cacos 4.1 ms · sem marcador 54 ms
+
+Todos os quadros acima de 25 ms, em ordem (243):
+    0,2 s →  26,1 ms  · lixo 183 KB · sem marcador 26 ms
+    0,2 s →  35,3 ms  · lixo 261 KB · NavMesh: juntar formas 2.8 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 32 ms
+    0,3 s →  26,6 ms  · lixo 34 KB · Casa: trocar por cacos 2.1 ms · sem marcador 25 ms
+    0,4 s →  26,6 ms  · lixo 49 KB · Casa: desabou · sem marcador 27 ms
+    0,4 s →  28,0 ms  · lixo 32 KB · sem marcador 28 ms
+    0,5 s →  50,2 ms  · lixo 294 KB · NavMesh: começar a refazer 2.6 ms · NavMesh: juntar formas 2.1 ms · sem marcador 45 ms
+    0,5 s →  53,6 ms  · lixo 158 KB · sem marcador 54 ms
+    0,6 s →  35,3 ms  · lixo 330 KB · NavMesh: juntar formas 2.3 ms · Limpeza: procurar objetos caídos 2.1 ms · NavMesh: começar a refazer 0.1 ms · NavMesh: terminou de refazer · Casa: desabou · sem marcador 31 ms
+    0,6 s →  30,5 ms  · lixo 44 KB · sem marcador 30 ms
+    0,6 s →  37,5 ms  · lixo 248 KB · NavMesh: juntar formas 2.3 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 35 ms
+    0,7 s →  34,8 ms  · lixo 123 KB · sem marcador 35 ms
+    0,7 s →  27,7 ms  · lixo 60 KB · Casa: trocar por cacos 1.0 ms · Bloco: pedir chão em segundo plano 0.1 ms · NavMesh: terminou de refazer · sem marcador 27 ms
+    0,7 s →  27,3 ms  · lixo 48 KB · sem marcador 27 ms
+    0,8 s →  25,9 ms  · lixo 33 KB · sem marcador 26 ms
+    0,8 s →  36,0 ms  · lixo 146 KB · Casa: trocar por cacos 7.3 ms · sem marcador 29 ms
+    0,9 s →  35,4 ms  · lixo 2464 KB · sem marcador 35 ms
+    0,9 s →  25,5 ms  · lixo 34 KB · sem marcador 25 ms
+    1,0 s →  30,9 ms  · lixo 130 KB · sem marcador 31 ms
+    1,0 s →  25,5 ms  · lixo 227 KB · sem marcador 26 ms
+    1,1 s →  27,1 ms  · lixo 36 KB · sem marcador 27 ms
+    1,2 s →  65,0 ms  · lixo 369 KB · NavMesh: juntar formas 2.3 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 63 ms
+    1,3 s →  31,8 ms  · lixo 125 KB · sem marcador 32 ms
+    1,3 s →  27,1 ms  · lixo 39 KB · sem marcador 27 ms
+    1,5 s →  45,2 ms  · lixo 179 KB · sem marcador 45 ms
+    1,5 s →  31,6 ms  · lixo 50 KB · sem marcador 32 ms
+    1,6 s →  70,1 ms  · lixo 276 KB · NavMesh: juntar formas 2.5 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 67 ms
+    1,6 s →  41,0 ms  · lixo 45 KB · NavMesh: terminou de refazer · sem marcador 41 ms
+    1,7 s →  39,9 ms  · lixo 157 KB · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 40 ms
+    1,7 s →  26,2 ms  · lixo 39 KB · sem marcador 26 ms
+    1,8 s →  26,6 ms  · lixo 33 KB · sem marcador 27 ms
+    1,8 s →  33,6 ms  · lixo 127 KB · Casa: trocar por cacos 0.7 ms · sem marcador 33 ms
+    1,8 s →  27,0 ms  · lixo 69 KB · sem marcador 27 ms
+    2,0 s →  27,2 ms  · lixo 152 KB · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 27 ms
+    2,1 s →  33,2 ms  · lixo 94 KB · sem marcador 33 ms
+    2,1 s →  38,8 ms  · lixo 142 KB · Casa: trocar por cacos 1.4 ms · Casa: desabou · sem marcador 37 ms
+    2,2 s →  28,6 ms  · lixo 57 KB · Casa: desabou · sem marcador 29 ms
+    2,2 s →  61,5 ms  · lixo 264 KB · Casa: trocar por cacos 7.6 ms · NavMesh: juntar formas 2.1 ms · NavMesh: começar a refazer 0.0 ms · Casa: desabou · sem marcador 52 ms
+    2,3 s →  96,7 ms  · lixo 465 KB · NavMesh: juntar formas 2.3 ms · NavMesh: começar a refazer 0.1 ms · NavMesh: terminou de refazer · sem marcador 94 ms
+    2,4 s →  35,0 ms  · lixo 67 KB · NavMesh: terminou de refazer · sem marcador 35 ms
+    2,4 s →  56,7 ms  · lixo 298 KB · NavMesh: juntar formas 2.1 ms · Bloco: pedir chão em segundo plano 0.1 ms · NavMesh: começar a refazer 0.1 ms · Casa: desabou · sem marcador 54 ms
+    2,5 s →  47,7 ms  · lixo 168 KB · NavMesh: terminou de refazer · sem marcador 48 ms
+    2,5 s →  46,8 ms  · lixo 262 KB · NavMesh: juntar formas 2.1 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 45 ms
+    2,6 s →  34,8 ms  · lixo 127 KB · Casa: trocar por cacos 0.9 ms · Casa: desabou · sem marcador 34 ms
+    2,7 s →  32,2 ms  · lixo 48 KB · sem marcador 32 ms
+    2,7 s →  40,5 ms  · lixo 283 KB · sem marcador 41 ms
+    2,8 s →  67,0 ms  · lixo 367 KB · NavMesh: juntar formas 2.3 ms · Bloco: pedir chão em segundo plano 0.1 ms · NavMesh: começar a refazer 0.1 ms · Casa: desabou · sem marcador 65 ms
+    2,8 s →  54,5 ms  · lixo 172 KB · NavMesh: terminou de refazer · sem marcador 54 ms
+    2,9 s →  30,1 ms  · lixo 55 KB · sem marcador 30 ms
+    2,9 s →  41,0 ms  · lixo 271 KB · NavMesh: juntar formas 2.1 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 39 ms
+    2,9 s →  31,9 ms  · lixo 36 KB · NavMesh: terminou de refazer · sem marcador 32 ms
+    3,0 s →  37,6 ms  · lixo 153 KB · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 38 ms
+    3,0 s →  26,4 ms  · lixo 100 KB · Limpeza: procurar objetos caídos 1.5 ms · sem marcador 25 ms
+    3,0 s →  25,7 ms  · lixo 34 KB · sem marcador 26 ms
+    3,1 s →  27,7 ms  · lixo 42 KB · sem marcador 28 ms
+    3,1 s →  37,7 ms  · lixo 143 KB · sem marcador 38 ms
+    3,1 s →  27,2 ms  · lixo 44 KB · sem marcador 27 ms
+    3,2 s →  27,6 ms  · lixo 54 KB · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 28 ms
+    3,3 s →  37,5 ms  · lixo 129 KB · sem marcador 38 ms
+    3,3 s →  25,6 ms  · lixo 39 KB · sem marcador 26 ms
+    3,4 s →  27,0 ms  · lixo 40 KB · sem marcador 27 ms
+    3,4 s →  36,4 ms  · lixo 138 KB · sem marcador 36 ms
+    3,5 s →  27,7 ms  · lixo 37 KB · sem marcador 28 ms
+    3,5 s →  26,0 ms  · lixo 37 KB · sem marcador 26 ms
+    3,6 s →  28,5 ms  · lixo 124 KB · sem marcador 28 ms
+    3,7 s →  29,3 ms  · lixo 46 KB · sem marcador 29 ms
+    3,7 s →  33,8 ms  · lixo 127 KB · sem marcador 34 ms
+    3,8 s →  25,5 ms  · lixo 40 KB · sem marcador 26 ms
+    3,9 s →  44,1 ms  · lixo 206 KB · sem marcador 44 ms
+    3,9 s →  42,7 ms  · lixo 136 KB · sem marcador 43 ms
+    4,0 s →  28,7 ms  · lixo 65 KB · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 29 ms
+    4,1 s →  34,0 ms  · lixo 133 KB · sem marcador 34 ms
+    4,1 s →  30,9 ms  · lixo 35 KB · sem marcador 31 ms
+    4,2 s →  30,7 ms  · lixo 127 KB · sem marcador 31 ms
+    4,4 s →  28,5 ms  · lixo 15 KB · sem marcador 29 ms
+    4,4 s →  30,4 ms  · lixo 123 KB · sem marcador 30 ms
+    4,5 s →  35,4 ms  · lixo 108 KB · sem marcador 35 ms
+    4,6 s →  34,7 ms  · lixo 135 KB · sem marcador 35 ms
+    4,7 s →  43,8 ms  · lixo 150 KB · Casa: trocar por cacos 1.8 ms · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 42 ms
+    4,7 s →  25,5 ms  · lixo 52 KB · sem marcador 25 ms
+    4,9 s →  32,0 ms  · lixo 127 KB · sem marcador 32 ms
+    5,0 s →  33,5 ms  · lixo 21 KB · sem marcador 33 ms
+    5,0 s →  37,7 ms  · lixo 145 KB · sem marcador 38 ms
+    5,2 s →  29,8 ms  · lixo 129 KB · sem marcador 30 ms
+    5,3 s →  35,3 ms  · lixo 266 KB · NavMesh: começar a refazer 3.4 ms · NavMesh: juntar formas 2.6 ms · sem marcador 29 ms
+    5,3 s →  45,2 ms  · lixo 72 KB · Limpeza: procurar objetos caídos 4.1 ms · sem marcador 41 ms
+    5,3 s →  34,1 ms  · lixo 125 KB · sem marcador 34 ms
+    5,4 s →  34,5 ms  · lixo 56 KB · NavMesh: terminou de refazer · sem marcador 35 ms
+    5,4 s →  26,5 ms  · lixo 33 KB · sem marcador 27 ms
+    5,4 s →  29,4 ms  · lixo 56 KB · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 29 ms
+    5,5 s →  39,3 ms  · lixo 127 KB · sem marcador 39 ms
+    5,5 s →  26,5 ms  · lixo 46 KB · sem marcador 27 ms
+    5,6 s →  25,6 ms  · lixo 65 KB · sem marcador 26 ms
+    5,6 s →  33,3 ms  · lixo 123 KB · Bloco: pedir chão em segundo plano 0.3 ms · sem marcador 33 ms
+    5,7 s →  41,6 ms  · lixo 135 KB · sem marcador 42 ms
+    5,7 s →  31,9 ms  · lixo 63 KB · sem marcador 32 ms
+    5,8 s →  26,1 ms  · lixo 33 KB · sem marcador 26 ms
+    5,9 s →  75,0 ms  · lixo 489 KB · Bloco: carregar 9.8 ms · Bloco: construir 9.6 ms · Bloco > preencher: Predios 3.8 ms · Bloco > ruas 2.4 ms · Bloco > grama, flores e pedrinhas 2.3 ms · Bloco > chão 0.5 ms · Bloco: horizonte curvo 0.3 ms · Bloco: pedir chão em segundo plano 0.2 ms · Bloco > cor das plantas 0.2 ms · Chão > montar malha 0.1 ms · Bloco > Physics.SyncTransforms 0.1 ms · Bloco > água 0.1 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · Chão > já vinha pronto (segundo plano) · Coleta de lixo (GC) · sem marcador 65 ms
+    5,9 s →  58,8 ms  · lixo 323 KB · NavMesh: começar a refazer 4.6 ms · NavMesh: juntar formas 2.5 ms · sem marcador 52 ms
+    6,0 s →  50,1 ms  · lixo 51 KB · sem marcador 50 ms
+    6,0 s →  34,5 ms  · lixo 137 KB · NavMesh: terminou de refazer · sem marcador 35 ms
+    6,2 s →  35,0 ms  · lixo 128 KB · sem marcador 35 ms
+    6,2 s →  27,7 ms  · lixo 67 KB · sem marcador 28 ms
+    6,3 s →  48,0 ms  · lixo 281 KB · NavMesh: juntar formas 2.2 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 46 ms
+    6,4 s →  37,5 ms  · lixo 166 KB · sem marcador 37 ms
+    6,5 s →  32,0 ms  · lixo 135 KB · sem marcador 32 ms
+    6,6 s →  26,4 ms  · lixo 55 KB · sem marcador 26 ms
+    6,6 s →  25,6 ms  · lixo 19 KB · sem marcador 26 ms
+    6,7 s →  33,6 ms  · lixo 130 KB · sem marcador 34 ms
+    6,7 s →  26,1 ms  · lixo 61 KB · sem marcador 26 ms
+    6,9 s →  28,8 ms  · lixo 131 KB · sem marcador 29 ms
+    7,0 s →  28,2 ms  · lixo 124 KB · sem marcador 28 ms
+    7,2 s →  28,1 ms  · lixo 128 KB · sem marcador 28 ms
+    7,3 s →  35,4 ms  · lixo 105 KB · sem marcador 35 ms
+    7,3 s →  31,1 ms  · lixo 131 KB · sem marcador 31 ms
+    7,5 s →  31,4 ms  · lixo 130 KB · sem marcador 31 ms
+    7,6 s →  30,3 ms  · lixo 127 KB · Casa: desabou · sem marcador 30 ms
+    7,7 s →  41,6 ms  · lixo 275 KB · NavMesh: juntar formas 2.6 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 39 ms
+    7,8 s →  39,1 ms  · lixo 20 KB · sem marcador 39 ms
+    7,8 s →  31,0 ms  · lixo 135 KB · Casa: trocar por cacos 0.7 ms · sem marcador 30 ms
+    8,1 s →  32,9 ms  · lixo 126 KB · NavMesh: terminou de refazer · sem marcador 33 ms
+    8,3 s →  35,4 ms  · lixo 133 KB · sem marcador 35 ms
+    8,4 s →  40,2 ms  · lixo 130 KB · sem marcador 40 ms
+    8,6 s →  31,5 ms  · lixo 135 KB · sem marcador 31 ms
+    8,7 s →  27,6 ms  · lixo 19 KB · sem marcador 28 ms
+    8,7 s →  33,3 ms  · lixo 137 KB · sem marcador 33 ms
+    8,9 s →  33,3 ms  · lixo 127 KB · sem marcador 33 ms
+    9,0 s →  25,6 ms  · lixo 291 KB · sem marcador 26 ms
+    9,2 s →  27,2 ms  · lixo 128 KB · sem marcador 27 ms
+    9,4 s →  31,6 ms  · lixo 131 KB · sem marcador 32 ms
+    9,5 s →  31,2 ms  · lixo 21 KB · sem marcador 31 ms
+    9,5 s →  35,8 ms  · lixo 177 KB · Limpeza: procurar objetos caídos 1.5 ms · sem marcador 34 ms
+    9,7 s →  25,5 ms  · lixo 122 KB · sem marcador 25 ms
+    9,8 s →  27,0 ms  · lixo 128 KB · sem marcador 27 ms
+   10,0 s →  31,5 ms  · lixo 131 KB · sem marcador 31 ms
+   10,1 s →  27,6 ms  · lixo 130 KB · sem marcador 28 ms
+   10,3 s →  28,7 ms  · lixo 127 KB · sem marcador 29 ms
+   10,6 s →  31,6 ms  · lixo 125 KB · sem marcador 32 ms
+   10,8 s →  28,5 ms  · lixo 127 KB · sem marcador 29 ms
+   10,9 s →  29,6 ms  · lixo 129 KB · sem marcador 30 ms
+   11,1 s →  32,2 ms  · lixo 129 KB · sem marcador 32 ms
+   11,2 s →  28,3 ms  · lixo 129 KB · sem marcador 28 ms
+   11,6 s →  29,1 ms  · lixo 130 KB · sem marcador 29 ms
+   11,7 s →  26,2 ms  · lixo 131 KB · sem marcador 26 ms
+   11,9 s →  29,1 ms  · lixo 131 KB · sem marcador 29 ms
+   12,0 s →  27,5 ms  · lixo 833 KB · NavMesh: juntar formas 2.4 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 25 ms
+   12,1 s →  25,2 ms  · lixo 174 KB · sem marcador 25 ms
+   12,2 s →  25,5 ms  · lixo 126 KB · sem marcador 26 ms
+   12,5 s →  29,3 ms  · lixo 133 KB · sem marcador 29 ms
+   12,6 s →  27,4 ms  · lixo 137 KB · sem marcador 27 ms
+   12,8 s →  27,6 ms  · lixo 128 KB · sem marcador 28 ms
+   13,0 s →  30,1 ms  · lixo 141 KB · sem marcador 30 ms
+   13,1 s →  28,9 ms  · lixo 132 KB · sem marcador 29 ms
+   13,2 s →  29,2 ms  · lixo 152 KB · sem marcador 29 ms
+   13,4 s →  28,4 ms  · lixo 136 KB · sem marcador 28 ms
+   13,6 s →  29,4 ms  · lixo 137 KB · sem marcador 29 ms
+   13,7 s →  26,7 ms  · lixo 129 KB · sem marcador 27 ms
+   13,9 s →  25,5 ms  · lixo 131 KB · sem marcador 25 ms
+   14,0 s →  29,5 ms  · lixo 138 KB · Grama: montar pedaço 1.4 ms · sem marcador 28 ms
+   14,2 s →  30,3 ms  · lixo 128 KB · Grama: montar pedaço 1.3 ms · sem marcador 29 ms
+   14,4 s →  33,9 ms  · lixo 129 KB · sem marcador 34 ms
+   14,5 s →  26,0 ms  · lixo 133 KB · sem marcador 26 ms
+   14,7 s →  25,2 ms  · lixo 131 KB · sem marcador 25 ms
+   15,0 s →  25,5 ms  · lixo 133 KB · sem marcador 26 ms
+   15,0 s →  34,9 ms  · lixo 305 KB · NavMesh: juntar formas 2.6 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 32 ms
+   15,1 s →  28,9 ms  · lixo 131 KB · sem marcador 29 ms
+   15,3 s →  26,6 ms  · lixo 130 KB · sem marcador 27 ms
+   15,4 s →  25,9 ms  · lixo 132 KB · sem marcador 26 ms
+   16,3 s →  25,8 ms  · lixo 132 KB · sem marcador 26 ms
+   16,7 s →  27,8 ms  · lixo 138 KB · sem marcador 28 ms
+   16,8 s →  28,9 ms  · lixo 150 KB · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 29 ms
+   17,0 s →  26,1 ms  · lixo 141 KB · sem marcador 26 ms
+   17,4 s →  25,9 ms  · lixo 128 KB · sem marcador 26 ms
+   18,7 s →  30,8 ms  · lixo 140 KB · sem marcador 31 ms
+   19,6 s →  25,3 ms  · lixo 132 KB · sem marcador 25 ms
+   19,8 s →  27,0 ms  · lixo 128 KB · Grama: montar pedaço 1.1 ms · sem marcador 26 ms
+   20,1 s →  28,0 ms  · lixo 134 KB · sem marcador 28 ms
+   20,2 s →  27,4 ms  · lixo 130 KB · sem marcador 27 ms
+   20,9 s →  25,3 ms  · lixo 131 KB · sem marcador 25 ms
+   21,3 s →  26,8 ms  · lixo 140 KB · Casa: trocar por cacos 1.6 ms · sem marcador 25 ms
+   21,9 s →  27,5 ms  · lixo 134 KB · sem marcador 27 ms
+   22,7 s →  25,7 ms  · lixo 131 KB · sem marcador 26 ms
+   23,0 s →  29,1 ms  · lixo 154 KB · Casa: desabou · sem marcador 29 ms
+   23,2 s →  26,5 ms  · lixo 130 KB · sem marcador 26 ms
+   23,3 s →  31,1 ms  · lixo 124 KB · sem marcador 31 ms
+   23,5 s →  35,0 ms  · lixo 148 KB · Casa: trocar por cacos 2.0 ms · sem marcador 33 ms
+   23,5 s →  27,1 ms  · lixo 87 KB · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 27 ms
+   23,6 s →  30,0 ms  · lixo 146 KB · sem marcador 30 ms
+   23,8 s →  33,4 ms  · lixo 138 KB · sem marcador 33 ms
+   23,9 s →  28,7 ms  · lixo 128 KB · sem marcador 29 ms
+   24,3 s →  27,2 ms  · lixo 123 KB · sem marcador 27 ms
+   24,4 s →  26,6 ms  · lixo 124 KB · Grama: montar pedaço 1.6 ms · sem marcador 25 ms
+   24,6 s →  26,6 ms  · lixo 251 KB · Grama: montar pedaço 0.9 ms · sem marcador 26 ms
+   24,6 s →  43,0 ms  · lixo 293 KB · NavMesh: juntar formas 2.5 ms · Grama: montar pedaço 2.0 ms · NavMesh: começar a refazer 0.0 ms · Casa: desabou · sem marcador 38 ms
+   24,7 s →  31,6 ms  · lixo 53 KB · sem marcador 32 ms
+   24,7 s →  28,1 ms  · lixo 298 KB · NavMesh: juntar formas 2.4 ms · NavMesh: começar a refazer 0.1 ms · NavMesh: terminou de refazer · sem marcador 26 ms
+   24,7 s →  29,6 ms  · lixo 136 KB · sem marcador 30 ms
+   24,9 s →  31,0 ms  · lixo 127 KB · sem marcador 31 ms
+   25,1 s →  31,4 ms  · lixo 127 KB · sem marcador 31 ms
+   25,2 s →  30,0 ms  · lixo 125 KB · sem marcador 30 ms
+   25,4 s →  30,6 ms  · lixo 124 KB · sem marcador 31 ms
+   25,5 s →  30,0 ms  · lixo 296 KB · Casa: trocar por cacos 7.3 ms · NavMesh: juntar formas 2.2 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 21 ms
+   25,6 s →  57,9 ms  · lixo 179 KB · Casa: trocar por cacos 4.1 ms · sem marcador 54 ms
+   25,7 s →  25,2 ms  · lixo 125 KB · sem marcador 25 ms
+   25,9 s →  25,1 ms  · lixo 124 KB · sem marcador 25 ms
+   26,2 s →  28,9 ms  · lixo 310 KB · NavMesh: juntar formas 2.2 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 27 ms
+   26,2 s →  58,5 ms  · lixo 143 KB · Casa: desabou · sem marcador 58 ms
+   26,2 s →  27,8 ms  · lixo 78 KB · NavMesh: terminou de refazer · sem marcador 28 ms
+   26,3 s →  30,8 ms  · lixo 148 KB · sem marcador 31 ms
+   26,4 s →  54,3 ms  · lixo 1841 KB · NavMesh: juntar formas 3.6 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 51 ms
+   26,5 s →  52,7 ms  · lixo 331 KB · Bloco: carregar 11.9 ms · Bloco: construir 11.7 ms · Bloco > preencher: Predios 4.3 ms · Bloco > ruas 3.4 ms · Bloco > grama, flores e pedrinhas 2.1 ms · Bloco > chão 1.0 ms · Bloco > Physics.SyncTransforms 0.3 ms · Chão > montar malha 0.3 ms · Bloco: horizonte curvo 0.2 ms · Bloco > cor das plantas 0.1 ms · Bloco > água 0.1 ms · Bloco: pedir chão em segundo plano 0.1 ms · Chão > enviar textura para a placa 0.0 ms · Bloco: avisar (aliens, trânsito...) 0.0 ms · NavMesh: terminou de refazer · Chão > já vinha pronto (segundo plano) · sem marcador 41 ms
+   26,5 s →  61,1 ms  · lixo 420 KB · NavMesh: juntar formas 2.6 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 58 ms
+   26,6 s →  32,0 ms  · lixo 56 KB · NavMesh: terminou de refazer · sem marcador 32 ms
+   26,7 s →  33,5 ms  · lixo 182 KB · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 33 ms
+   26,8 s →  29,9 ms  · lixo 296 KB · NavMesh: juntar formas 2.2 ms · NavMesh: começar a refazer 0.1 ms · sem marcador 28 ms
+   26,8 s →  29,3 ms  · lixo 138 KB · sem marcador 29 ms
+   27,0 s →  28,3 ms  · lixo 138 KB · sem marcador 28 ms
+   27,3 s →  25,6 ms  · lixo 125 KB · sem marcador 26 ms
+   27,4 s →  26,7 ms  · lixo 126 KB · Casa: desabou · sem marcador 27 ms
+   27,5 s →  25,4 ms  · lixo 293 KB · NavMesh: juntar formas 2.1 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 23 ms
+   27,7 s →  26,4 ms  · lixo 74 KB · sem marcador 26 ms
+   27,7 s →  31,0 ms  · lixo 126 KB · sem marcador 31 ms
+   27,9 s →  28,7 ms  · lixo 128 KB · sem marcador 29 ms
+   28,0 s →  31,2 ms  · lixo 307 KB · sem marcador 31 ms
+   28,2 s →  28,1 ms  · lixo 141 KB · sem marcador 28 ms
+   28,3 s →  29,6 ms  · lixo 142 KB · sem marcador 30 ms
+   28,5 s →  28,6 ms  · lixo 128 KB · sem marcador 29 ms
+   28,7 s →  31,5 ms  · lixo 150 KB · sem marcador 31 ms
+   28,8 s →  33,9 ms  · lixo 140 KB · sem marcador 34 ms
+   28,9 s →  35,0 ms  · lixo 311 KB · NavMesh: juntar formas 2.9 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 32 ms
+   29,0 s →  37,3 ms  · lixo 127 KB · Casa: trocar por cacos 3.9 ms · sem marcador 33 ms
+   29,0 s →  53,4 ms  · lixo 372 KB · NavMesh: juntar formas 2.2 ms · NavMesh: começar a refazer 0.0 ms · NavMesh: terminou de refazer · sem marcador 51 ms
+   29,1 s →  30,3 ms  · lixo 160 KB · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 30 ms
+   29,2 s →  41,0 ms  · lixo 365 KB · NavMesh: juntar formas 2.2 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 39 ms
+   29,2 s →  26,4 ms  · lixo 34 KB · sem marcador 26 ms
+   29,3 s →  27,1 ms  · lixo 133 KB · Casa: trocar por cacos 4.9 ms · sem marcador 22 ms
+   29,4 s →  31,6 ms  · lixo 129 KB · sem marcador 32 ms
+   29,6 s →  29,7 ms  · lixo 124 KB · sem marcador 30 ms
+   29,7 s →  26,4 ms  · lixo 311 KB · NavMesh: juntar formas 2.2 ms · NavMesh: começar a refazer 0.0 ms · sem marcador 24 ms
+   29,7 s →  30,4 ms  · lixo 18 KB · sem marcador 30 ms
+   29,8 s →  31,7 ms  · lixo 138 KB · Casa: desabou · sem marcador 32 ms
+   29,8 s →  29,3 ms  · lixo 349 KB · NavMesh: começar a refazer 2.5 ms · NavMesh: juntar formas 2.5 ms · Bloco: pedir chão em segundo plano 0.1 ms · sem marcador 24 ms
+   29,9 s →  26,4 ms  · lixo 37 KB · sem marcador 26 ms
+   29,9 s →  30,5 ms  · lixo 128 KB · sem marcador 31 ms
+
+Segundo a segundo (FPS · pior ms · partículas · luzes · aliens):
+    1s     37 FPS    53,6 ms   6585 part.    2 luzes   56 aliens  20 blocos  · Bloco: pedir chão em segundo plano ×4, Casa: trocar por cacos ×4, Casa: desabou ×4, NavMesh: juntar formas ×4, NavMesh: começar a refazer ×4, NavMesh: terminou de refazer ×4, Limpeza: procurar objetos caídos
+    2s     38 FPS    70,1 ms   6448 part.    2 luzes   56 aliens  20 blocos  · Casa: desabou ×3, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2, Bloco: pedir chão em segundo plano ×4, Casa: trocar por cacos ×2
+    3s     27 FPS    96,7 ms   6162 part.    1 luzes   56 aliens  20 blocos  · Casa: trocar por cacos ×3, Casa: desabou ×6, Bloco: pedir chão em segundo plano ×4, NavMesh: juntar formas ×6, NavMesh: começar a refazer ×6, NavMesh: terminou de refazer ×6, Limpeza: procurar objetos caídos
+    4s     39 FPS    44,1 ms   6515 part.    3 luzes   58 aliens  20 blocos  · Bloco: pedir chão em segundo plano ×4, Casa: trocar por cacos
+    5s     43 FPS    43,8 ms   6169 part.    2 luzes   60 aliens  20 blocos  · Bloco: pedir chão em segundo plano ×4, Casa: trocar por cacos ×2
+    6s     33 FPS    75,0 ms   5491 part.    2 luzes   61 aliens  20 blocos  · Casa: trocar por cacos, Bloco: pedir chão em segundo plano ×4, Casa: desabou, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, Limpeza: procurar objetos caídos, NavMesh: terminou de refazer ×2, Chão > já vinha pronto (segundo plano), Chão > montar malha, Chão > enviar textura para a placa, Bloco > chão, Bloco > ruas, Bloco > preencher: Predios, Bloco > grama, flores e pedrinhas, Bloco > cor das plantas, Bloco > água, Bloco > Physics.SyncTransforms, Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar, Coleta de lixo (GC)
+    7s     43 FPS    48,0 ms   4535 part.    1 luzes   61 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×5, Casa: desabou, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer, Casa: trocar por cacos
+    8s     48 FPS    41,6 ms   3136 part.    1 luzes   61 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×4, Limpeza: procurar objetos caídos, Casa: desabou ×2, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer, Casa: trocar por cacos
+    9s     50 FPS    40,2 ms   2687 part.    1 luzes   62 aliens  21 blocos  · NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2, Bloco: pedir chão em segundo plano ×5, Casa: desabou, Casa: trocar por cacos ×3
+   10s     57 FPS    35,8 ms   2626 part.    1 luzes   62 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×4, Limpeza: procurar objetos caídos, Casa: trocar por cacos
+   11s     63 FPS    31,6 ms   2825 part.    1 luzes   62 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×5
+   12s     67 FPS    32,2 ms   2210 part.    1 luzes   62 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×4, Limpeza: procurar objetos caídos, Casa: trocar por cacos, Casa: desabou
+   13s     64 FPS    30,1 ms   1757 part.    1 luzes   62 aliens  21 blocos  · NavMesh: juntar formas, NavMesh: começar a refazer, Bloco: pedir chão em segundo plano ×5, NavMesh: terminou de refazer
+   14s     62 FPS    29,4 ms   1222 part.    2 luzes   62 aliens  21 blocos  · Bloco: pedir chão em segundo plano ×5, Limpeza: procurar objetos caídos, Grama: montar pedaço ×7
+   15s     68 FPS    34,9 ms   1059 part.    2 luzes   60 aliens  21 blocos  · Grama: montar pedaço ×9, Bloco: pedir chão em segundo plano ×5, Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer
+   16s     81 FPS    28,9 ms    816 part.    1 luzes   60 aliens  20 blocos  · NavMesh: terminou de refazer ×2, Bloco: pedir chão em segundo plano ×5, Bloco: descarregar (o apagar vem no fim do quadro) ×2, NavMesh: juntar formas, NavMesh: começar a refazer, Limpeza: procurar objetos caídos
+   17s     76 FPS    28,9 ms    543 part.    1 luzes   58 aliens  18 blocos  · NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2, Bloco: pedir chão em segundo plano ×4, Chão > já vinha pronto (segundo plano), Chão > montar malha, Chão > enviar textura para a placa, Bloco > chão, Bloco > ruas, Bloco > preencher: Predios, Bloco > grama, flores e pedrinhas, Bloco > cor das plantas, Bloco > água, Bloco > Physics.SyncTransforms, Bloco: construir, Bloco: horizonte curvo, Bloco: avisar (aliens, trânsito...), Bloco: carregar
+   18s     95 FPS    25,9 ms    348 part.    2 luzes   57 aliens  19 blocos  · Bloco: pedir chão em segundo plano ×5, Limpeza: procurar objetos caídos
+   19s     93 FPS    30,8 ms    205 part.    2 luzes   55 aliens  19 blocos  · Bloco: pedir chão em segundo plano ×5, Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   20s     89 FPS    27,0 ms    186 part.    2 luzes   53 aliens  18 blocos  · Bloco: pedir chão em segundo plano ×5, Limpeza: procurar objetos caídos, Grama: montar pedaço ×16, Casa: trocar por cacos, Casa: desabou, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   21s     84 FPS    28,0 ms    676 part.    3 luzes   52 aliens  18 blocos  · Casa: trocar por cacos, Bloco: pedir chão em segundo plano ×5
+   22s     89 FPS    27,5 ms    700 part.    2 luzes   45 aliens  18 blocos  · Bloco: pedir chão em segundo plano ×5, Casa: trocar por cacos, Limpeza: procurar objetos caídos
+   23s     83 FPS    29,1 ms    950 part.    3 luzes   43 aliens  18 blocos  · Bloco: pedir chão em segundo plano ×4, Casa: desabou ×3, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer ×2
+   24s     58 FPS    35,0 ms   1932 part.    4 luzes   41 aliens  18 blocos  · NavMesh: juntar formas ×3, NavMesh: começar a refazer ×3, NavMesh: terminou de refazer ×3, Bloco: pedir chão em segundo plano ×4, Casa: trocar por cacos ×3, Casa: desabou ×2, Limpeza: procurar objetos caídos
+   25s     58 FPS    43,0 ms   2431 part.    1 luzes   41 aliens  18 blocos  · Bloco: pedir chão em segundo plano ×4, Casa: trocar por cacos ×4, Grama: montar pedaço ×16, Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, Casa: desabou, NavMesh: terminou de refazer ×2
+   26s     61 FPS    57,9 ms   3750 part.    1 luzes   39 aliens  17 blocos  · Bloco: pedir chão em segundo plano ×5, Casa: trocar por cacos ×3, Bloco: descarregar (o apagar vem no fim do quadro), NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   27s     51 FPS    61,1 ms   4550 part.    1 luzes   38 aliens  16 blocos  · Limpeza: procurar objetos caídos, Chão > já vinha pronto (segundo plano) ×2, Chão > montar malha ×2, Chão > enviar textura para a placa ×2, Bloco > chão ×2, Bloco > ruas ×2, Bloco > preencher: Predios ×2, Bloco > grama, flores e pedrinhas ×2, Bloco > cor das plantas ×2, Bloco > água ×2, Bloco > Physics.SyncTransforms ×2, Bloco: construir ×2, Bloco: horizonte curvo ×2, Bloco: avisar (aliens, trânsito...) ×2, Bloco: carregar ×2, Bloco: pedir chão em segundo plano ×4, NavMesh: juntar formas ×5, NavMesh: começar a refazer ×5, Casa: desabou ×4, NavMesh: terminou de refazer ×5, Casa: trocar por cacos
+   28s     59 FPS    31,0 ms   5255 part.    1 luzes   36 aliens  18 blocos  · Bloco: pedir chão em segundo plano ×5, Casa: trocar por cacos ×2, Casa: desabou, NavMesh: juntar formas, NavMesh: começar a refazer, NavMesh: terminou de refazer
+   29s     49 FPS    53,4 ms   5246 part.    1 luzes   35 aliens  18 blocos  · Bloco: pedir chão em segundo plano ×4, Limpeza: procurar objetos caídos, Casa: trocar por cacos ×2, Casa: desabou ×2, NavMesh: juntar formas ×2, NavMesh: começar a refazer ×2, NavMesh: terminou de refazer
+   30s     45 FPS    41,0 ms   5691 part.    1 luzes   35 aliens  18 blocos  · NavMesh: terminou de refazer ×4, Casa: trocar por cacos ×4, Casa: desabou ×3, Bloco: pedir chão em segundo plano ×4, NavMesh: juntar formas ×3, NavMesh: começar a refazer ×3
+
+Máquina e configuração:
+  Placa de vídeo: AMD Radeon RX 9060 XT (16253 MB, Direct3D12)
+  Processador: AMD Ryzen 5 5600X 6-Core Processor  (12 núcleos) · RAM 16328 MB
+  Resolução do jogo: 1455x599 · tela 144 Hz
+  Qualidade: PC · VSync normal: desligado (desligado durante a medição)
+  URP: PC_RPAsset · escala de render 1,00 · distância da sombra 50 m · MSAA 1x · HDR sim
+  Posição do jogador no fim: -22946, 2, 2207
+  Custo da contagem de objetos do medidor: 10,2 ms (tirado do quadro seguinte)
+
+O que você estava fazendo durante a medição? (anote aqui embaixo antes de mandar)
+> 

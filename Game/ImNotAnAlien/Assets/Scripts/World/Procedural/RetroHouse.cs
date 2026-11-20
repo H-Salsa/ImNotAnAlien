@@ -927,6 +927,36 @@ public static class RetroHouse
         return house;
     }
 
+    // Os "count" modelos mais altos (para o centro das cidades). Guardado por lista de modelos.
+    private static readonly Dictionary<GameObject[], GameObject[]> tallest = new Dictionary<GameObject[], GameObject[]>();
+
+    public static GameObject[] TallestModels(GameObject[] models, int count)
+    {
+        if (models == null || models.Length <= count)
+        {
+            return models;
+        }
+
+        if (tallest.TryGetValue(models, out GameObject[] cached))
+        {
+            return cached;
+        }
+
+        List<GameObject> sorted = new List<GameObject>();
+        foreach (GameObject model in models)
+        {
+            if (model != null)
+            {
+                sorted.Add(model);
+            }
+        }
+
+        sorted.Sort((a, b) => VariantFor(b, 0, false).body.max.y.CompareTo(VariantFor(a, 0, false).body.max.y));
+        GameObject[] result = sorted.GetRange(0, Mathf.Min(count, sorted.Count)).ToArray();
+        tallest[models] = result;
+        return result;
+    }
+
     // Preparo antecipado das combinações (20/11): modelo × 8 cores × espelho. Montar uma combinação nova
     // leva ~5 ms; num bairro novo eram até 8 de uma vez (~45 ms). Agora o WorldStreamer chama
     // WarmUpStep uma vez por quadro (só nos quadros sem bloco novo) até preparar todas.
@@ -1162,11 +1192,20 @@ public static class RetroHouse
             Transform part = jobParts[jobIndex++];
             string name = Clean(part.name);
             bool prop = name == "LOD0_Carro" || name == "LOD0_Correio" || name == "LOD0_Lixeira";
-            Accumulator a = new Accumulator();
+            Accumulator a = sharedPiece.Reset(); // 20/11: listas reaproveitadas (antes ~8,8 MB de lixo por prédio)
             a.Append(part, jobRoot, jobPalette, jobMirror);
             if (a.Count > 0)
             {
                 Mesh mesh = a.ToMesh(part.name, true, out Vector3 center);
+                if (!prop)
+                {
+                    // 20/11: a colisão de forma exata (MeshCollider) já fica calculada aqui, aos poucos,
+                    // e não na hora do golpe.
+#pragma warning disable CS0618 // versão nova pede EntityId; esta funciona em todas as versões do Unity 6
+                    Physics.BakeMesh(mesh.GetInstanceID(), false);
+#pragma warning restore CS0618
+                }
+
                 jobPieces.Add(new Piece { mesh = mesh, center = center, prop = prop, roof = !prop && center.y > jobRoofLine });
             }
         }
@@ -1200,6 +1239,7 @@ public static class RetroHouse
     private static readonly Accumulator sharedBody = new Accumulator();
     private static readonly Accumulator sharedGround = new Accumulator();
     private static readonly Accumulator sharedExtra = new Accumulator();
+    private static readonly Accumulator sharedPiece = new Accumulator();
 
     // Dados das malhas de origem (modelos do Blender), lidos uma vez só por peça (20/11).
     // Ler mesh.vertices/normals/uv/GetTriangles cria cópias novas a cada chamada.

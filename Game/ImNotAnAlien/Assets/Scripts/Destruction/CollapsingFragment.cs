@@ -18,6 +18,64 @@ public sealed class CollapsingFragment : MonoBehaviour
     private const float SinkSpeed = 0.9f;
     private const float SinkDuration = 2.2f;
 
+    // 20/11 (destruir a capital chegou a 1.095 cacos com física ao mesmo tempo, 60 FPS): acima de
+    // Budget cacos caindo, todos ficam "com pressa" — pousam e afundam mais cedo, e a física de cada um
+    // é mais simples. Com poucos cacos (uma casa só) nada muda.
+    private const int Budget = 300;
+    private static int falling;
+    private bool counted;
+
+    public static int Falling => falling;
+
+    // 20/11 (pedido do autor): cacos PEQUENOS não batem uns nos outros enquanto caem (continuam batendo no
+    // chão, nas paredes, nos cacos grandes, no jogador e nos carros). Montes de cacos pequenos eram a maior
+    // parte do trabalho da física. Usa a camada 30 (livre no projeto, sem nome); ao pousar volta à camada dele.
+    private const int SmallDebrisLayer = 30;
+    private const float SmallSize = 1.6f; // m: maior lado do caco
+    private static bool layerReady;
+    private int originalLayer = -1;
+
+    // Dominó curto (20/11, decisão do autor): 1 = caco de prédio derrubado pelo jogador (pode derrubar o
+    // vizinho); 2 = caco de prédio derrubado por cacos (não derruba mais ninguém). Quem solta o caco define.
+    public int Generation { get; set; } = 1;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
+    {
+        falling = 0;
+        layerReady = false;
+    }
+
+    private void UseSmallLayer()
+    {
+        if (!layerReady)
+        {
+            layerReady = true;
+            Physics.IgnoreLayerCollision(SmallDebrisLayer, SmallDebrisLayer, true);
+        }
+
+        if (originalLayer >= 0 || !TryGetComponent(out Collider own))
+        {
+            return;
+        }
+
+        Vector3 size = own.bounds.size;
+        if (Mathf.Max(size.x, Mathf.Max(size.y, size.z)) < SmallSize)
+        {
+            originalLayer = gameObject.layer;
+            gameObject.layer = SmallDebrisLayer;
+        }
+    }
+
+    private void RestoreLayer()
+    {
+        if (originalLayer >= 0)
+        {
+            gameObject.layer = originalLayer;
+            originalLayer = -1;
+        }
+    }
+
     private Rigidbody body;
     private float age;
     private float restTime;
@@ -27,6 +85,8 @@ public sealed class CollapsingFragment : MonoBehaviour
     private bool rubble;
     private Transform rubbleParent;
     private bool begun;
+    private int puffs;        // quantas fumacinhas este caco já soltou (cada quique solta uma, menor)
+    private float nextPuff;   // espera curta entre uma e outra
 
     public void StayAsRubble(Transform parent)
     {
@@ -60,6 +120,81 @@ public sealed class CollapsingFragment : MonoBehaviour
         age = 0f;
         restTime = 0f;
         sinkStart = -1f;
+        puffs = 0;
+        nextPuff = 0f;
+        lastFall = 0f;
+        if (body != null)
+        {
+            // Física mais simples para caco (padrão do Unity: 6 e 1). Montes de cacos custam bem menos.
+            body.solverIterations = 3;
+            body.solverVelocityIterations = 1;
+        }
+
+        if (!counted)
+        {
+            counted = true;
+            falling++;
+        }
+
+        UseSmallLayer();
+    }
+
+    private void StopCounting()
+    {
+        RestoreLayer();
+        if (counted)
+        {
+            counted = false;
+            falling = Mathf.Max(0, falling - 1);
+        }
+    }
+
+    private void OnDisable()
+    {
+        StopCounting();
+    }
+
+    private void OnDestroy()
+    {
+        StopCounting();
+    }
+
+    // 20/11: fumacinha quando o caco bate no chão. Em vez de esperar a mensagem de batida da física
+    // (os cacos de baixo já nascem encostados no chão e os de cima caem uns sobre os outros), olha a
+    // velocidade: vinha caindo rápido e de repente parou de cair = bateu em algo embaixo.
+    // 20/11 (pedido do autor): o caco que quica solta fumaça em cada quique forte, cada vez menor
+    // (até 3 por caco; quiques fracos, abaixo de ImpactFallSpeed, não soltam).
+    private const float ImpactFallSpeed = 2f; // m/s caindo antes da batida
+    private const int MaxPuffs = 3;
+    private const float PuffGap = 0.2f;
+    private float lastFall;
+
+    private void CheckImpact()
+    {
+        if (puffs >= MaxPuffs || body == null || body.isKinematic)
+        {
+            return;
+        }
+
+        float fall = -body.linearVelocity.y; // > 0 = descendo
+        if (lastFall > ImpactFallSpeed && fall < lastFall * 0.35f && age >= nextPuff)
+        {
+            nextPuff = age + PuffGap;
+            float shrink = puffs == 0 ? 1f : puffs == 1 ? 0.7f : 0.5f;
+            puffs++;
+            Vector3 point = transform.position;
+            float size = 0.8f;
+            if (TryGetComponent(out Collider own))
+            {
+                Bounds b = own.bounds;
+                point = new Vector3(b.center.x, b.min.y, b.center.z);
+                size = (b.size.x + b.size.y + b.size.z) / 3f; // caco grande, fumaça um pouco maior
+            }
+
+            DestructionDust.Impact(point, size * shrink);
+        }
+
+        lastFall = fall;
     }
 
     private void Update()
@@ -68,11 +203,16 @@ public sealed class CollapsingFragment : MonoBehaviour
 
         if (sinkStart < 0f)
         {
-            bool resting = body == null || body.linearVelocity.magnitude < RestSpeed;
+            CheckImpact();
+            // Pressa: 0 até Budget cacos caindo, 1 com o dobro ou mais.
+            float hurry = Mathf.Clamp01((falling - Budget) / (float)Budget);
+            float restSpeed = Mathf.Lerp(RestSpeed, 1.5f, hurry);
+            bool resting = body == null || body.linearVelocity.magnitude < restSpeed;
             restTime = resting ? restTime + Time.deltaTime : 0f;
 
-            bool landed = age >= MinFallTime + extraDelay && restTime >= RestTimeToSink;
-            if (landed || age >= MaxPhysicsTime)
+            float minFall = Mathf.Lerp(MinFallTime + extraDelay, 0.4f, hurry);
+            bool landed = age >= minFall && restTime >= Mathf.Lerp(RestTimeToSink, 0.1f, hurry);
+            if (landed || age >= Mathf.Lerp(MaxPhysicsTime, 2.5f, hurry))
             {
                 if (rubble)
                 {
@@ -106,6 +246,7 @@ public sealed class CollapsingFragment : MonoBehaviour
     // Vira escombro fixo: sem física (pode pisar em cima), preso ao lugar da casa.
     private void Settle()
     {
+        StopCounting();
         if (body != null)
         {
             body.isKinematic = true;
@@ -121,6 +262,7 @@ public sealed class CollapsingFragment : MonoBehaviour
 
     private void StartSinking()
     {
+        StopCounting();
         sinkStart = age;
         if (TryGetComponent(out Collider part))
         {

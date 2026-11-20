@@ -36,6 +36,7 @@ public sealed class PlanetGlobe : MonoBehaviour
     private static readonly Color Gold = new Color32(0xFF, 0xD2, 0x5A, 255);
     private static readonly Color Arrow = new Color32(0xFF, 0x6A, 0x4D, 255);
     private static readonly Color Village = new Color32(0x9B, 0x6B, 0xD6, 255);
+    private static readonly Color City = new Color32(0xF2, 0xA6, 0x3B, 255); // cidades (20/11)
 
     [SerializeField] private float dragSpeed = 0.25f;
     [SerializeField] private Vector2 zoomRange = new Vector2(1.45f, 4.2f);
@@ -437,6 +438,13 @@ public sealed class PlanetGlobe : MonoBehaviour
             Place(tower, new Vector2(info.coord.x + 0.5f, info.coord.y + 0.5f), 1.0f);
             tower.localScale = Vector3.one * 0.07f;
             baseMarks.Add((tower, parts));
+        }
+
+        // Cidades (20/11): bolinha dourada maior no meio de cada cidade.
+        foreach (Cities.City city in Cities.All)
+        {
+            Transform cityDot = Prim(PrimitiveType.Sphere, "Cidade_" + city.name, globe, Glow(City, 1.2f), Vector3.one * (0.012f + 0.004f * city.size));
+            Place(cityDot, city.CenterPosition, 1.012f);
         }
 
         // Você: seta laranja com contorno escuro.
@@ -1972,6 +1980,14 @@ public sealed class PlanetGlobe : MonoBehaviour
             baseLabels.Add((label, i, label.GetComponentInChildren<Text>(), label.GetComponent<Image>(), label.gameObject.AddComponent<CanvasGroup>()));
         }
 
+        // Nome das cidades (20/11).
+        foreach (Cities.City city in Cities.All)
+        {
+            RectTransform label = PillLabel(labelLayer, city.name.ToUpperInvariant(), fontSemi, 18, Ink, City, new Vector2(14f, 6f), Color.clear, 0f);
+            label.pivot = new Vector2(0.5f, 0.5f);
+            regionLabels.Add((label, city.CenterPosition + new Vector2(0f, -3f), label.gameObject.AddComponent<CanvasGroup>()));
+        }
+
         youLabel = PillLabel(labelLayer, "VOCÊ", fontBold, 17, new Color(1f, 0.97f, 0.9f), Ink, new Vector2(14f, 6f), Color.clear, 0f);
         youLabel.pivot = new Vector2(0.5f, 1f);
         youGroup = youLabel.gameObject.AddComponent<CanvasGroup>();
@@ -2137,6 +2153,7 @@ public sealed class PlanetGlobe : MonoBehaviour
         LegendItem(legend, Mint, "base visitada");
         LegendItem(legend, new Color(0.55f, 0.58f, 0.64f), "não visitada");
         LegendItem(legend, Village, "Vilarejo");
+        LegendItem(legend, City, "cidade");
         LegendItem(legend, Gold, "setor limpo");
     }
 

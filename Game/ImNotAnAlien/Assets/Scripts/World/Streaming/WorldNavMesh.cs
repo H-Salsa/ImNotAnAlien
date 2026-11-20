@@ -22,6 +22,9 @@ public sealed class WorldNavMesh : MonoBehaviour
     [SerializeField] private LayerMask layers = ~0;
     [Tooltip("Altura coberta pelo NavMesh (de baixo até em cima, em metros), a partir de -10 m.")]
     [SerializeField, Min(5f)] private float height = 50f;
+    [Tooltip("Tempo mínimo entre uma reconstrução do NavMesh e outra (s). 20/11, pedido do autor: destruir a capital " +
+             "pedia NavMesh novo a cada casa que caía (44 vezes em 30 s). Os pedidos que chegam no meio esperam e viram um só.")]
+    [SerializeField, Min(0f)] private float minRebuildInterval = 3f;
 
     private readonly List<NavMeshBuildSource> sources = new List<NavMeshBuildSource>();
     private readonly List<NavMeshBuildSource> blockSources = new List<NavMeshBuildSource>();
@@ -32,6 +35,7 @@ public sealed class WorldNavMesh : MonoBehaviour
     private AsyncOperation building;
     private bool dirty;
     private bool reportedDone = true;
+    private float nextRebuild;
 
     public bool IsBuilding => building != null && !building.isDone;
 
@@ -73,9 +77,10 @@ public sealed class WorldNavMesh : MonoBehaviour
             PerfMarks.Event("NavMesh: terminou de refazer");
         }
 
-        if (dirty && !IsBuilding)
+        if (dirty && !IsBuilding && Time.time >= nextRebuild)
         {
             dirty = false;
+            nextRebuild = Time.time + minRebuildInterval;
             bool ok;
             Bounds bounds;
             using (PerfMarks.Time("NavMesh: juntar formas"))

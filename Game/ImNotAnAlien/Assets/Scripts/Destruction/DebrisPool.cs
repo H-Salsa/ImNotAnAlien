@@ -15,6 +15,12 @@ public sealed class DebrisPool : MonoBehaviour
     private const int WarmPerFrame = 4;
     private const double PrepareBudgetMs = 1.2; // tempo por quadro para montar cacos de casas
     private const float NearHouseRange = 45f;   // casas mais perto que isso ficam com os cacos prontos
+    // 20/11: dentro de uma cidade há prédios demais para 45 m / 1,2 ms (um prédio levou 40 ms para virar
+    // cacos na hora do golpe). Na cidade: mais longe, um pouco mais de tempo por quadro e o mais perto primeiro.
+    private const double CityPrepareBudgetMs = 2.5;
+    private const float CityNearHouseRange = 100f;
+    private bool inCity;
+    private readonly List<(float, HouseBreakable)> nearby = new List<(float, HouseBreakable)>();
     private const float ScanInterval = 0.5f;
 
     private static DebrisPool instance;
@@ -107,7 +113,7 @@ public sealed class DebrisPool : MonoBehaviour
         }
 
         // 3. Monta um pouco dos cacos (com limite de tempo).
-        RetroHouse.PreparePiecesStep(PrepareBudgetMs);
+        RetroHouse.PreparePiecesStep(inCity ? CityPrepareBudgetMs : PrepareBudgetMs);
     }
 
     private void QueueNearbyHouses()
@@ -124,8 +130,11 @@ public sealed class DebrisPool : MonoBehaviour
         }
 
         Vector3 here = player.position;
-        float range = NearHouseRange * NearHouseRange;
+        inCity = Planet.Active && Cities.At(Planet.PlanetBlockAt(WorldOrigin.ToLogical(here))) != null;
+        float reach = inCity ? CityNearHouseRange : NearHouseRange;
+        float range = reach * reach;
         List<HouseBreakable> houses = HouseBreakable.All;
+        nearby.Clear();
         for (int i = 0; i < houses.Count; i++)
         {
             HouseBreakable house = houses[i];
@@ -138,8 +147,15 @@ public sealed class DebrisPool : MonoBehaviour
             d.y = 0f;
             if (d.sqrMagnitude <= range)
             {
-                RetroHouse.QueuePieces(house);
+                nearby.Add((d.sqrMagnitude, house));
             }
+        }
+
+        // O mais perto primeiro (é o que o jogador vai atacar antes).
+        nearby.Sort((a, b) => a.Item1.CompareTo(b.Item1));
+        foreach (var (_, house) in nearby)
+        {
+            RetroHouse.QueuePieces(house);
         }
     }
 }

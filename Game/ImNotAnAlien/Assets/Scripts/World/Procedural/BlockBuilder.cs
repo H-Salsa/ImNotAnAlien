@@ -959,7 +959,9 @@ public static partial class BlockBuilder
     {
         if (c.kit.buildingModels != null && c.kit.buildingModels.Length > 0)
         {
-            RetroHouse.BuildBuilding(parent, p, yaw, c.rng, c.kit.houseWalls != null && c.kit.houseWalls.Length > 0 ? c.kit.houseWalls[0] : null, c.kit.buildingModels);
+            // 20/11: no centro das cidades ("alto") só os prédios mais altos.
+            GameObject[] models = c.spec.variant == "alto" ? RetroHouse.TallestModels(c.kit.buildingModels, 2) : c.kit.buildingModels;
+            RetroHouse.BuildBuilding(parent, p, yaw, c.rng, c.kit.houseWalls != null && c.kit.houseWalls.Length > 0 ? c.kit.houseWalls[0] : null, models);
             return;
         }
 
