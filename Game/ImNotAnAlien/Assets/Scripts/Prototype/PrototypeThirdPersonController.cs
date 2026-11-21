@@ -197,8 +197,9 @@ public sealed class PrototypeThirdPersonController : MonoBehaviour
         if (!lockCursor || Cursor.lockState == CursorLockMode.Locked)
         {
             Vector2 lookInput = lookAction.ReadValue<Vector2>();
-            yaw += lookInput.x * lookSensitivity;
-            pitch = Mathf.Clamp(pitch - lookInput.y * lookSensitivity, minPitch, maxPitch);
+            float sensitivity = lookSensitivity * GameSettings.LookSensitivity; // menu > Configurações
+            yaw += lookInput.x * sensitivity;
+            pitch = Mathf.Clamp(pitch - lookInput.y * sensitivity, minPitch, maxPitch);
         }
 
         Vector2 moveInput = moveAction.ReadValue<Vector2>();

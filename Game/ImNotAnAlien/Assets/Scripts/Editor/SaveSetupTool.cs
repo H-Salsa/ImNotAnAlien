@@ -13,7 +13,10 @@ using UnityEngine.SceneManagement;
 // Pode rodar de novo sem problema.
 public static class SaveSetupTool
 {
-    private const string GameScenePath = "Assets/Scenes/Regiao1_VilarejoDoBilu_Blocos.unity";
+    // 20/11: o jogo agora é o planeta (Mundo_Sorteado). A cena antiga só é usada se o planeta não existir.
+    private const string PlanetScenePath = "Assets/Scenes/Mundo_Sorteado.unity";
+    private const string OldScenePath = "Assets/Scenes/Regiao1_VilarejoDoBilu_Blocos.unity";
+    private static string GameScenePath => AssetDatabase.LoadAssetAtPath<SceneAsset>(PlanetScenePath) != null ? PlanetScenePath : OldScenePath;
     private const string MenuScenePath = "Assets/Scenes/MenuInicial.unity";
 
     [MenuItem("ImNotAnAlien/Preparar Salvamento (Missao 17)")]
